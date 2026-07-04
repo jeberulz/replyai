@@ -165,6 +165,7 @@ export const scanUser = internalAction({
         authorName: t.authorName,
         authorFollowers: t.authorFollowers,
         text: t.text,
+        topicRelevance: relevance,
         score: score.value,
         reason: score.reason,
         suggestedAngle: suggestAngle(t),
@@ -175,13 +176,17 @@ export const scanUser = internalAction({
     });
 
     const worthSurfacing = items
-      .filter((i) => i.score >= 40)
+      .filter((i) => i.topicRelevance > 0 && i.score >= 40)
       .sort((a, b) => b.score - a.score)
       .slice(0, 12);
 
     await ctx.runMutation(internal.opportunities.upsertMany, {
       userId,
       items: worthSurfacing,
+    });
+    await ctx.runMutation(internal.opportunities.pruneStale, {
+      userId,
+      activeTweetIds: worthSurfacing.map((i) => i.tweetId),
     });
     await ctx.runMutation(internal.scanner.markScanned, { userId });
   },

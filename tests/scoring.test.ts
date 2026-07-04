@@ -70,8 +70,8 @@ describe("scoreConversation", () => {
 });
 
 describe("topicRelevanceForKeywords", () => {
-  it("defaults to neutral with no keywords", () => {
-    expect(topicRelevanceForKeywords("anything", [])).toBe(0.5);
+  it("returns zero with no keywords configured", () => {
+    expect(topicRelevanceForKeywords("anything", [])).toBe(0);
   });
 
   it("scores keyword hits higher than misses", () => {
@@ -82,6 +82,12 @@ describe("topicRelevanceForKeywords", () => {
     const miss = topicRelevanceForKeywords("great pasta recipe", ["ai", "startup"]);
     expect(hit).toBeGreaterThan(miss);
     expect(hit).toBeLessThanOrEqual(1);
+    expect(miss).toBe(0);
+  });
+
+  it("does not match short keywords inside unrelated words", () => {
+    expect(topicRelevanceForKeywords("I said nothing about tech", ["ai"])).toBe(0);
+    expect(topicRelevanceForKeywords("building with AI tools", ["ai"])).toBeGreaterThan(0);
   });
 });
 

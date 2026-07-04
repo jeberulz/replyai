@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useQuery } from "convex/react";
 import { Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 import { scanNowAction, updateScannerAction } from "@/app/actions";
 import { useSessionToken } from "@/components/app/convex-provider";
+import { FeedScanProgress } from "@/components/app/feed-scan-progress";
 import {
   OpportunityCard,
   type Opportunity,
@@ -24,15 +25,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { timeAgo } from "@/lib/utils";
+import { cn, timeAgo } from "@/lib/utils";
+
+const SCAN_TIMEOUT_MS = 45_000;
 
 export function FeedScanner() {
   const sessionToken = useSessionToken();
-  const settings = useQuery(api.scanner.settings, { sessionToken });
-  const opportunities = useQuery(api.opportunities.list, { sessionToken });
-  // null = not edited locally; the saved keywords from Convex show through.
+  const settings = useQuery(
+    api.scanner.settings,
+    sessionToken ? { sessionToken } : "skip"
+  );
+  const opportunities = useQuery(
+    api.opportunities.list,
+    sessionToken ? { sessionToken } : "skip"
+  );
   const [draftKeywords, setDraftKeywords] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
   const [pending, startTransition] = useTransition();
+  const scanBaselineRef = useRef<number>(0);
 
   const savedKeywords = settings?.keywords.join(", ") ?? "";
   const keywords = draftKeywords ?? savedKeywords;
@@ -44,6 +54,35 @@ export function FeedScanner() {
       .map((k) => k.trim())
       .filter(Boolean);
 
+  const beginScanTracking = () => {
+    scanBaselineRef.current = settings?.lastScanAt ?? 0;
+    setScanning(true);
+  };
+
+  useEffect(() => {
+    if (!scanning) return;
+
+    const lastScanAt = settings?.lastScanAt;
+    const completed =
+      lastScanAt !== undefined && lastScanAt > scanBaselineRef.current;
+
+    if (completed) {
+      setScanning(false);
+      toast.success("Feed scan complete");
+    }
+  }, [scanning, settings?.lastScanAt]);
+
+  useEffect(() => {
+    if (!scanning) return;
+
+    const timeout = window.setTimeout(() => {
+      setScanning(false);
+      toast.message("Scan is taking longer than usual — check back shortly");
+    }, SCAN_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [scanning]);
+
   const setEnabled = (enabled: boolean) => {
     startTransition(async () => {
       await updateScannerAction({ enabled, keywords: parsedKeywords() });
@@ -52,22 +91,24 @@ export function FeedScanner() {
   };
 
   const saveKeywords = () => {
+    beginScanTracking();
     startTransition(async () => {
       await updateScannerAction({
         enabled: settings?.enabled ?? true,
         keywords: parsedKeywords(),
       });
       setDraftKeywords(null);
-      toast.success("Keywords saved — rescanning");
     });
   };
 
   const scanNow = () => {
+    beginScanTracking();
     startTransition(async () => {
       await scanNowAction();
-      toast.success("Scan started — results appear live");
     });
   };
+
+  const busy = pending || scanning;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -86,6 +127,7 @@ export function FeedScanner() {
                 Runs every 30 minutes when enabled
                 {settings?.lastScanAt &&
                   ` · last scan ${timeAgo(settings.lastScanAt)}`}
+                {scanning && " · scanning now"}
               </CardDescription>
             </div>
             {settings === undefined ? (
@@ -94,7 +136,7 @@ export function FeedScanner() {
               <Switch
                 checked={settings?.enabled ?? false}
                 onCheckedChange={setEnabled}
-                disabled={pending}
+                disabled={busy}
               />
             )}
           </div>
@@ -108,25 +150,27 @@ export function FeedScanner() {
                 value={keywords}
                 placeholder="ai, startup, product, design"
                 onChange={(e) => setDraftKeywords(e.target.value)}
+                disabled={scanning}
               />
               <Button
                 variant="outline"
                 onClick={saveKeywords}
-                disabled={pending || !keywordsDirty}
+                disabled={busy || !keywordsDirty}
               >
                 Save
               </Button>
-              <Button variant="outline" onClick={scanNow} disabled={pending}>
-                {pending ? (
+              <Button variant="outline" onClick={scanNow} disabled={busy}>
+                {scanning ? (
                   <Loader2 className="animate-spin" />
                 ) : (
                   <RefreshCw />
                 )}
-                Scan now
+                {scanning ? "Scanning…" : "Scan now"}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Comma-separated. Tweets matching these score higher on relevance.
+              Comma-separated. Only tweets matching at least one keyword are
+              surfaced — off-topic posts are excluded even if they&apos;re viral.
             </p>
           </div>
 
@@ -141,9 +185,12 @@ export function FeedScanner() {
       <div className="space-y-4">
         <h2 className="font-mono text-xs uppercase tracking-[0.14em] text-primary">
           Opportunities{" "}
-          {opportunities !== undefined && `(${opportunities.length})`}
+          {!scanning && opportunities !== undefined && `(${opportunities.length})`}
         </h2>
-        {opportunities === undefined ? (
+
+        {scanning ? (
+          <FeedScanProgress keywords={parsedKeywords()} />
+        ) : opportunities === undefined ? (
           <>
             <Skeleton className="h-48 w-full" />
             <Skeleton className="h-48 w-full" />
@@ -156,15 +203,22 @@ export function FeedScanner() {
             </CardContent>
           </Card>
         ) : (
-          opportunities.map((opp) => (
-            <OpportunityCard
-              key={opp._id}
-              opportunity={{
-                ...(opp as unknown as Opportunity),
-                _id: String(opp._id),
-              }}
-            />
-          ))
+          <div
+            className={cn(
+              "space-y-4 transition-opacity duration-150",
+              pending && "opacity-60"
+            )}
+          >
+            {opportunities.map((opp) => (
+              <OpportunityCard
+                key={opp._id}
+                opportunity={{
+                  ...(opp as unknown as Opportunity),
+                  _id: String(opp._id),
+                }}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>

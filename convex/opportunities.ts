@@ -26,6 +26,28 @@ export const dismiss = mutation({
   },
 });
 
+/** Drop "new" opportunities that no longer qualify after a scan. */
+export const pruneStale = internalMutation({
+  args: {
+    userId: v.id("users"),
+    activeTweetIds: v.array(v.string()),
+  },
+  handler: async (ctx, { userId, activeTweetIds }) => {
+    const active = new Set(activeTweetIds);
+    const rows = await ctx.db
+      .query("opportunities")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", userId).eq("status", "new")
+      )
+      .collect();
+    for (const row of rows) {
+      if (!active.has(row.tweetId)) {
+        await ctx.db.patch(row._id, { status: "dismissed" });
+      }
+    }
+  },
+});
+
 export const upsertMany = internalMutation({
   args: {
     userId: v.id("users"),

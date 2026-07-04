@@ -14,7 +14,7 @@ export type EngagementInput = {
   quotes: number;
   /** Minutes since the tweet was posted. */
   ageMinutes: number;
-  /** 0..1 how well the topic matches the user's interests. Defaults to 0.5. */
+  /** 0..1 how well the topic matches the user's interests. Defaults to 0.5 when omitted (manual analyze). */
   topicRelevance?: number;
 };
 
@@ -60,12 +60,13 @@ export function scoreConversation(input: EngagementInput): ConversationScore {
     growthVelocity,
   };
 
+  // Relevance weighted highest — timing/velocity alone must not surface off-topic tweets.
   const value = Math.round(
     100 *
-      (0.25 * audienceSize +
-        0.3 * replyTiming +
-        0.3 * growthVelocity +
-        0.15 * topicRelevance)
+      (0.15 * audienceSize +
+        0.25 * replyTiming +
+        0.25 * growthVelocity +
+        0.35 * topicRelevance)
   );
 
   return { value, reason: describeScore(factors, ageMinutes), factors };
@@ -98,6 +99,8 @@ function describeScore(factors: ScoreFactors, ageMinutes: number): string {
 
   if (factors.topicRelevance >= 0.7) {
     parts.push("the topic closely matches your focus areas");
+  } else if (factors.topicRelevance >= 0.4) {
+    parts.push("the topic matches one of your focus areas");
   }
 
   const sentence = parts.join(", ");
@@ -110,15 +113,37 @@ function formatAge(minutes: number): string {
   return `${Math.round(minutes / (60 * 24))}d`;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Short keywords use word boundaries so "ai" does not match "said". */
+function keywordMatches(haystack: string, keyword: string): boolean {
+  if (keyword.length <= 4) {
+    const re = new RegExp(
+      `(?:^|[^a-z0-9])${escapeRegExp(keyword)}(?:[^a-z0-9]|$)`,
+      "i"
+    );
+    return re.test(haystack);
+  }
+  return haystack.includes(keyword);
+}
+
 /** 0..1 keyword overlap between a tweet's text and the user's keywords. */
 export function topicRelevanceForKeywords(
   text: string,
   keywords: string[]
 ): number {
-  if (keywords.length === 0) return 0.5;
+  const normalized = keywords
+    .map((k) => k.trim().toLowerCase())
+    .filter((k) => k.length > 0);
+  if (normalized.length === 0) return 0;
+
   const haystack = text.toLowerCase();
-  const hits = keywords.filter((k) => haystack.includes(k.toLowerCase())).length;
-  return Math.min(1, 0.3 + (hits / keywords.length) * 0.7 + (hits > 0 ? 0.2 : 0));
+  const hits = normalized.filter((k) => keywordMatches(haystack, k)).length;
+  if (hits === 0) return 0;
+
+  return Math.min(1, 0.4 + (hits / normalized.length) * 0.6);
 }
 
 /** Engagement events per hour since posting. */
