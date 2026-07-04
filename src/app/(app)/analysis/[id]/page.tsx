@@ -69,14 +69,16 @@ export default async function AnalysisPage({
                     @{tweet.authorHandle}
                   </span>
                 </CardTitle>
-                <a
-                  href={analysis.tweetUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <ExternalLink className="size-4" />
-                </a>
+                {analysis.tweetUrl && (
+                  <a
+                    href={analysis.tweetUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <ExternalLink className="size-4" />
+                  </a>
+                )}
               </div>
               <div className="text-xs text-muted-foreground">
                 {formatCount(tweet.authorFollowers)} followers ·{" "}
@@ -164,7 +166,9 @@ export default async function AnalysisPage({
         <div>
           <OptionsPanel
             analysisId={String(analysis._id)}
-            targetTweetId={analysis.tweetId}
+            /* Only thread the reply when we have a real X tweet ID; pasted-text
+               entries use a "manual-*" sentinel and publish standalone. */
+            targetTweetId={/^\d+$/.test(analysis.tweetId) ? analysis.tweetId : ""}
             voiceProfiles={voiceProfiles.map((p) => ({
               _id: String(p._id),
               name: p.name,

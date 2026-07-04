@@ -225,10 +225,27 @@ export default async function LandingPage({
                 Sign-in with X failed. Try again, or use demo mode.
               </p>
             )}
+            {error === "oauth_token" && (
+              <p className="max-w-[44ch] rounded-md border border-destructive/50 px-4 py-3 text-sm text-destructive">
+                X rejected the token exchange. Check{" "}
+                <code className="font-mono">X_CLIENT_ID</code> /{" "}
+                <code className="font-mono">X_CLIENT_SECRET</code> and that your
+                callback URL matches{" "}
+                <code className="font-mono">NEXT_PUBLIC_APP_URL/api/auth/callback</code>.
+              </p>
+            )}
+            {error === "oauth_profile" && (
+              <p className="max-w-[44ch] rounded-md border border-destructive/50 px-4 py-3 text-sm text-destructive">
+                Signed in with X but could not load your profile. Confirm{" "}
+                <code className="font-mono">users.read</code> scope is enabled
+                on your X app.
+              </p>
+            )}
             {error === "convex" && (
               <p className="max-w-[44ch] rounded-md border border-destructive/50 px-4 py-3 text-sm text-destructive">
-                Could not reach Convex. Run{" "}
-                <code className="font-mono">npx convex dev</code>.
+                Backend not ready. Run{" "}
+                <code className="font-mono">npx convex dev</code> in a second
+                terminal (keep it running), then try again.
               </p>
             )}
             <div className="space-y-3 pt-1">

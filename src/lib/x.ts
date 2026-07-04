@@ -81,8 +81,8 @@ export async function exchangeCodeForToken(args: {
   return {
     accessToken: json.access_token,
     refreshToken: json.refresh_token,
-    expiresAt: Date.now() + json.expires_in * 1000,
-    scope: json.scope,
+    expiresAt: Date.now() + (json.expires_in ?? 7200) * 1000,
+    scope: json.scope ?? X_OAUTH_SCOPES,
   };
 }
 
@@ -260,6 +260,39 @@ async function fetchTopReplies(
     }))
     .sort((a, b) => b.likes - a.likes)
     .slice(0, 5);
+}
+
+/**
+ * Build a TweetBundle from text the user pasted directly, bypassing the X
+ * read API (reads require a paid tier). Metrics we don't have default to 0 and
+ * postedAt to now, so the conversation score degrades gracefully and its
+ * reason stays honest. `tweetId` is the real numeric ID when a tweet URL was
+ * supplied, or a "manual-*" sentinel otherwise — in which case publishing
+ * posts a standalone tweet instead of a threaded reply.
+ */
+export function manualTweetBundle(input: {
+  tweetId: string;
+  text: string;
+  authorHandle?: string;
+  authorName?: string;
+  authorFollowers?: number;
+}): TweetBundle {
+  const handle = (input.authorHandle ?? "").replace(/^@/, "").trim();
+  return {
+    tweetId: input.tweetId,
+    authorName:
+      input.authorName?.trim() || (handle ? `@${handle}` : "Unknown author"),
+    authorHandle: handle || "unknown",
+    authorFollowers: input.authorFollowers ?? 0,
+    text: input.text,
+    postedAt: Date.now(),
+    likes: 0,
+    retweets: 0,
+    replies: 0,
+    quotes: 0,
+    topReplies: [],
+    isDemoData: false,
+  };
 }
 
 function demoBundle(tweetId: string): TweetBundle {

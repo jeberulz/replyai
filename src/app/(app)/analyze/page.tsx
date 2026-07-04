@@ -28,8 +28,9 @@ export default async function AnalyzePage({
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Analyze a tweet</h1>
         <p className="mt-1 text-muted-foreground">
-          Paste a tweet URL. You&apos;ll get a conversation breakdown, a
-          worth-replying score, and 3 replies + 3 quote tweets in your voice.
+          Paste the tweet&apos;s text (add the URL to publish threaded).
+          You&apos;ll get a conversation breakdown, a worth-replying score, and
+          3 replies + 3 quote tweets in your voice.
         </p>
       </div>
 

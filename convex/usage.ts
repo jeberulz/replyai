@@ -66,12 +66,19 @@ export const stats = query({
 
     let usedUnedited = 0;
     let usedFromGenerated = 0;
+    const publishDurationsMs: number[] = [];
     for (const draft of published) {
       if (!draft.replyId) continue;
       usedFromGenerated++;
       const reply = await ctx.db.get(draft.replyId);
       if (reply && !reply.editedBeforeSend) usedUnedited++;
+      // Supporting metric: time from drafting the option to publishing it.
+      if (reply && draft.publishedAt) {
+        publishDurationsMs.push(draft.publishedAt - reply.createdAt);
+      }
     }
+
+    const medianMs = median(publishDurationsMs);
 
     return {
       month,
@@ -86,6 +93,18 @@ export const stats = query({
         usedFromGenerated === 0
           ? null
           : Math.round((usedUnedited / usedFromGenerated) * 100),
+      // Supporting metric: median seconds from draft to publish.
+      medianSecondsToPublish:
+        medianMs === null ? null : Math.round(medianMs / 1000),
     };
   },
 });
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+}

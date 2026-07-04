@@ -30,6 +30,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCount, timeAgo } from "@/lib/utils";
 
+function formatDuration(seconds: number): string {
+  if (seconds < 90) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+  return `${Math.round(seconds / 3600)}h`;
+}
+
 function StatCard({
   label,
   value,
@@ -87,7 +93,26 @@ export function Dashboard({ displayName }: { displayName: string }) {
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StatCard
+          label="Used with no edits"
+          value={
+            stats ? (stats.noEditRate === null ? "—" : `${stats.noEditRate}%`) : null
+          }
+          hint="North-star: replies good enough to send as-is"
+        />
+        <StatCard
+          label="Time to publish"
+          value={
+            stats
+              ? stats.medianSecondsToPublish === null
+                ? "—"
+                : formatDuration(stats.medianSecondsToPublish)
+              : null
+          }
+          hint="Median, draft → send"
+        />
+        <StatCard label="Published" value={stats ? stats.published : null} />
         <StatCard
           label="Analyses this month"
           value={stats ? stats.analyses : null}
@@ -95,17 +120,6 @@ export function Dashboard({ displayName }: { displayName: string }) {
         <StatCard
           label="Options generated"
           value={stats ? stats.generations : null}
-        />
-        <StatCard
-          label="Published"
-          value={stats ? stats.published : null}
-        />
-        <StatCard
-          label="Used with no edits"
-          value={
-            stats ? (stats.noEditRate === null ? "—" : `${stats.noEditRate}%`) : null
-          }
-          hint="North-star: replies good enough to send as-is"
         />
       </div>
 

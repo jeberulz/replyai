@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { hasXCredentials } from "@/lib/env";
+import { oauthCallbackUrl } from "@/lib/oauth";
 import { buildAuthorizeUrl, generatePkcePair } from "@/lib/x";
 
 export async function GET(request: NextRequest) {
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
 
   const state = randomBytes(16).toString("base64url");
   const { verifier, challenge } = generatePkcePair();
-  const redirectUri = new URL("/api/auth/callback", request.url).toString();
+  const redirectUri = oauthCallbackUrl(request);
 
   const response = NextResponse.redirect(
     buildAuthorizeUrl({ state, challenge, redirectUri })

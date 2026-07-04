@@ -13,7 +13,12 @@ import {
 } from "@/lib/ai";
 import { convexServer } from "@/lib/convex";
 import { getSessionUser } from "@/lib/session";
-import { fetchTweetBundle, fetchUserTweets, type TweetBundle } from "@/lib/x";
+import {
+  fetchTweetBundle,
+  fetchUserTweets,
+  manualTweetBundle,
+  type TweetBundle,
+} from "@/lib/x";
 import { parseTweetUrl, scoreConversation } from "../../shared/scoring";
 import { buildVoiceStyleFromTweets, type VoiceStyle } from "../../shared/voice";
 
@@ -61,17 +66,42 @@ export async function analyzeTweetAction(
   formData: FormData
 ): Promise<{ error?: string } | null> {
   const { sessionToken } = await requireSession();
-  const url = String(formData.get("url") ?? "");
-  const tweetId = parseTweetUrl(url);
-  if (!tweetId) {
-    return { error: "That doesn't look like a tweet URL. Expected x.com/user/status/…" };
+  const text = String(formData.get("text") ?? "").trim();
+  const url = String(formData.get("url") ?? "").trim();
+  const authorHandle = String(formData.get("authorHandle") ?? "").trim();
+  const followersRaw = String(formData.get("authorFollowers") ?? "").replace(
+    /[^0-9]/g,
+    ""
+  );
+  const authorFollowers = followersRaw ? Number(followersRaw) : 0;
+
+  const urlTweetId = url ? parseTweetUrl(url) : null;
+  if (!text && !url) {
+    return { error: "Paste the tweet text (recommended), or a tweet URL." };
+  }
+  if (!text && !urlTweetId) {
+    return {
+      error:
+        "That doesn't look like a tweet URL (expected x.com/user/status/…). Or just paste the tweet text.",
+    };
   }
 
   const convex = convexServer();
   let analysisId: Id<"tweetAnalyses">;
   try {
-    const accessToken = await xAccessToken(sessionToken);
-    const bundle = await fetchTweetBundle(tweetId, accessToken);
+    let bundle: TweetBundle;
+    if (text) {
+      // Paste-text path: analyze the real tweet without a paid X read tier.
+      bundle = manualTweetBundle({
+        tweetId: urlTweetId ?? `manual-${Date.now()}`,
+        text,
+        authorHandle,
+        authorFollowers,
+      });
+    } else {
+      const accessToken = await xAccessToken(sessionToken);
+      bundle = await fetchTweetBundle(urlTweetId as string, accessToken);
+    }
 
     const { analysis, usage } = await analyzeTweet(bundle);
     const score = scoreConversation({
