@@ -7,10 +7,12 @@ import type { Doc, Id } from "../../convex/_generated/dataModel";
 import {
   analyzeTweet,
   generateOptions,
+  judgeModelEval,
   rewriteText,
   REWRITE_DIRECTIONS,
   type RewriteDirection,
 } from "@/lib/ai";
+import { estimateCostUsd, isKnownModel, MODELS } from "../../shared/models";
 import { convexServer } from "@/lib/convex";
 import { getSessionUser } from "@/lib/session";
 import {
@@ -42,6 +44,20 @@ function bundleFromAnalysis(analysis: Doc<"tweetAnalyses">): TweetBundle {
     topReplies: analysis.topReplies,
     isDemoData: false,
   };
+}
+
+/**
+ * Resolve which Claude model to generate with: explicit per-request override
+ * → the user's saved default → undefined (env-configured default in ai.ts).
+ */
+async function resolveModel(
+  sessionToken: string,
+  override?: string
+): Promise<string | undefined> {
+  if (override && isKnownModel(override)) return override;
+  const me = await convexServer().query(api.users.me, { sessionToken });
+  const saved = me?.defaultModel;
+  return saved && isKnownModel(saved) ? saved : undefined;
 }
 
 async function defaultVoice(
@@ -150,6 +166,7 @@ export async function analyzeTweetAction(
     const { profile } = await defaultVoice(sessionToken);
     const voice = (profile?.style as VoiceStyle | undefined) ?? null;
     const examples = profile?.examples ?? [];
+    const model = await resolveModel(sessionToken);
 
     const [replies, quotes] = await Promise.all([
       generateOptions({
@@ -158,6 +175,7 @@ export async function analyzeTweetAction(
         analysis,
         voice,
         voiceExamples: examples,
+        model,
       }),
       generateOptions({
         kind: "quote",
@@ -165,6 +183,7 @@ export async function analyzeTweetAction(
         analysis,
         voice,
         voiceExamples: examples,
+        model,
       }),
     ]);
 
@@ -176,6 +195,7 @@ export async function analyzeTweetAction(
         sessionToken,
         analysisId,
         voiceProfileId: profile?._id,
+        model,
         options: result.options.map((o) => ({ kind, ...o })),
       });
     }
@@ -203,6 +223,7 @@ export async function generateMoreAction(args: {
   analysisId: string;
   kind: "reply" | "quote";
   voiceProfileId?: string;
+  model?: string;
 }) {
   const { sessionToken } = await requireSession();
   const convex = convexServer();
@@ -219,6 +240,7 @@ export async function generateMoreAction(args: {
     analysisId,
   });
   const { profile } = await defaultVoice(sessionToken, args.voiceProfileId);
+  const model = await resolveModel(sessionToken, args.model);
 
   const bundle = bundleFromAnalysis(analysis);
   const result = await generateOptions({
@@ -236,12 +258,14 @@ export async function generateMoreAction(args: {
     avoidContents: existing
       .filter((r) => r.kind === args.kind)
       .map((r) => r.content),
+    model,
   });
 
   await convex.mutation(api.replies.insertMany, {
     sessionToken,
     analysisId,
     voiceProfileId: profile?._id,
+    model,
     options: result.options.map((o) => ({ kind: args.kind, ...o })),
   });
   await convex.mutation(api.usage.record, {
@@ -281,11 +305,13 @@ export async function rewriteAction(args: {
   if (!reply) throw new Error("Reply not found");
 
   const { profile } = await defaultVoice(sessionToken, reply.voiceProfileId);
+  const model = await resolveModel(sessionToken, reply.model);
   const result = await rewriteText({
     text: reply.content,
     direction: direction as RewriteDirection,
     bundle: bundleFromAnalysis(analysis),
     voice: (profile?.style as VoiceStyle | undefined) ?? null,
+    model,
   });
 
   await convex.mutation(api.replies.updateContent, {
@@ -317,6 +343,107 @@ export async function saveEditAction(args: {
     markEdited: true,
   });
   revalidatePath(`/analysis/${args.analysisId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Model selection & eval
+// ---------------------------------------------------------------------------
+
+export async function setDefaultModelAction(model: string) {
+  const { sessionToken } = await requireSession();
+  if (!isKnownModel(model)) throw new Error("Unknown model");
+  await convexServer().mutation(api.users.setDefaultModel, {
+    sessionToken,
+    model,
+  });
+  revalidatePath("/settings");
+}
+
+/**
+ * Run the same reply generation across every catalog model against one
+ * analysis, blind-judge the sets with the analyze-tier model, and store the
+ * comparison (quality score + actual cost per run). Powers the "which model
+ * is good enough?" decision.
+ */
+export async function runModelEvalAction(analysisId: string) {
+  const { sessionToken } = await requireSession();
+  const convex = convexServer();
+
+  const analysis = await convex.query(api.analyses.get, {
+    sessionToken,
+    analysisId: analysisId as Id<"tweetAnalyses">,
+  });
+  if (!analysis) throw new Error("Analysis not found");
+
+  const { profile } = await defaultVoice(sessionToken);
+  const voice = (profile?.style as VoiceStyle | undefined) ?? null;
+  const examples = profile?.examples ?? [];
+  const bundle = bundleFromAnalysis(analysis);
+  const analysisInput = {
+    summary: analysis.summary,
+    topic: analysis.topic,
+    stance: analysis.stance,
+    existingOpinions: analysis.existingOpinions,
+    missingAngles: analysis.missingAngles,
+  };
+
+  // Same generation, once per catalog model. The shared tweet-context block
+  // is cache-marked, so the per-model cost is mostly output tokens.
+  const runs = await Promise.all(
+    MODELS.map(async (m) => {
+      const result = await generateOptions({
+        kind: "reply",
+        bundle,
+        analysis: analysisInput,
+        voice,
+        voiceExamples: examples,
+        model: m.id,
+      });
+      return { model: m.id, ...result };
+    })
+  );
+
+  const { verdict, usage: judgeUsage, judgeModel } = await judgeModelEval({
+    bundle,
+    analysis: analysisInput,
+    voice,
+    voiceExamples: examples,
+    candidates: runs.map((r) => ({ model: r.model, options: r.options })),
+  });
+
+  const scoreFor = (model: string) =>
+    verdict.scores.find((s) => s.model === model);
+
+  await convex.mutation(api.evals.save, {
+    sessionToken,
+    analysisId: analysis._id,
+    judgeModel,
+    candidates: runs.map((r) => ({
+      model: r.model,
+      options: r.options,
+      tokensIn: r.usage.tokensIn,
+      tokensOut: r.usage.tokensOut,
+      costUsd: estimateCostUsd(r.model, r.usage.tokensIn, r.usage.tokensOut),
+      score: scoreFor(r.model)?.score ?? 0,
+      notes: scoreFor(r.model)?.notes ?? "",
+    })),
+    winnerModel: verdict.winnerModel,
+    summary: verdict.summary,
+  });
+
+  const totalIn =
+    runs.reduce((n, r) => n + r.usage.tokensIn, 0) + judgeUsage.tokensIn;
+  const totalOut =
+    runs.reduce((n, r) => n + r.usage.tokensOut, 0) + judgeUsage.tokensOut;
+  await convex.mutation(api.usage.record, {
+    sessionToken,
+    tokensIn: totalIn,
+    tokensOut: totalOut,
+    analyses: 0,
+    generations: runs.reduce((n, r) => n + r.options.length, 0),
+  });
+
+  revalidatePath(`/analysis/${analysisId}`);
 }
 
 // ---------------------------------------------------------------------------

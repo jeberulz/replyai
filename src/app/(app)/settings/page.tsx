@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DefaultModelCard } from "@/components/app/default-model-card";
 import { convexServer } from "@/lib/convex";
 import { hasAnthropicKey, hasXCredentials } from "@/lib/env";
 import { getSessionUser } from "@/lib/session";
@@ -119,6 +120,8 @@ export default async function SettingsPage() {
           />
         </CardContent>
       </Card>
+
+      <DefaultModelCard defaultModel={user.defaultModel} />
 
       <Card>
         <CardHeader>

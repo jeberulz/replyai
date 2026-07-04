@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import { ModelEval } from "@/components/app/model-eval";
 import { OptionsPanel } from "@/components/app/options-panel";
 import { ScoreBadge } from "@/components/app/score-badge";
 import { Badge } from "@/components/ui/badge";
@@ -39,12 +40,13 @@ export default async function AnalysisPage({
   }
   if (!analysis) notFound();
 
-  const [options, voiceProfiles] = await Promise.all([
+  const [options, voiceProfiles, me] = await Promise.all([
     convex.query(api.replies.listByAnalysis, {
       sessionToken,
       analysisId: analysis._id,
     }),
     convex.query(api.voiceProfiles.list, { sessionToken }),
+    convex.query(api.users.me, { sessionToken }),
   ]);
 
   const { tweet, score } = analysis;
@@ -183,10 +185,17 @@ export default async function AnalysisPage({
               editedBeforeSend: o.editedBeforeSend,
             }))}
             isDemo={session.user.isDemo}
+            defaultModel={me?.defaultModel}
           />
           <p className="mt-4 text-center text-xs text-muted-foreground">
             Nothing is posted without your explicit click on that specific reply.
           </p>
+          <div className="mt-6">
+            <ModelEval
+              analysisId={String(analysis._id)}
+              defaultModel={me?.defaultModel}
+            />
+          </div>
         </div>
       </div>
 

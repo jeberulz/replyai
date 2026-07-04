@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { userBySessionToken } from "./helpers";
+import { requireUser, userBySessionToken } from "./helpers";
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
@@ -91,10 +91,20 @@ export const me = query({
       displayName: user.displayName,
       avatar: user.avatar,
       plan: user.plan,
+      defaultModel: user.defaultModel,
       isDemo: user.isDemo,
       createdAt: user.createdAt,
       xConnected: xToken !== null && xToken.expiresAt > Date.now(),
     };
+  },
+});
+
+/** Set the user's preferred Claude model for reply generation. */
+export const setDefaultModel = mutation({
+  args: { sessionToken: v.string(), model: v.string() },
+  handler: async (ctx, { sessionToken, model }) => {
+    const user = await requireUser(ctx, sessionToken);
+    await ctx.db.patch(user._id, { defaultModel: model });
   },
 });
 

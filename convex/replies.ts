@@ -7,6 +7,8 @@ export const insertMany = mutation({
     sessionToken: v.string(),
     analysisId: v.id("tweetAnalyses"),
     voiceProfileId: v.optional(v.id("voiceProfiles")),
+    // Which Claude model generated these options.
+    model: v.optional(v.string()),
     options: v.array(
       v.object({
         kind: v.union(v.literal("reply"), v.literal("quote")),
@@ -16,7 +18,10 @@ export const insertMany = mutation({
       })
     ),
   },
-  handler: async (ctx, { sessionToken, analysisId, voiceProfileId, options }) => {
+  handler: async (
+    ctx,
+    { sessionToken, analysisId, voiceProfileId, model, options }
+  ) => {
     const user = await requireUser(ctx, sessionToken);
     const analysis = await ctx.db.get(analysisId);
     if (!analysis || analysis.userId !== user._id) throw new Error("Not found");
@@ -28,6 +33,7 @@ export const insertMany = mutation({
           analysisId,
           userId: user._id,
           voiceProfileId,
+          model,
           ...option,
           createdAt: now,
         })

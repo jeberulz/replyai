@@ -35,6 +35,8 @@ export default defineSchema({
     displayName: v.string(),
     avatar: v.optional(v.string()),
     plan: v.string(), // "free" — monetization decision deferred until after launch testing
+    // Preferred Claude model for generation; unset = app default (see shared/models.ts).
+    defaultModel: v.optional(v.string()),
     isDemo: v.boolean(),
     createdAt: v.number(),
   }).index("by_x_user_id", ["xUserId"]),
@@ -106,6 +108,8 @@ export default defineSchema({
     content: v.string(),
     // A short reason this option is worth sending — no fake precision scores.
     reason: v.string(),
+    // Which Claude model generated this option (unset for pre-feature rows).
+    model: v.optional(v.string()),
     voiceProfileId: v.optional(v.id("voiceProfiles")),
     editedBeforeSend: v.optional(v.boolean()),
     createdAt: v.number(),
@@ -177,6 +181,38 @@ export default defineSchema({
     keywords: v.array(v.string()),
     lastScanAt: v.optional(v.number()),
   }).index("by_user", ["userId"]),
+
+  // Side-by-side model comparisons: the same generation run across several
+  // models against one analysis, judged by a stronger model. Powers the
+  // "which model is good enough?" cost/quality decision.
+  modelEvals: defineTable({
+    userId: v.id("users"),
+    analysisId: v.id("tweetAnalyses"),
+    judgeModel: v.string(),
+    candidates: v.array(
+      v.object({
+        model: v.string(),
+        options: v.array(
+          v.object({
+            category: v.string(),
+            content: v.string(),
+            reason: v.string(),
+          })
+        ),
+        tokensIn: v.number(),
+        tokensOut: v.number(),
+        costUsd: v.number(),
+        // 0-100 judge score with a plain-language note.
+        score: v.number(),
+        notes: v.string(),
+      })
+    ),
+    winnerModel: v.string(),
+    summary: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_analysis", ["analysisId"]),
 
   cachedResponses: defineTable({
     key: v.string(),

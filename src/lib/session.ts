@@ -37,6 +37,7 @@ export type SessionUser = {
   displayName: string;
   avatar?: string;
   plan: string;
+  defaultModel?: string;
   isDemo: boolean;
   createdAt: number;
   xConnected: boolean;

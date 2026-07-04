@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DEFAULT_MODEL_ID, MODELS } from "../../../shared/models";
 import type { Id } from "../../../convex/_generated/dataModel";
 
 type VoiceProfile = { _id: string; name: string; isDefault: boolean };
@@ -28,17 +29,20 @@ export function OptionsPanel({
   voiceProfiles,
   initialOptions,
   isDemo,
+  defaultModel,
 }: {
   analysisId: string;
   targetTweetId: string;
   voiceProfiles: VoiceProfile[];
   initialOptions: Option[];
   isDemo: boolean;
+  defaultModel?: string;
 }) {
   const sessionToken = useSessionToken();
   const [voiceProfileId, setVoiceProfileId] = useState<string>(
     voiceProfiles.find((p) => p.isDefault)?._id ?? voiceProfiles[0]?._id ?? ""
   );
+  const [model, setModel] = useState<string>(defaultModel ?? DEFAULT_MODEL_ID);
   const [pending, startTransition] = useTransition();
 
   // Live options via Convex reactivity; falls back to server-rendered data
@@ -59,7 +63,7 @@ export function OptionsPanel({
   const generateMore = (kind: "reply" | "quote") => {
     startTransition(async () => {
       try {
-        await generateMoreAction({ analysisId, kind, voiceProfileId });
+        await generateMoreAction({ analysisId, kind, voiceProfileId, model });
         toast.success("3 more options generated");
       } catch {
         toast.error("Generation failed");
@@ -112,24 +116,42 @@ export function OptionsPanel({
           </TabsTrigger>
         </TabsList>
 
-        {voiceProfiles.length > 0 && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            Voice
-            <Select value={voiceProfileId} onValueChange={setVoiceProfileId}>
-              <SelectTrigger className="h-8 w-44">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            Model
+            <Select value={model} onValueChange={setModel}>
+              <SelectTrigger className="h-8 w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {voiceProfiles.map((p) => (
-                  <SelectItem key={p._id} value={p._id}>
-                    {p.name}
-                    {p.isDefault ? " (default)" : ""}
+                {MODELS.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.label}
+                    {m.id === defaultModel ? " (default)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-        )}
+          {voiceProfiles.length > 0 && (
+            <div className="flex items-center gap-2">
+              Voice
+              <Select value={voiceProfileId} onValueChange={setVoiceProfileId}>
+                <SelectTrigger className="h-8 w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {voiceProfiles.map((p) => (
+                    <SelectItem key={p._id} value={p._id}>
+                      {p.name}
+                      {p.isDefault ? " (default)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
       </div>
 
       <TabsContent value="replies">{renderList("reply")}</TabsContent>
