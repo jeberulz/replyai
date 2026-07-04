@@ -1,0 +1,91 @@
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { currentMonth, requireUser } from "./helpers";
+
+export const record = mutation({
+  args: {
+    sessionToken: v.string(),
+    tokensIn: v.number(),
+    tokensOut: v.number(),
+    analyses: v.number(),
+    generations: v.number(),
+  },
+  handler: async (ctx, { sessionToken, tokensIn, tokensOut, analyses, generations }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const month = currentMonth();
+    const row = await ctx.db
+      .query("usage")
+      .withIndex("by_user_month", (q) =>
+        q.eq("userId", user._id).eq("month", month)
+      )
+      .unique();
+    if (row) {
+      await ctx.db.patch(row._id, {
+        tokensIn: row.tokensIn + tokensIn,
+        tokensOut: row.tokensOut + tokensOut,
+        requests: row.requests + 1,
+        analyses: row.analyses + analyses,
+        generations: row.generations + generations,
+      });
+    } else {
+      await ctx.db.insert("usage", {
+        userId: user._id,
+        month,
+        tokensIn,
+        tokensOut,
+        requests: 1,
+        analyses,
+        generations,
+      });
+    }
+  },
+});
+
+/**
+ * Dashboard stats, including the north-star metric: the share of published
+ * replies that were used with no edits.
+ */
+export const stats = query({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const month = currentMonth();
+    const usage = await ctx.db
+      .query("usage")
+      .withIndex("by_user_month", (q) =>
+        q.eq("userId", user._id).eq("month", month)
+      )
+      .unique();
+
+    const published = await ctx.db
+      .query("savedDrafts")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", user._id).eq("status", "published")
+      )
+      .collect();
+
+    let usedUnedited = 0;
+    let usedFromGenerated = 0;
+    for (const draft of published) {
+      if (!draft.replyId) continue;
+      usedFromGenerated++;
+      const reply = await ctx.db.get(draft.replyId);
+      if (reply && !reply.editedBeforeSend) usedUnedited++;
+    }
+
+    return {
+      month,
+      tokensIn: usage?.tokensIn ?? 0,
+      tokensOut: usage?.tokensOut ?? 0,
+      requests: usage?.requests ?? 0,
+      analyses: usage?.analyses ?? 0,
+      generations: usage?.generations ?? 0,
+      published: published.length,
+      // North star: % of generated replies published without edits.
+      noEditRate:
+        usedFromGenerated === 0
+          ? null
+          : Math.round((usedUnedited / usedFromGenerated) * 100),
+    };
+  },
+});

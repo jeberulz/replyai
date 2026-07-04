@@ -1,0 +1,139 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useQuery } from "convex/react";
+import { Loader2, Plus } from "lucide-react";
+import { toast } from "sonner";
+import { api } from "../../../convex/_generated/api";
+import { generateMoreAction } from "@/app/actions";
+import { useSessionToken } from "@/components/app/convex-provider";
+import { OptionCard, type Option } from "@/components/app/option-card";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Id } from "../../../convex/_generated/dataModel";
+
+type VoiceProfile = { _id: string; name: string; isDefault: boolean };
+
+export function OptionsPanel({
+  analysisId,
+  targetTweetId,
+  voiceProfiles,
+  initialOptions,
+  isDemo,
+}: {
+  analysisId: string;
+  targetTweetId: string;
+  voiceProfiles: VoiceProfile[];
+  initialOptions: Option[];
+  isDemo: boolean;
+}) {
+  const sessionToken = useSessionToken();
+  const [voiceProfileId, setVoiceProfileId] = useState<string>(
+    voiceProfiles.find((p) => p.isDefault)?._id ?? voiceProfiles[0]?._id ?? ""
+  );
+  const [pending, startTransition] = useTransition();
+
+  // Live options via Convex reactivity; falls back to server-rendered data
+  // until the subscription connects.
+  const live = useQuery(api.replies.listByAnalysis, {
+    sessionToken,
+    analysisId: analysisId as Id<"tweetAnalyses">,
+  });
+  const options: Option[] = (live ?? initialOptions).map((o) => ({
+    _id: String(o._id),
+    kind: o.kind,
+    category: o.category,
+    content: o.content,
+    reason: o.reason,
+    editedBeforeSend: o.editedBeforeSend,
+  }));
+
+  const generateMore = (kind: "reply" | "quote") => {
+    startTransition(async () => {
+      try {
+        await generateMoreAction({ analysisId, kind, voiceProfileId });
+        toast.success("3 more options generated");
+      } catch {
+        toast.error("Generation failed");
+      }
+    });
+  };
+
+  const renderList = (kind: "reply" | "quote") => {
+    const list = options.filter((o) => o.kind === kind);
+    return (
+      <div className="space-y-4">
+        {list.length === 0 && live === undefined ? (
+          <>
+            <Skeleton className="h-40 w-full" />
+            <Skeleton className="h-40 w-full" />
+          </>
+        ) : (
+          list.map((option) => (
+            <OptionCard
+              key={option._id}
+              option={option}
+              analysisId={analysisId}
+              targetTweetId={targetTweetId}
+              isDemo={isDemo}
+            />
+          ))
+        )}
+        <Button
+          variant="outline"
+          className="w-full"
+          disabled={pending}
+          onClick={() => generateMore(kind)}
+        >
+          {pending ? <Loader2 className="animate-spin" /> : <Plus />}
+          Generate 3 more {kind === "quote" ? "quote tweets" : "replies"}
+        </Button>
+      </div>
+    );
+  };
+
+  return (
+    <Tabs defaultValue="replies" className="w-full">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <TabsList>
+          <TabsTrigger value="replies">
+            Replies ({options.filter((o) => o.kind === "reply").length})
+          </TabsTrigger>
+          <TabsTrigger value="quotes">
+            Quote tweets ({options.filter((o) => o.kind === "quote").length})
+          </TabsTrigger>
+        </TabsList>
+
+        {voiceProfiles.length > 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            Voice
+            <Select value={voiceProfileId} onValueChange={setVoiceProfileId}>
+              <SelectTrigger className="h-8 w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {voiceProfiles.map((p) => (
+                  <SelectItem key={p._id} value={p._id}>
+                    {p.name}
+                    {p.isDefault ? " (default)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+
+      <TabsContent value="replies">{renderList("reply")}</TabsContent>
+      <TabsContent value="quotes">{renderList("quote")}</TabsContent>
+    </Tabs>
+  );
+}
