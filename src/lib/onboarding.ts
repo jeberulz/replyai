@@ -3,7 +3,7 @@ import { convexServer } from "./convex";
 import { buildVoiceStyleFromTweets } from "../../shared/voice";
 import { DEMO_TWEETS } from "../../shared/demoData";
 
-const DEFAULT_KEYWORDS = ["ai", "startup", "founder", "build", "product"];
+const DEFAULT_KEYWORDS = ["ai", "llm", "startup", "saas", "indie hacker"];
 
 /**
  * First-login setup: make sure the user has a starter voice profile and the

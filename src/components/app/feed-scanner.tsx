@@ -68,9 +68,17 @@ export function FeedScanner() {
 
     if (completed) {
       setScanning(false);
-      toast.success("Feed scan complete");
+      if (settings?.lastScanError) {
+        toast.error(settings.lastScanError);
+      } else if ((settings?.lastScanCount ?? 0) === 0) {
+        toast.message("Scan complete — no matching tweets in your feed right now");
+      } else {
+        toast.success(
+          `Feed scan complete — ${settings?.lastScanCount} opportunit${settings?.lastScanCount === 1 ? "y" : "ies"} found`
+        );
+      }
     }
-  }, [scanning, settings?.lastScanAt]);
+  }, [scanning, settings?.lastScanAt, settings?.lastScanError, settings?.lastScanCount]);
 
   useEffect(() => {
     if (!scanning) return;
@@ -127,6 +135,9 @@ export function FeedScanner() {
                 Runs every 30 minutes when enabled
                 {settings?.lastScanAt &&
                   ` · last scan ${timeAgo(settings.lastScanAt)}`}
+                {typeof settings?.lastScanCount === "number" &&
+                  settings.lastScanAt &&
+                  ` · ${settings.lastScanCount} found`}
                 {scanning && " · scanning now"}
               </CardDescription>
             </div>
@@ -198,8 +209,19 @@ export function FeedScanner() {
         ) : opportunities.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              No opportunities surfaced yet. Enable the scanner or hit
-              &ldquo;Scan now&rdquo;.
+              {settings?.lastScanError ? (
+                <p className="text-destructive">{settings.lastScanError}</p>
+              ) : settings?.lastScanAt ? (
+                <p>
+                  Last scan found no tweets matching your keywords. Try broader
+                  topics like <span className="text-foreground">ai, saas, startup</span>.
+                </p>
+              ) : (
+                <p>
+                  No opportunities surfaced yet. Enable the scanner or hit
+                  &ldquo;Scan now&rdquo;.
+                </p>
+              )}
             </CardContent>
           </Card>
         ) : (

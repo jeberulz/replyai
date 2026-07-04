@@ -113,20 +113,47 @@ function formatAge(minutes: number): string {
   return `${Math.round(minutes / (60 * 24))}d`;
 }
 
+/** Minimum relevance for the feed scanner to surface a tweet. */
+export const FEED_SCANNER_MIN_RELEVANCE = 0.5;
+
+/** Broad keywords that appear constantly in politics/news — need a second hit. */
+const GENERIC_KEYWORDS = new Set([
+  "build",
+  "building",
+  "product",
+  "products",
+  "founder",
+  "founders",
+  "design",
+  "tech",
+  "technology",
+  "business",
+  "economy",
+  "market",
+  "growth",
+]);
+
+const POLITICAL_SIGNAL =
+  /\b(trump|biden|harris|obama|congress|senate|gop|democrat|republican|maga|election|president|presidential|white house|politic(?:al|s)?|impeach|ballot|primary|caucus|governor|senator|congress(?:man|woman)|culture war|executive order|immigration|deportation|left wing|right wing|partisan|legislat(?:e|ion|ive))\b/i;
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Short keywords use word boundaries so "ai" does not match "said". */
+export function isPoliticalContent(text: string): boolean {
+  return POLITICAL_SIGNAL.test(text);
+}
+
+/** Word-boundary match for single tokens; phrase match for multi-word keywords. */
 function keywordMatches(haystack: string, keyword: string): boolean {
-  if (keyword.length <= 4) {
-    const re = new RegExp(
-      `(?:^|[^a-z0-9])${escapeRegExp(keyword)}(?:[^a-z0-9]|$)`,
-      "i"
-    );
-    return re.test(haystack);
+  if (keyword.includes(" ")) {
+    return haystack.includes(keyword);
   }
-  return haystack.includes(keyword);
+  const re = new RegExp(
+    `(?:^|[^a-z0-9])${escapeRegExp(keyword)}s?(?:[^a-z0-9]|$)`,
+    "i"
+  );
+  return re.test(haystack);
 }
 
 /** 0..1 keyword overlap between a tweet's text and the user's keywords. */
@@ -134,16 +161,40 @@ export function topicRelevanceForKeywords(
   text: string,
   keywords: string[]
 ): number {
+  if (isPoliticalContent(text)) return 0;
+
   const normalized = keywords
     .map((k) => k.trim().toLowerCase())
     .filter((k) => k.length > 0);
   if (normalized.length === 0) return 0;
 
   const haystack = text.toLowerCase();
-  const hits = normalized.filter((k) => keywordMatches(haystack, k)).length;
-  if (hits === 0) return 0;
+  const hits = normalized.filter((k) => keywordMatches(haystack, k));
+  if (hits.length === 0) return 0;
 
-  return Math.min(1, 0.4 + (hits / normalized.length) * 0.6);
+  const strongHits = hits.filter((k) => !GENERIC_KEYWORDS.has(k));
+  // One generic word alone (e.g. "build" in a political rant) is not enough.
+  if (strongHits.length === 0 && hits.length < 2) return 0;
+
+  // One specific keyword hit is enough; don't penalize long keyword lists.
+  if (strongHits.length >= 1) {
+    return Math.min(
+      1,
+      0.5 + strongHits.length * 0.15 + (hits.length - strongHits.length) * 0.05
+    );
+  }
+
+  return Math.min(1, 0.45 + hits.length * 0.2);
+}
+
+/** Whether a tweet should appear in feed scanner results for these keywords. */
+export function passesFeedScannerFilter(
+  text: string,
+  keywords: string[]
+): boolean {
+  return (
+    topicRelevanceForKeywords(text, keywords) >= FEED_SCANNER_MIN_RELEVANCE
+  );
 }
 
 /** Engagement events per hour since posting. */

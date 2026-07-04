@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  isPoliticalContent,
   parseTweetUrl,
+  passesFeedScannerFilter,
   scoreConversation,
   topicRelevanceForKeywords,
   velocityPerHour,
@@ -88,6 +90,34 @@ describe("topicRelevanceForKeywords", () => {
   it("does not match short keywords inside unrelated words", () => {
     expect(topicRelevanceForKeywords("I said nothing about tech", ["ai"])).toBe(0);
     expect(topicRelevanceForKeywords("building with AI tools", ["ai"])).toBeGreaterThan(0);
+  });
+
+  it("blocks political content even when a generic keyword appears", () => {
+    const text =
+      "Trump just signed an executive order. We need to build a stronger border.";
+    expect(isPoliticalContent(text)).toBe(true);
+    expect(topicRelevanceForKeywords(text, ["ai", "build", "startup"])).toBe(0);
+    expect(passesFeedScannerFilter(text, ["ai", "build", "startup"])).toBe(false);
+  });
+
+  it("rejects a lone generic keyword hit", () => {
+    expect(
+      topicRelevanceForKeywords("We must build a better society", ["build", "product"])
+    ).toBe(0);
+    expect(
+      topicRelevanceForKeywords("Shipping our AI SaaS startup today", [
+        "ai",
+        "startup",
+        "saas",
+      ])
+    ).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it("passes pricing tweets that mention AI apps with typical keywords", () => {
+    const text =
+      "US users are willing to pay $20–$40+/month for AI apps if the value is clear.";
+    const keywords = ["ai", "startup", "founder", "build", "product"];
+    expect(passesFeedScannerFilter(text, keywords)).toBe(true);
   });
 });
 

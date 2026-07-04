@@ -5,7 +5,7 @@ const crons = cronJobs();
 
 // Feed scanner: surface fresh reply opportunities for users who enabled it.
 // Suggestions only — publishing always requires an explicit human click.
-crons.interval("scan feeds", { minutes: 30 }, internal.scanner.scanAll, {});
+crons.interval("scan feeds", { minutes: 30 }, internal.scannerActions.scanAll, {});
 
 // Drop expired AI response cache entries daily.
 crons.interval("prune cache", { hours: 24 }, internal.cache.prune, {});

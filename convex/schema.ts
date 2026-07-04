@@ -68,8 +68,16 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  projects: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   tweetAnalyses: defineTable({
     userId: v.id("users"),
+    projectId: v.optional(v.id("projects")),
     tweetUrl: v.string(),
     tweetId: v.string(),
     tweet: tweetSnapshot,
@@ -100,7 +108,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
-    .index("by_user_tweet", ["userId", "tweetId"]),
+    .index("by_user_tweet", ["userId", "tweetId"])
+    .index("by_user_project", ["userId", "projectId"]),
 
   generatedReplies: defineTable({
     analysisId: v.id("tweetAnalyses"),
@@ -190,6 +199,8 @@ export default defineSchema({
     enabled: v.boolean(),
     keywords: v.array(v.string()),
     lastScanAt: v.optional(v.number()),
+    lastScanError: v.optional(v.string()),
+    lastScanCount: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   // Side-by-side model comparisons: the same generation run across several

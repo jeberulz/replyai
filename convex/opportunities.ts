@@ -1,18 +1,28 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
+import { passesFeedScannerFilter } from "../shared/scoring";
 import { requireUser } from "./helpers";
 
 export const list = query({
   args: { sessionToken: v.string(), limit: v.optional(v.number()) },
   handler: async (ctx, { sessionToken, limit }) => {
     const user = await requireUser(ctx, sessionToken);
+    const settings = await ctx.db
+      .query("scannerSettings")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    const keywords = settings?.keywords ?? [];
+
     const rows = await ctx.db
       .query("opportunities")
       .withIndex("by_user_status", (q) =>
         q.eq("userId", user._id).eq("status", "new")
       )
       .collect();
-    return rows.sort((a, b) => b.score - a.score).slice(0, limit ?? 20);
+    return rows
+      .filter((opp) => passesFeedScannerFilter(opp.text, keywords))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit ?? 20);
   },
 });
 
@@ -42,6 +52,27 @@ export const pruneStale = internalMutation({
       .collect();
     for (const row of rows) {
       if (!active.has(row.tweetId)) {
+        await ctx.db.patch(row._id, { status: "dismissed" });
+      }
+    }
+  },
+});
+
+/** Dismiss cached opportunities that fail the current relevance filter. */
+export const reconcileIrrelevant = internalMutation({
+  args: {
+    userId: v.id("users"),
+    keywords: v.array(v.string()),
+  },
+  handler: async (ctx, { userId, keywords }) => {
+    const rows = await ctx.db
+      .query("opportunities")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", userId).eq("status", "new")
+      )
+      .collect();
+    for (const row of rows) {
+      if (!passesFeedScannerFilter(row.text, keywords)) {
         await ctx.db.patch(row._id, { status: "dismissed" });
       }
     }
@@ -78,13 +109,14 @@ export const upsertMany = internalMutation({
         )
         .unique();
       if (existing) {
-        // Refresh metrics but never resurrect dismissed/analyzed items.
+        if (existing.status === "analyzed") continue;
         await ctx.db.patch(existing._id, {
           score: item.score,
           reason: item.reason,
           replyCount: item.replyCount,
           velocity: item.velocity,
           scannedAt: now,
+          status: "new",
         });
       } else {
         await ctx.db.insert("opportunities", {
