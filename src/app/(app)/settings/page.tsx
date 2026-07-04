@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DefaultModelCard } from "@/components/app/default-model-card";
+import { PageHeader } from "@/components/app/page-header";
 import { convexServer } from "@/lib/convex";
 import { hasAnthropicKey, hasXCredentials } from "@/lib/env";
 import { getSessionUser } from "@/lib/session";
@@ -53,12 +54,11 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="mt-1 text-muted-foreground">
-          Account, connections, and usage.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Account & usage"
+        title="Settings"
+        description="Account, connections, and usage."
+      />
 
       <Card>
         <CardHeader>
@@ -141,8 +141,10 @@ export default async function SettingsPage() {
               ] as const
             ).map(([label, value]) => (
               <div key={label} className="rounded-lg border p-3">
-                <dt className="text-xs text-muted-foreground">{label}</dt>
-                <dd className="mt-1 text-lg font-semibold tabular-nums">
+                <dt className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+                  {label}
+                </dt>
+                <dd className="mt-1.5 font-mono text-lg tabular-nums text-foreground">
                   {formatCount(value)}
                 </dd>
               </div>

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { AnalyzeForm } from "@/components/app/analyze-form";
+import { PageHeader } from "@/components/app/page-header";
 import { ScoreBadge } from "@/components/app/score-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { convexServer } from "@/lib/convex";
@@ -25,20 +26,17 @@ export default async function AnalyzePage({
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Analyze a tweet</h1>
-        <p className="mt-1 text-muted-foreground">
-          Paste the tweet&apos;s text (add the URL to publish threaded).
-          You&apos;ll get a conversation breakdown, a worth-replying score, and
-          3 replies + 3 quote tweets in your voice.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Conversation analysis"
+        title="Analyze a tweet"
+        description="Paste the tweet's text (add the URL to publish threaded). You'll get a conversation breakdown, a worth-replying score, and 3 replies + 3 quote tweets in your voice."
+      />
 
       <AnalyzeForm initialUrl={url} />
 
       {recent.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-medium text-muted-foreground">
+          <h2 className="font-mono text-xs uppercase tracking-[0.14em] text-primary">
             Recent analyses
           </h2>
           {recent.map((analysis) => (

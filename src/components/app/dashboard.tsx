@@ -17,6 +17,7 @@ import {
 import { api } from "../../../convex/_generated/api";
 import { deleteDraftAction } from "@/app/actions";
 import { useSessionToken } from "@/components/app/convex-provider";
+import { PageHeader } from "@/components/app/page-header";
 import { ScoreBadge } from "@/components/app/score-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,13 +49,17 @@ function StatCard({
   return (
     <Card>
       <CardContent className="p-5">
-        <div className="text-xs font-medium text-muted-foreground">{label}</div>
+        <div className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+          {label}
+        </div>
         {value === null ? (
-          <Skeleton className="mt-1 h-8 w-16" />
+          <Skeleton className="mt-2 h-8 w-16" />
         ) : (
-          <div className="mt-1 text-2xl font-bold tabular-nums">{value}</div>
+          <div className="mt-2 font-mono text-[1.75rem] leading-none tabular-nums text-foreground">
+            {value}
+          </div>
         )}
-        {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
+        {hint && <div className="mt-2 text-xs text-muted-foreground">{hint}</div>}
       </CardContent>
     </Card>
   );
@@ -77,21 +82,17 @@ export function Dashboard({ displayName }: { displayName: string }) {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Welcome back, {displayName.split(" ")[0]}
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Here&apos;s what&apos;s worth replying to right now.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Your reply desk"
+        title={`Welcome back, ${displayName.split(" ")[0]}`}
+        description="Here's what's worth replying to right now."
+      >
         <Button asChild>
           <Link href="/analyze">
             <Search /> Analyze a tweet
           </Link>
         </Button>
-      </div>
+      </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard

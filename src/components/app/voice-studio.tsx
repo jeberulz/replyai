@@ -13,6 +13,7 @@ import {
   updateVoiceProfileAction,
 } from "@/app/actions";
 import { useSessionToken } from "@/components/app/convex-provider";
+import { PageHeader } from "@/components/app/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -174,23 +175,18 @@ export function VoiceStudio({ xConnected }: { xConnected: boolean }) {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Voice profiles</h1>
-          <p className="mt-1 text-muted-foreground">
-            Every generated reply runs through a voice profile so it sounds like
-            you, not like an AI.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setDialog({ mode: "create" })}>
-            <Plus /> New profile
-          </Button>
-          <Button onClick={() => setDialog({ mode: "train" })}>
-            <Sparkles /> Train from my tweets
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Sound like you"
+        title="Voice profiles"
+        description="Every generated reply runs through a voice profile so it sounds like you, not like an AI."
+      >
+        <Button variant="outline" onClick={() => setDialog({ mode: "create" })}>
+          <Plus /> New profile
+        </Button>
+        <Button onClick={() => setDialog({ mode: "train" })}>
+          <Sparkles /> Train from my tweets
+        </Button>
+      </PageHeader>
 
       {profiles === undefined ? (
         <div className="grid gap-4 sm:grid-cols-2">

@@ -11,6 +11,7 @@ import {
   OpportunityCard,
   type Opportunity,
 } from "@/components/app/opportunity-card";
+import { PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -70,13 +71,11 @@ export function FeedScanner() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Feed scanner</h1>
-        <p className="mt-1 text-muted-foreground">
-          Monitors your feed on a schedule and surfaces high-opportunity
-          conversations before the reply window closes.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Live discovery"
+        title="Feed scanner"
+        description="Monitors your feed on a schedule and surfaces high-opportunity conversations before the reply window closes."
+      />
 
       <Card>
         <CardHeader className="pb-4">
@@ -140,7 +139,7 @@ export function FeedScanner() {
       </Card>
 
       <div className="space-y-4">
-        <h2 className="text-sm font-medium text-muted-foreground">
+        <h2 className="font-mono text-xs uppercase tracking-[0.14em] text-primary">
           Opportunities{" "}
           {opportunities !== undefined && `(${opportunities.length})`}
         </h2>
