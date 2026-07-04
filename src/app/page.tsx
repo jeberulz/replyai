@@ -64,6 +64,8 @@ const footerLinks = [
   { label: "voice", href: "#voice" },
   { label: "trust", href: "#trust" },
   { label: "demo", href: "/api/auth/demo" },
+  { label: "privacy", href: "/privacy" },
+  { label: "terms", href: "/terms" },
 ];
 
 function PillLink({
@@ -416,7 +418,7 @@ export default async function LandingPage({
         </section>
 
         <footer className="border-t border-border bg-card">
-          <div className="mx-auto grid w-full max-w-[1080px] gap-8 px-6 py-12 font-mono text-xs text-muted-foreground sm:grid-cols-[1fr_auto_auto_auto_auto_auto]">
+          <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-8 px-6 py-12 font-mono text-xs text-muted-foreground sm:flex-row sm:items-start sm:justify-between">
             <div>
               <MessageSquareQuote className="mb-2 size-3.5 text-foreground" />
               <p>ReplyPilot AI</p>
@@ -424,15 +426,17 @@ export default async function LandingPage({
                 You approve every reply. No auto-posting.
               </p>
             </div>
-            {footerLinks.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="hover:text-foreground"
-              >
-                {item.label}
-              </Link>
-            ))}
+            <nav className="flex flex-wrap gap-x-6 gap-y-3 sm:justify-end">
+              {footerLinks.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className="hover:text-foreground"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
           </div>
         </footer>
       </div>
