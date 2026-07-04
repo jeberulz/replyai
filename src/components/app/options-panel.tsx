@@ -26,6 +26,7 @@ type VoiceProfile = { _id: string; name: string; isDefault: boolean };
 export function OptionsPanel({
   analysisId,
   targetTweetId,
+  targetTweetUrl,
   voiceProfiles,
   initialOptions,
   isDemo,
@@ -33,6 +34,7 @@ export function OptionsPanel({
 }: {
   analysisId: string;
   targetTweetId: string;
+  targetTweetUrl: string;
   voiceProfiles: VoiceProfile[];
   initialOptions: Option[];
   isDemo: boolean;
@@ -47,10 +49,15 @@ export function OptionsPanel({
 
   // Live options via Convex reactivity; falls back to server-rendered data
   // until the subscription connects.
-  const live = useQuery(api.replies.listByAnalysis, {
-    sessionToken,
-    analysisId: analysisId as Id<"tweetAnalyses">,
-  });
+  const live = useQuery(
+    api.replies.listByAnalysis,
+    sessionToken
+      ? {
+          sessionToken,
+          analysisId: analysisId as Id<"tweetAnalyses">,
+        }
+      : "skip"
+  );
   const options: Option[] = (live ?? initialOptions).map((o) => ({
     _id: String(o._id),
     kind: o.kind,
@@ -87,6 +94,7 @@ export function OptionsPanel({
               option={option}
               analysisId={analysisId}
               targetTweetId={targetTweetId}
+              targetTweetUrl={targetTweetUrl}
               isDemo={isDemo}
             />
           ))

@@ -31,6 +31,7 @@ export const create = mutation({
         growthVelocity: v.number(),
       }),
     }),
+    replySettings: v.optional(v.string()),
   },
   handler: async (ctx, { sessionToken, ...args }) => {
     const user = await requireUser(ctx, sessionToken);

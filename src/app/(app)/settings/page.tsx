@@ -155,6 +155,29 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">How publishing works</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            <strong className="font-medium text-foreground">Quotes</strong> post
+            through the API with the original tweet linked — X renders it as a
+            quote card on your timeline.
+          </p>
+          <p>
+            <strong className="font-medium text-foreground">Replies</strong> try
+            the API first. If X blocks threading (common on standard API tiers),
+            use <strong className="font-medium text-foreground">Reply on X</strong>{" "}
+            to finish in the X compose window, or post standalone.
+          </p>
+          <p>
+            Nothing is auto-published. Every post requires your explicit click on
+            that specific text.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Platform safety</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">

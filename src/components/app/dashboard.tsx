@@ -14,8 +14,9 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
-import { deleteDraftAction } from "@/app/actions";
+import { deleteDraftAction, retryDraftAsStandaloneAction } from "@/app/actions";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { PageHeader } from "@/components/app/page-header";
 import { ScoreBadge } from "@/components/app/score-badge";
@@ -30,6 +31,16 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCount, timeAgo } from "@/lib/utils";
+import { buildXIntentUrl } from "../../../shared/xPublish";
+
+function draftKindLabel(draft: {
+  kind: "reply" | "quote";
+  publishMode?: "threaded" | "standalone" | "url_quote";
+}): string {
+  if (draft.publishMode === "standalone") return "Standalone tweet";
+  if (draft.publishMode === "url_quote") return "Quote (link card)";
+  return draft.kind === "quote" ? "Quote tweet" : "Reply";
+}
 
 function formatDuration(seconds: number): string {
   if (seconds < 90) return `${seconds}s`;
@@ -74,10 +85,16 @@ const draftStatusMeta = {
 
 export function Dashboard({ displayName }: { displayName: string }) {
   const sessionToken = useSessionToken();
-  const stats = useQuery(api.usage.stats, { sessionToken });
-  const analyses = useQuery(api.analyses.listRecent, { sessionToken, limit: 5 });
-  const opportunities = useQuery(api.opportunities.list, { sessionToken, limit: 4 });
-  const drafts = useQuery(api.drafts.list, { sessionToken });
+  const stats = useQuery(api.usage.stats, sessionToken ? { sessionToken } : "skip");
+  const analyses = useQuery(
+    api.analyses.listRecent,
+    sessionToken ? { sessionToken, limit: 5 } : "skip"
+  );
+  const opportunities = useQuery(
+    api.opportunities.list,
+    sessionToken ? { sessionToken, limit: 4 } : "skip"
+  );
+  const drafts = useQuery(api.drafts.list, sessionToken ? { sessionToken } : "skip");
   const [pending, startTransition] = useTransition();
 
   return (
@@ -258,7 +275,7 @@ export function Dashboard({ displayName }: { displayName: string }) {
                     <div className="min-w-0 flex-1">
                       <div className="line-clamp-1 text-sm">{draft.text}</div>
                       <div className="text-xs text-muted-foreground">
-                        {draft.kind === "quote" ? "Quote tweet" : "Reply"} ·{" "}
+                        {draftKindLabel(draft)} ·{" "}
                         {draft.status === "scheduled" && draft.scheduledFor
                           ? `publishes ${new Date(draft.scheduledFor).toLocaleString()}`
                           : draft.status === "failed" && draft.error
@@ -266,6 +283,48 @@ export function Dashboard({ displayName }: { displayName: string }) {
                             : timeAgo(draft.createdAt)}
                       </div>
                     </div>
+                    {draft.status === "failed" &&
+                      draft.kind === "reply" &&
+                      draft.publishMode !== "standalone" &&
+                      draft.targetTweetId && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() =>
+                            window.open(
+                              buildXIntentUrl({
+                                text: draft.text,
+                                inReplyTo: draft.targetTweetId,
+                              }),
+                              "_blank",
+                              "noopener,noreferrer"
+                            )
+                          }
+                        >
+                          Reply on X
+                        </Button>
+                      )}
+                    {draft.status === "failed" &&
+                      draft.publishMode !== "standalone" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() =>
+                            startTransition(async () => {
+                              try {
+                                await retryDraftAsStandaloneAction(String(draft._id));
+                                toast.success("Retrying as standalone tweet…");
+                              } catch {
+                                toast.error("Retry failed");
+                              }
+                            })
+                          }
+                        >
+                          Post as tweet
+                        </Button>
+                      )}
                     {draft.status !== "published" && (
                       <Button
                         variant="ghost"

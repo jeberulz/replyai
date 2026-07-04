@@ -17,6 +17,7 @@ import { convexServer } from "@/lib/convex";
 import { getSessionUser } from "@/lib/session";
 import {
   fetchTweetBundle,
+  fetchTweetReplySettings,
   fetchUserTweets,
   manualTweetBundle,
   type TweetBundle,
@@ -106,6 +107,7 @@ export async function analyzeTweetAction(
   let analysisId: Id<"tweetAnalyses">;
   try {
     let bundle: TweetBundle;
+    let replySettings: string | undefined;
     if (text) {
       // Paste-text path: analyze the real tweet without a paid X read tier.
       bundle = manualTweetBundle({
@@ -114,9 +116,16 @@ export async function analyzeTweetAction(
         authorHandle,
         authorFollowers,
       });
+      if (urlTweetId) {
+        const accessToken = await xAccessToken(sessionToken);
+        if (accessToken) {
+          replySettings = await fetchTweetReplySettings(urlTweetId, accessToken);
+        }
+      }
     } else {
       const accessToken = await xAccessToken(sessionToken);
       bundle = await fetchTweetBundle(urlTweetId as string, accessToken);
+      replySettings = bundle.replySettings;
     }
 
     const { analysis, usage } = await analyzeTweet(bundle);
@@ -159,6 +168,7 @@ export async function analyzeTweetAction(
         reason: score.reason,
         factors: score.factors,
       },
+      replySettings,
     });
 
     // Generate the initial 3 replies and 3 quote tweets. The tweet context
@@ -456,20 +466,34 @@ export async function publishAction(args: {
   analysisId?: string;
   replyId?: string;
   targetTweetId?: string;
+  targetTweetUrl?: string;
   scheduledFor?: number;
-}) {
+  publishMode?: "threaded" | "standalone" | "url_quote";
+}): Promise<string> {
   const { sessionToken } = await requireSession();
-  await convexServer().mutation(api.drafts.publish, {
+  const draftId = await convexServer().mutation(api.drafts.publish, {
     sessionToken,
     text: args.text,
     kind: args.kind,
     analysisId: args.analysisId as Id<"tweetAnalyses"> | undefined,
     replyId: args.replyId as Id<"generatedReplies"> | undefined,
     targetTweetId: args.targetTweetId,
+    targetTweetUrl: args.targetTweetUrl,
     scheduledFor: args.scheduledFor,
+    publishMode: args.publishMode,
   });
   revalidatePath("/dashboard");
   if (args.analysisId) revalidatePath(`/analysis/${args.analysisId}`);
+  return draftId;
+}
+
+export async function retryDraftAsStandaloneAction(draftId: string) {
+  const { sessionToken } = await requireSession();
+  await convexServer().mutation(api.drafts.retryAsStandalone, {
+    sessionToken,
+    draftId: draftId as Id<"savedDrafts">,
+  });
+  revalidatePath("/dashboard");
 }
 
 export async function saveDraftAction(args: {
@@ -478,6 +502,7 @@ export async function saveDraftAction(args: {
   analysisId?: string;
   replyId?: string;
   targetTweetId?: string;
+  targetTweetUrl?: string;
 }) {
   const { sessionToken } = await requireSession();
   await convexServer().mutation(api.drafts.save, {
@@ -487,6 +512,7 @@ export async function saveDraftAction(args: {
     analysisId: args.analysisId as Id<"tweetAnalyses"> | undefined,
     replyId: args.replyId as Id<"generatedReplies"> | undefined,
     targetTweetId: args.targetTweetId,
+    targetTweetUrl: args.targetTweetUrl,
   });
   revalidatePath("/dashboard");
 }

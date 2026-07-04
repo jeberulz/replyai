@@ -17,6 +17,11 @@ import { Separator } from "@/components/ui/separator";
 import { convexServer } from "@/lib/convex";
 import { getSessionUser } from "@/lib/session";
 import { formatCount, timeAgo } from "@/lib/utils";
+import {
+  apiPublishLimitationNotice,
+  replySettingsWarning,
+} from "../../../../../shared/xErrors";
+import { buildTweetPermalink } from "../../../../../shared/xPublish";
 
 export default async function AnalysisPage({
   params,
@@ -50,6 +55,15 @@ export default async function AnalysisPage({
   ]);
 
   const { tweet, score } = analysis;
+  const hasNumericTweetId = /^\d+$/.test(analysis.tweetId);
+  const targetTweetId = hasNumericTweetId ? analysis.tweetId : "";
+  const targetTweetUrl =
+    analysis.tweetUrl ||
+    (hasNumericTweetId
+      ? buildTweetPermalink(tweet.authorHandle, analysis.tweetId)
+      : "");
+  const restrictionWarning = replySettingsWarning(analysis.replySettings);
+  const apiNotice = targetTweetUrl ? apiPublishLimitationNotice() : null;
   const factors: Array<[string, number]> = [
     ["Reply timing", score.factors.replyTiming],
     ["Growth velocity", score.factors.growthVelocity],
@@ -166,11 +180,20 @@ export default async function AnalysisPage({
 
         {/* Right column: generated options */}
         <div>
+          {apiNotice && (
+            <div className="mb-4 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+              {apiNotice}
+            </div>
+          )}
+          {restrictionWarning && (
+            <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
+              {restrictionWarning}
+            </div>
+          )}
           <OptionsPanel
             analysisId={String(analysis._id)}
-            /* Only thread the reply when we have a real X tweet ID; pasted-text
-               entries use a "manual-*" sentinel and publish standalone. */
-            targetTweetId={/^\d+$/.test(analysis.tweetId) ? analysis.tweetId : ""}
+            targetTweetId={targetTweetId}
+            targetTweetUrl={targetTweetUrl}
             voiceProfiles={voiceProfiles.map((p) => ({
               _id: String(p._id),
               name: p.name,

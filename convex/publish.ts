@@ -3,8 +3,35 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
+import { parseXPublishError } from "../shared/xErrors";
+import { refreshAccessToken } from "../shared/xOAuth";
+import { composeQuotePostText } from "../shared/xPublish";
 
 const X_API_BASE = "https://api.x.com/2";
+const USE_NATIVE_QUOTES = process.env.X_PUBLISH_NATIVE_QUOTES === "true";
+
+type PostResult =
+  | { ok: true; tweetId: string }
+  | { ok: false; status: number; body: string };
+
+async function postTweet(
+  accessToken: string,
+  body: Record<string, unknown>
+): Promise<PostResult> {
+  const res = await fetch(`${X_API_BASE}/tweets`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    return { ok: false, status: res.status, body: await res.text() };
+  }
+  const json = (await res.json()) as { data?: { id?: string } };
+  return { ok: true, tweetId: json.data?.id ?? "unknown" };
+}
 
 /**
  * Publish a scheduled/immediate draft to X. Runs only after an explicit
@@ -15,49 +42,114 @@ export const run = internalAction({
   handler: async (ctx, { draftId }) => {
     const bundle = await ctx.runQuery(internal.drafts.getForPublish, { draftId });
     if (!bundle) return;
-    const { draft, isDemo, accessToken } = bundle;
+    const { draft, isDemo, userId, refreshToken, expiresAt, scope } = bundle;
     if (draft.status === "published") return;
 
-    if (isDemo || !accessToken) {
-      if (isDemo) {
-        // Demo accounts simulate a successful publish.
-        await ctx.runMutation(internal.drafts.markResult, {
-          draftId,
-          publishedTweetId: `demo-${Date.now()}`,
-        });
+    if (isDemo) {
+      await ctx.runMutation(internal.drafts.markResult, {
+        draftId,
+        publishedTweetId: `demo-${Date.now()}`,
+      });
+      return;
+    }
+
+    let accessToken = bundle.accessToken;
+
+    if (!accessToken) {
+      if (refreshToken) {
+        try {
+          const refreshed = await refreshAccessToken(refreshToken);
+          accessToken = refreshed.accessToken;
+          await ctx.runMutation(internal.xTokens.updateXTokens, {
+            userId,
+            accessToken: refreshed.accessToken,
+            refreshToken: refreshed.refreshToken,
+            expiresAt: refreshed.expiresAt,
+            scope: refreshed.scope || scope,
+          });
+        } catch {
+          await ctx.runMutation(internal.drafts.markResult, {
+            draftId,
+            error: "X account not connected or token expired. Reconnect in Settings.",
+          });
+          return;
+        }
       } else {
         await ctx.runMutation(internal.drafts.markResult, {
           draftId,
           error: "X account not connected or token expired. Reconnect in Settings.",
         });
+        return;
       }
-      return;
+    } else if (expiresAt <= Date.now() && refreshToken) {
+      try {
+        const refreshed = await refreshAccessToken(refreshToken);
+        accessToken = refreshed.accessToken;
+        await ctx.runMutation(internal.xTokens.updateXTokens, {
+          userId,
+          accessToken: refreshed.accessToken,
+          refreshToken: refreshed.refreshToken,
+          expiresAt: refreshed.expiresAt,
+          scope: refreshed.scope || scope,
+        });
+      } catch {
+        await ctx.runMutation(internal.drafts.markResult, {
+          draftId,
+          error: "X session expired. Reconnect your account in Settings.",
+        });
+        return;
+      }
     }
 
-    const body: Record<string, unknown> = { text: draft.text };
-    if (draft.kind === "reply" && draft.targetTweetId) {
-      body.reply = { in_reply_to_tweet_id: draft.targetTweetId };
-    } else if (draft.kind === "quote" && draft.targetTweetId) {
-      body.quote_tweet_id = draft.targetTweetId;
-    }
+    const publishMode = draft.publishMode ?? (draft.kind === "quote" ? "url_quote" : "threaded");
 
     try {
-      const res = await fetch(`${X_API_BASE}/tweets`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const detail = await res.text();
-        throw new Error(`X API ${res.status}: ${detail.slice(0, 300)}`);
+      let result: PostResult;
+      let successMode = publishMode;
+
+      if (publishMode === "standalone") {
+        result = await postTweet(accessToken, { text: draft.text });
+      } else if (draft.kind === "quote") {
+        const permalink = draft.targetTweetUrl;
+        if (!permalink) {
+          result = await postTweet(accessToken, { text: draft.text });
+          successMode = "standalone";
+        } else if (USE_NATIVE_QUOTES && draft.targetTweetId) {
+          result = await postTweet(accessToken, {
+            text: draft.text,
+            quote_tweet_id: draft.targetTweetId,
+          });
+          if (!result.ok && result.status === 403) {
+            result = await postTweet(accessToken, {
+              text: composeQuotePostText(draft.text, permalink),
+            });
+            successMode = "url_quote";
+          }
+        } else {
+          result = await postTweet(accessToken, {
+            text: composeQuotePostText(draft.text, permalink),
+          });
+          successMode = "url_quote";
+        }
+      } else if (draft.kind === "reply" && draft.targetTweetId) {
+        result = await postTweet(accessToken, {
+          text: draft.text,
+          reply: { in_reply_to_tweet_id: draft.targetTweetId },
+        });
+      } else {
+        result = await postTweet(accessToken, { text: draft.text });
+        successMode = "standalone";
       }
-      const json = (await res.json()) as { data?: { id?: string } };
+
+      if (!result.ok) {
+        const parsed = parseXPublishError(result.status, result.body);
+        throw new Error(parsed.message);
+      }
+
       await ctx.runMutation(internal.drafts.markResult, {
         draftId,
-        publishedTweetId: json.data?.id ?? "unknown",
+        publishedTweetId: result.tweetId,
+        publishMode: successMode,
       });
     } catch (error) {
       await ctx.runMutation(internal.drafts.markResult, {

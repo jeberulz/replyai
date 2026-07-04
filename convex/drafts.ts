@@ -3,6 +3,14 @@ import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { requireUser } from "./helpers";
 
+const publishModeValidator = v.optional(
+  v.union(
+    v.literal("threaded"),
+    v.literal("standalone"),
+    v.literal("url_quote")
+  )
+);
+
 export const list = query({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
@@ -15,6 +23,16 @@ export const list = query({
   },
 });
 
+export const get = query({
+  args: { sessionToken: v.string(), draftId: v.id("savedDrafts") },
+  handler: async (ctx, { sessionToken, draftId }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const draft = await ctx.db.get(draftId);
+    if (!draft || draft.userId !== user._id) return null;
+    return draft;
+  },
+});
+
 export const save = mutation({
   args: {
     sessionToken: v.string(),
@@ -23,6 +41,8 @@ export const save = mutation({
     analysisId: v.optional(v.id("tweetAnalyses")),
     replyId: v.optional(v.id("generatedReplies")),
     targetTweetId: v.optional(v.string()),
+    targetTweetUrl: v.optional(v.string()),
+    publishMode: publishModeValidator,
   },
   handler: async (ctx, { sessionToken, ...args }) => {
     const user = await requireUser(ctx, sessionToken);
@@ -48,13 +68,19 @@ export const publish = mutation({
     analysisId: v.optional(v.id("tweetAnalyses")),
     replyId: v.optional(v.id("generatedReplies")),
     targetTweetId: v.optional(v.string()),
+    targetTweetUrl: v.optional(v.string()),
     scheduledFor: v.optional(v.number()),
+    publishMode: publishModeValidator,
   },
-  handler: async (ctx, { sessionToken, scheduledFor, ...args }) => {
+  handler: async (ctx, { sessionToken, scheduledFor, publishMode, kind, ...args }) => {
     const user = await requireUser(ctx, sessionToken);
+    const resolvedMode =
+      publishMode ?? (kind === "quote" ? "url_quote" : "threaded");
     const draftId = await ctx.db.insert("savedDrafts", {
       userId: user._id,
+      kind,
       ...args,
+      publishMode: resolvedMode,
       status: "scheduled",
       scheduledFor: scheduledFor ?? Date.now(),
       createdAt: Date.now(),
@@ -65,6 +91,28 @@ export const publish = mutation({
       await ctx.scheduler.runAfter(0, internal.publish.run, { draftId });
     }
     return draftId;
+  },
+});
+
+/** Re-publish a failed draft as a standalone tweet (no reply/quote threading). */
+export const retryAsStandalone = mutation({
+  args: {
+    sessionToken: v.string(),
+    draftId: v.id("savedDrafts"),
+  },
+  handler: async (ctx, { sessionToken, draftId }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const draft = await ctx.db.get(draftId);
+    if (!draft || draft.userId !== user._id) throw new Error("Not found");
+    if (draft.status !== "failed") throw new Error("Draft is not failed");
+
+    await ctx.db.patch(draftId, {
+      status: "scheduled",
+      error: undefined,
+      publishMode: "standalone",
+      scheduledFor: Date.now(),
+    });
+    await ctx.scheduler.runAfter(0, internal.publish.run, { draftId });
   },
 });
 
@@ -93,8 +141,11 @@ export const getForPublish = internalQuery({
     return {
       draft,
       isDemo: user.isDemo,
-      accessToken:
-        tokenRow && tokenRow.expiresAt > Date.now() ? tokenRow.accessToken : null,
+      userId: user._id,
+      accessToken: tokenRow?.accessToken ?? null,
+      refreshToken: tokenRow?.refreshToken ?? null,
+      expiresAt: tokenRow?.expiresAt ?? 0,
+      scope: tokenRow?.scope ?? "",
     };
   },
 });
@@ -104,8 +155,9 @@ export const markResult = internalMutation({
     draftId: v.id("savedDrafts"),
     publishedTweetId: v.optional(v.string()),
     error: v.optional(v.string()),
+    publishMode: publishModeValidator,
   },
-  handler: async (ctx, { draftId, publishedTweetId, error }) => {
+  handler: async (ctx, { draftId, publishedTweetId, error, publishMode }) => {
     const draft = await ctx.db.get(draftId);
     if (!draft) return;
     if (publishedTweetId) {
@@ -113,6 +165,7 @@ export const markResult = internalMutation({
         status: "published",
         publishedTweetId,
         publishedAt: Date.now(),
+        ...(publishMode ? { publishMode } : {}),
       });
     } else {
       await ctx.db.patch(draftId, { status: "failed", error });

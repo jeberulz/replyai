@@ -28,6 +28,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
   demo branches in `src/lib/ai.ts` / `src/lib/x.ts`). Keep it that way.
 - **Platform rule (permanent)**: no auto-publish path. Every post requires an
   explicit user click on that specific text.
+- **X API reply restriction (since Feb 2026)**: X blocks API replies/quotes on
+  all standard tiers unless the post's author mentioned or engaged you first
+  (Enterprise exempt). Standalone posts still work. Publish failures are
+  parsed in `shared/xErrors.ts`; the UI offers a standalone fallback. Token
+  refresh for scheduled posts runs in Convex and needs `X_CLIENT_ID`/
+  `X_CLIENT_SECRET` set via `npx convex env set` (separate from `.env.local`).
 - **Checks**: `npm run typecheck && npm run lint && npm test && npm run build`.
 - `convex/_generated` is checked in; `npx convex dev` regenerates it.
 

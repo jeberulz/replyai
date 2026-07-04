@@ -1,6 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import { env, hasXCredentials } from "./env";
 import { demoTweetForId, DEMO_TWEETS } from "../../shared/demoData";
+import { refreshAccessToken as refreshXAccessToken } from "../../shared/xOAuth";
+
+export { refreshXAccessToken as refreshAccessToken };
 
 const X_AUTHORIZE_URL = "https://x.com/i/oauth2/authorize";
 const X_TOKEN_URL = "https://api.x.com/2/oauth2/token";
@@ -133,6 +136,7 @@ export type TweetBundle = {
   mediaText?: string;
   topReplies: { authorHandle: string; text: string; likes: number }[];
   isDemoData: boolean;
+  replySettings?: string;
 };
 
 /**
@@ -154,7 +158,7 @@ export async function fetchTweetBundle(
   const url = new URL(`${X_API_BASE}/tweets/${tweetId}`);
   url.searchParams.set(
     "tweet.fields",
-    "public_metrics,created_at,author_id,conversation_id,attachments"
+    "public_metrics,created_at,author_id,conversation_id,attachments,reply_settings"
   );
   url.searchParams.set("expansions", "author_id,attachments.media_keys");
   url.searchParams.set(
@@ -185,6 +189,7 @@ export async function fetchTweetBundle(
         quote_count: number;
         impression_count?: number;
       };
+      reply_settings?: string;
     };
     includes?: {
       users?: Array<{
@@ -224,7 +229,27 @@ export async function fetchTweetBundle(
     mediaText: mediaText || undefined,
     topReplies,
     isDemoData: false,
+    replySettings: json.data.reply_settings,
   };
+}
+
+/** Lightweight lookup of reply_settings for paste-text + URL analyze path. */
+export async function fetchTweetReplySettings(
+  tweetId: string,
+  accessToken: string
+): Promise<string | undefined> {
+  if (!hasXCredentials()) return undefined;
+
+  const url = new URL(`${X_API_BASE}/tweets/${tweetId}`);
+  url.searchParams.set("tweet.fields", "reply_settings");
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return undefined;
+
+  const json = (await res.json()) as { data?: { reply_settings?: string } };
+  return json.data?.reply_settings;
 }
 
 async function fetchTopReplies(
@@ -298,7 +323,8 @@ export function manualTweetBundle(input: {
 function demoBundle(tweetId: string): TweetBundle {
   const demo = demoTweetForId(tweetId);
   return {
-    tweetId: demo.id,
+    // Keep the real numeric ID from the URL so publish targets the correct tweet.
+    tweetId: /^\d+$/.test(tweetId) ? tweetId : demo.id,
     authorName: demo.authorName,
     authorHandle: demo.authorHandle,
     authorFollowers: demo.authorFollowers,

@@ -1,22 +1,26 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useQuery } from "convex/react";
 import {
   CalendarClock,
   Check,
   Copy,
+  ExternalLink,
   Loader2,
   Pencil,
   Send,
   Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "../../../convex/_generated/api";
 import {
   publishAction,
   rewriteAction,
   saveDraftAction,
   saveEditAction,
 } from "@/app/actions";
+import { useSessionToken } from "@/components/app/convex-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,6 +43,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { buildXIntentUrl } from "../../../shared/xPublish";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 const REWRITE_DIRECTIONS = [
   "shorter",
@@ -49,6 +55,8 @@ const REWRITE_DIRECTIONS = [
   "simpler",
   "more human",
 ];
+
+type PublishMode = "threaded" | "standalone" | "url_quote";
 
 export type Option = {
   _id: string;
@@ -63,25 +71,130 @@ export function OptionCard({
   option,
   analysisId,
   targetTweetId,
+  targetTweetUrl,
   isDemo,
 }: {
   option: Option;
   analysisId: string;
   targetTweetId: string;
+  targetTweetUrl: string;
   isDemo: boolean;
 }) {
+  const sessionToken = useSessionToken();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(option.content);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
   const [copied, setCopied] = useState(false);
+  const [watchingDraftId, setWatchingDraftId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const notifiedRef = useRef<string | null>(null);
+
+  const watchedDraft = useQuery(
+    api.drafts.get,
+    sessionToken && watchingDraftId
+      ? {
+          sessionToken,
+          draftId: watchingDraftId as Id<"savedDrafts">,
+        }
+      : "skip"
+  );
+
+  const openReplyOnX = useCallback(
+    (text: string) => {
+      if (!targetTweetId) return;
+      window.open(
+        buildXIntentUrl({ text, inReplyTo: targetTweetId }),
+        "_blank",
+        "noopener,noreferrer"
+      );
+    },
+    [targetTweetId]
+  );
+
+  const publishStandalone = useCallback(
+    (text: string, replyId: string) => {
+      startTransition(async () => {
+        try {
+          const newDraftId = await publishAction({
+            text,
+            kind: option.kind,
+            analysisId,
+            replyId,
+            publishMode: "standalone",
+          });
+          notifiedRef.current = null;
+          setWatchingDraftId(newDraftId);
+        } catch {
+          toast.error("Publish failed");
+        }
+      });
+    },
+    [analysisId, option.kind, startTransition]
+  );
+
+  useEffect(() => {
+    if (!watchedDraft || !watchingDraftId) return;
+    if (notifiedRef.current === watchingDraftId) return;
+
+    if (watchedDraft.status === "published") {
+      notifiedRef.current = watchingDraftId;
+      const mode = watchedDraft.publishMode;
+      toast.success(
+        mode === "standalone"
+          ? "Posted to X as a standalone tweet"
+          : mode === "url_quote"
+            ? "Quoted on X (link card)"
+            : "Published to X"
+      );
+    } else if (watchedDraft.status === "failed" && watchedDraft.error) {
+      notifiedRef.current = watchingDraftId;
+      const isReply =
+        watchedDraft.kind === "reply" &&
+        watchedDraft.publishMode !== "standalone" &&
+        Boolean(targetTweetId);
+
+      if (isReply) {
+        toast.error(watchedDraft.error, {
+          action: {
+            label: "Reply on X",
+            onClick: () => openReplyOnX(watchedDraft.text),
+          },
+          cancel: {
+            label: "Post as tweet",
+            onClick: () => publishStandalone(watchedDraft.text, option._id),
+          },
+        });
+      } else if (
+        targetTweetId &&
+        watchedDraft.publishMode !== "standalone"
+      ) {
+        toast.error(watchedDraft.error, {
+          action: {
+            label: "Post as tweet",
+            onClick: () => publishStandalone(watchedDraft.text, option._id),
+          },
+        });
+      } else {
+        toast.error(watchedDraft.error);
+      }
+    }
+  }, [
+    watchedDraft,
+    watchingDraftId,
+    targetTweetId,
+    option._id,
+    option.kind,
+    openReplyOnX,
+    publishStandalone,
+  ]);
 
   const content = editing ? draft : option.content;
   const overLimit = content.length > 280;
+  const canThread = Boolean(targetTweetId);
 
   const copy = async () => {
-    await navigator.clipboard.writeText(option.content);
+    await navigator.clipboard.writeText(content);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
     toast.success("Copied to clipboard");
@@ -106,25 +219,37 @@ export function OptionCard({
     });
   };
 
-  const publish = (scheduledFor?: number) => {
+  const defaultPublishMode = (): PublishMode =>
+    option.kind === "quote" ? "url_quote" : "threaded";
+
+  const publish = (
+    publishMode: PublishMode = defaultPublishMode(),
+    scheduledFor?: number
+  ) => {
     startTransition(async () => {
       try {
-        await publishAction({
-          text: option.content,
+        const draftId = await publishAction({
+          text: content,
           kind: option.kind,
           analysisId,
           replyId: option._id,
-          targetTweetId,
+          targetTweetId:
+            publishMode === "standalone" ? undefined : targetTweetId,
+          targetTweetUrl:
+            publishMode === "standalone" ? undefined : targetTweetUrl,
           scheduledFor,
+          publishMode,
         });
         setScheduleOpen(false);
-        toast.success(
-          scheduledFor
-            ? "Scheduled — it will publish at the chosen time"
-            : isDemo
-              ? "Published (demo mode — simulated)"
-              : "Publishing to X…"
-        );
+        if (scheduledFor) {
+          toast.success("Scheduled — it will publish at the chosen time");
+        } else if (isDemo) {
+          toast.success("Published (demo mode — simulated)");
+        } else {
+          notifiedRef.current = null;
+          setWatchingDraftId(draftId);
+          toast.message("Publishing to X…");
+        }
       } catch {
         toast.error("Publish failed");
       }
@@ -134,11 +259,12 @@ export function OptionCard({
   const saveAsDraft = () => {
     startTransition(async () => {
       await saveDraftAction({
-        text: option.content,
+        text: content,
         kind: option.kind,
         analysisId,
         replyId: option._id,
         targetTweetId,
+        targetTweetUrl,
       });
       toast.success("Saved to drafts");
     });
@@ -193,7 +319,7 @@ export function OptionCard({
           </div>
         ) : (
           <p className="whitespace-pre-wrap text-sm leading-relaxed">
-            {option.content}
+            {content}
           </p>
         )}
 
@@ -233,7 +359,7 @@ export function OptionCard({
             </SelectContent>
           </Select>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
             <Button size="sm" variant="ghost" onClick={saveAsDraft} disabled={pending}>
               Save draft
             </Button>
@@ -245,8 +371,37 @@ export function OptionCard({
             >
               <CalendarClock /> Schedule
             </Button>
-            <Button size="sm" onClick={() => publish()} disabled={pending || overLimit}>
-              <Send /> {option.kind === "quote" ? "Quote tweet" : "Reply"}
+            {canThread && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => publish("standalone")}
+                disabled={pending || overLimit}
+              >
+                <Send /> Post as tweet
+              </Button>
+            )}
+            {canThread && option.kind === "reply" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openReplyOnX(content)}
+                disabled={pending || overLimit}
+              >
+                <ExternalLink /> Reply on X
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={() => publish()}
+              disabled={pending || overLimit}
+              title={
+                option.kind === "quote"
+                  ? "Posts your text with the tweet linked — shows as a quote card"
+                  : undefined
+              }
+            >
+              <Send /> {option.kind === "quote" ? "Quote on X" : "Reply"}
             </Button>
           </div>
         </div>
@@ -282,7 +437,7 @@ export function OptionCard({
                   toast.error("Pick a time in the future");
                   return;
                 }
-                publish(timestamp);
+                publish(defaultPublishMode(), timestamp);
               }}
             >
               <CalendarClock /> Schedule

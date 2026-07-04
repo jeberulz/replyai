@@ -95,6 +95,8 @@ export default defineSchema({
         growthVelocity: v.number(),
       }),
     }),
+    // X reply_settings when available (everyone, following, mentionedUsers, …)
+    replySettings: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
@@ -124,6 +126,14 @@ export default defineSchema({
     kind: v.union(v.literal("reply"), v.literal("quote")),
     text: v.string(),
     targetTweetId: v.optional(v.string()),
+    targetTweetUrl: v.optional(v.string()),
+    publishMode: v.optional(
+      v.union(
+        v.literal("threaded"),
+        v.literal("standalone"),
+        v.literal("url_quote")
+      )
+    ),
     status: v.union(
       v.literal("draft"),
       v.literal("scheduled"),
