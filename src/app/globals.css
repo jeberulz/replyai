@@ -2,53 +2,40 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * "Dark Chrome" token set — see design.md.
+ * Dark-only for v1. Two surface tiers:
+ *   chrome (#000) — page gutters + AI-generation moments (use bg-chrome)
+ *   app   (#181818) — dashboard, feed, settings (default --background)
+ */
 :root {
-  --background: oklch(0.985 0.002 106);
-  --foreground: oklch(0.216 0.006 56);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.216 0.006 56);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.216 0.006 56);
-  --primary: oklch(0.488 0.217 264);
-  --primary-foreground: oklch(0.985 0.002 248);
-  --secondary: oklch(0.955 0.004 106);
-  --secondary-foreground: oklch(0.268 0.007 56);
-  --muted: oklch(0.955 0.004 106);
-  --muted-foreground: oklch(0.553 0.012 58);
-  --accent: oklch(0.943 0.021 264);
-  --accent-foreground: oklch(0.318 0.13 264);
-  --destructive: oklch(0.577 0.245 27);
-  --destructive-foreground: oklch(0.985 0.002 248);
-  --border: oklch(0.923 0.006 56);
-  --input: oklch(0.923 0.006 56);
-  --ring: oklch(0.488 0.217 264);
-  --success: oklch(0.627 0.17 149);
-  --warning: oklch(0.681 0.162 76);
-  --radius: 0.625rem;
-}
-
-.dark {
-  --background: oklch(0.147 0.004 49);
-  --foreground: oklch(0.955 0.004 106);
-  --card: oklch(0.192 0.005 49);
-  --card-foreground: oklch(0.955 0.004 106);
-  --popover: oklch(0.192 0.005 49);
-  --popover-foreground: oklch(0.955 0.004 106);
-  --primary: oklch(0.623 0.188 264);
-  --primary-foreground: oklch(0.985 0.002 248);
-  --secondary: oklch(0.245 0.006 56);
-  --secondary-foreground: oklch(0.923 0.006 56);
-  --muted: oklch(0.245 0.006 56);
-  --muted-foreground: oklch(0.68 0.01 58);
-  --accent: oklch(0.28 0.055 264);
-  --accent-foreground: oklch(0.88 0.06 264);
-  --destructive: oklch(0.637 0.237 25);
-  --destructive-foreground: oklch(0.985 0.002 248);
-  --border: oklch(0.28 0.006 56);
-  --input: oklch(0.28 0.006 56);
-  --ring: oklch(0.623 0.188 264);
+  --background: oklch(0.21 0 0); /* #181818 */
+  --foreground: oklch(0.985 0 0); /* #fafafa */
+  --card: oklch(0.26 0 0); /* #232323 */
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.3 0 0); /* #2e2e2e */
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.69 0.23 40.1); /* #ff4400 — Ghostbase brand orange */
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.274 0.006 286); /* #27272a */
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.28 0 0); /* #282828 */
+  --muted-foreground: oklch(0.712 0.013 286); /* #a1a1aa */
+  --accent: oklch(0.34 0 0); /* #363636 */
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.59 0.12 26); /* #c25b54 */
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.33 0 0); /* #353535 */
+  --input: oklch(0.3 0.005 285); /* #2e2e32 */
+  --ring: oklch(0.69 0.23 40.1);
   --success: oklch(0.696 0.17 149);
   --warning: oklch(0.769 0.162 76);
+  --signal: oklch(0.637 0.237 25.3); /* #fb2c36 — rare urgency cue only */
+  --sidebar: oklch(0.24 0 0); /* #1f1f1f */
+  --chrome: oklch(0 0 0); /* #000000 */
+  --canvas: oklch(0.22 0 0); /* #1a1a1a */
+  --panel: oklch(0.18 0 0); /* #111111 */
+  --radius: 0.5rem;
 }
 
 @theme inline {
@@ -73,18 +60,55 @@
   --color-ring: var(--ring);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-signal: var(--signal);
+  --color-sidebar: var(--sidebar);
+  --color-chrome: var(--chrome);
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+
+  /* Warm neutral ramp for editorial moments (dark-inverted: 50 = darkest) */
+  --color-oatmeal-50: #0f0906;
+  --color-oatmeal-100: #1d140f;
+  --color-oatmeal-200: #30231c;
+  --color-oatmeal-300: #4b382e;
+  --color-oatmeal-400: #644d3f;
+  --color-oatmeal-500: #856b5a;
+  --color-oatmeal-600: #b49c8b;
+  --color-oatmeal-700: #e1d1c4;
+  --color-oatmeal-800: #ede3d8;
+  --color-oatmeal-900: #f9f0e6;
+  --color-oatmeal-950: #fdf9f4;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
+
+  --animate-fade-rise: fade-rise 0.5s cubic-bezier(0.25, 1, 0.5, 1) both;
+
+  @keyframes fade-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
     outline-color: color-mix(in oklab, var(--color-ring) 50%, transparent);
+  }
+  html {
+    color-scheme: dark;
   }
   body {
     background-color: var(--color-background);
@@ -93,4 +117,34 @@
   button {
     cursor: pointer;
   }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility liner {
+  /* 45° hairline pattern — decorative liner for empty states only */
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-border) 0,
+    var(--color-border) 1px,
+    transparent 1px,
+    transparent 10px
+  );
+}
+
+@utility ghostbase-stripe {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--color-border) 72%, transparent) 0,
+    color-mix(in oklab, var(--color-border) 72%, transparent) 2px,
+    transparent 2px,
+    transparent 9px
+  );
 }
