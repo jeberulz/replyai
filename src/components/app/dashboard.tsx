@@ -86,10 +86,6 @@ const draftStatusMeta = {
 export function Dashboard({ displayName }: { displayName: string }) {
   const sessionToken = useSessionToken();
   const stats = useQuery(api.usage.stats, sessionToken ? { sessionToken } : "skip");
-  const analyses = useQuery(
-    api.analyses.listRecent,
-    sessionToken ? { sessionToken, limit: 5 } : "skip"
-  );
   const opportunities = useQuery(
     api.opportunities.list,
     sessionToken ? { sessionToken, limit: 4 } : "skip"
@@ -141,9 +137,7 @@ export function Dashboard({ displayName }: { displayName: string }) {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Trending conversations from the feed scanner */}
-        <Card>
+      <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -193,56 +187,6 @@ export function Dashboard({ displayName }: { displayName: string }) {
             )}
           </CardContent>
         </Card>
-
-        {/* Recent analyses */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Recent analyses</CardTitle>
-                <CardDescription>Pick up where you left off</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {analyses === undefined ? (
-              <>
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-              </>
-            ) : analyses.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                No analyses yet.{" "}
-                <Link href="/analyze" className="text-primary hover:underline">
-                  Paste your first tweet URL
-                </Link>
-                .
-              </div>
-            ) : (
-              analyses.map((analysis) => (
-                <Link
-                  key={analysis._id}
-                  href={`/analysis/${analysis._id}`}
-                  className="flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent/40"
-                >
-                  <ScoreBadge
-                    value={analysis.score.value}
-                    reason={analysis.score.reason}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="line-clamp-2 text-sm">
-                      @{analysis.tweet.authorHandle}: {analysis.tweet.text}
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {analysis.topic} · {timeAgo(analysis.createdAt)}
-                    </div>
-                  </div>
-                </Link>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Drafts & published — live status via Convex reactivity */}
       <Card>

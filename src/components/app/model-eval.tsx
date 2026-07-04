@@ -31,10 +31,15 @@ export function ModelEval({
   const [running, startRun] = useTransition();
   const [saving, startSave] = useTransition();
 
-  const evaluation = useQuery(api.evals.latestForAnalysis, {
-    sessionToken,
-    analysisId: analysisId as Id<"tweetAnalyses">,
-  });
+  const evaluation = useQuery(
+    api.evals.latestForAnalysis,
+    sessionToken
+      ? {
+          sessionToken,
+          analysisId: analysisId as Id<"tweetAnalyses">,
+        }
+      : "skip"
+  );
 
   const runEval = () => {
     startRun(async () => {

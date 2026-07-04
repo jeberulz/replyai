@@ -152,7 +152,10 @@ function ProfileForm({
 
 export function VoiceStudio({ xConnected }: { xConnected: boolean }) {
   const sessionToken = useSessionToken();
-  const profiles = useQuery(api.voiceProfiles.list, { sessionToken }) as
+  const profiles = useQuery(
+    api.voiceProfiles.list,
+    sessionToken ? { sessionToken } : "skip"
+  ) as
     | Profile[]
     | undefined;
   const [dialog, setDialog] = useState<

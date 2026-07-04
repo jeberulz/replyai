@@ -91,6 +91,7 @@ export async function analyzeTweetAction(
     ""
   );
   const authorFollowers = followersRaw ? Number(followersRaw) : 0;
+  const projectIdRaw = String(formData.get("projectId") ?? "").trim();
 
   const urlTweetId = url ? parseTweetUrl(url) : null;
   if (!text && !url) {
@@ -140,6 +141,9 @@ export async function analyzeTweetAction(
 
     analysisId = await convex.mutation(api.analyses.create, {
       sessionToken,
+      ...(projectIdRaw
+        ? { projectId: projectIdRaw as Id<"projects"> }
+        : {}),
       tweetUrl: url,
       tweetId: bundle.tweetId,
       tweet: {

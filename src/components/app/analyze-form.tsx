@@ -3,15 +3,20 @@
 import { useActionState } from "react";
 import { Loader2, Search } from "lucide-react";
 import { analyzeTweetAction } from "@/app/actions";
+import { useSidebar } from "@/components/app/sidebar/sidebar-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function AnalyzeForm({ initialUrl }: { initialUrl?: string }) {
   const [state, formAction, pending] = useActionState(analyzeTweetAction, null);
+  const { selectedProjectId } = useSidebar();
 
   return (
     <form action={formAction} className="space-y-4">
+      {selectedProjectId && (
+        <input type="hidden" name="projectId" value={selectedProjectId} />
+      )}
       <div className="space-y-1.5">
         <Label htmlFor="tweet-text">Tweet text</Label>
         <textarea
