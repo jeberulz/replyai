@@ -145,3 +145,30 @@ const STOP_WORDS = new Set([
 function isStopPhrase(phrase: string): boolean {
   return phrase.split(" ").every((w) => STOP_WORDS.has(w));
 }
+
+/**
+ * Fold a sent reply into a voice profile's example set. The text a user
+ * actually approved and published is ground truth for their voice — newest
+ * first, deduped (case/whitespace-insensitive), capped so the generation
+ * prompt stays small and recent posts dominate.
+ */
+export const VOICE_EXAMPLES_CAP = 16;
+
+export function mergeVoiceExamples(
+  existing: string[],
+  sentText: string,
+  cap: number = VOICE_EXAMPLES_CAP
+): string[] {
+  const text = sentText.trim();
+  if (text.length === 0) return existing.slice(0, cap);
+  const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+  const seen = new Set([norm(text)]);
+  const merged = [text];
+  for (const example of existing) {
+    const key = norm(example);
+    if (example.trim().length === 0 || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(example);
+  }
+  return merged.slice(0, cap);
+}

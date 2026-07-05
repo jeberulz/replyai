@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { requireUser } from "./helpers";
+import { learnFromSentText } from "./voiceProfiles";
 
 const publishModeValidator = v.optional(
   v.union(
@@ -116,6 +117,22 @@ export const retryAsStandalone = mutation({
   },
 });
 
+/** Edit a not-yet-published draft's text in place. */
+export const updateContent = mutation({
+  args: {
+    sessionToken: v.string(),
+    draftId: v.id("savedDrafts"),
+    text: v.string(),
+  },
+  handler: async (ctx, { sessionToken, draftId, text }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const draft = await ctx.db.get(draftId);
+    if (!draft || draft.userId !== user._id) throw new Error("Not found");
+    if (draft.status === "published") throw new Error("Already published");
+    await ctx.db.patch(draftId, { text });
+  },
+});
+
 export const remove = mutation({
   args: { sessionToken: v.string(), draftId: v.id("savedDrafts") },
   handler: async (ctx, { sessionToken, draftId }) => {
@@ -167,6 +184,14 @@ export const markResult = internalMutation({
         publishedAt: Date.now(),
         ...(publishMode ? { publishMode } : {}),
       });
+      // Learning loop: the sent text is user-approved voice ground truth.
+      await learnFromSentText(ctx, draft.userId, draft.text);
+      if (draft.targetTweetId) {
+        await ctx.runMutation(internal.opportunities.markSentByTweet, {
+          userId: draft.userId,
+          tweetId: draft.targetTweetId,
+        });
+      }
     } else {
       await ctx.db.patch(draftId, { status: "failed", error });
     }

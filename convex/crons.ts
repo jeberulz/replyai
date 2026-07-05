@@ -10,4 +10,12 @@ crons.interval("scan feeds", { minutes: 30 }, internal.scannerActions.scanAll, {
 // Drop expired AI response cache entries daily.
 crons.interval("prune cache", { hours: 24 }, internal.cache.prune, {});
 
+// Recompute per-user ranking weights from opportunity funnel outcomes.
+crons.weekly(
+  "recompute ranking weights",
+  { dayOfWeek: "monday", hourUTC: 4, minuteUTC: 0 },
+  internal.ranking.recomputeAll,
+  {}
+);
+
 export default crons;

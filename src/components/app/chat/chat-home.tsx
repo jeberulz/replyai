@@ -65,24 +65,24 @@ export function ChatHome({
     );
   }
 
+  const composer = (
+    <ChatComposer
+      onSubmit={submit}
+      pending={starting}
+      error={startError}
+      placeholder="Paste another tweet to start a new analysis…"
+    />
+  );
+
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-8rem)] max-w-3xl flex-col gap-6">
-      <div className="flex-1">
-        <AnalysisThread
-          key={activeAnalysisId}
-          analysisId={activeAnalysisId}
-          isDemo={isDemo}
-          onRetry={retry}
-        />
-      </div>
-      <div className="sticky bottom-0 -mx-4 bg-background/95 px-4 pb-4 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <ChatComposer
-          onSubmit={submit}
-          pending={starting}
-          error={startError}
-          placeholder="Paste another tweet to start a new analysis…"
-        />
-      </div>
+    <div className="lg:-mx-10 lg:h-[calc(100dvh-4rem)] lg:overflow-hidden">
+      <AnalysisThread
+        key={activeAnalysisId}
+        analysisId={activeAnalysisId}
+        isDemo={isDemo}
+        onRetry={retry}
+        composer={composer}
+      />
     </div>
   );
 }

@@ -1,50 +1,77 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useQuery } from "convex/react";
-import { Download, Loader2, Plus, RefreshCw, ShieldCheck, X } from "lucide-react";
+import {
+  Download,
+  Loader2,
+  Plus,
+  RefreshCw,
+  ShieldCheck,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
+import {
+  FRESH_AGE_MS,
+  HIGH_VELOCITY_THRESHOLD,
+} from "../../../shared/feedFilters";
 import {
   fetchOwnedListsAction,
   saveEngageListsAction,
   scanNowAction,
   updateEnabledSourcesAction,
   updateScannerAction,
+  updateSearchKeywordsAction,
   updateWatchedHandlesAction,
 } from "@/app/actions";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { FeedScanProgress } from "@/components/app/feed-scan-progress";
+import { type Opportunity } from "@/components/app/opportunity-card";
+import { OpportunityRow } from "@/components/app/feed/opportunity-row";
+import { OpportunityDetail } from "@/components/app/feed/opportunity-detail";
+import { MasterDetail } from "@/components/app/split/master-detail";
 import {
-  OpportunityCard,
-  type Opportunity,
-} from "@/components/app/opportunity-card";
-import { PageHeader } from "@/components/app/page-header";
+  FilterChips,
+  PaneEyebrow,
+} from "@/components/app/split/pane-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { cn, timeAgo } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils";
 
 const SCAN_TIMEOUT_MS = 45_000;
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
 
 const DEFAULT_SOURCES: EnabledSource[] = ["following"];
+const MAX_ENGAGE_LISTS = 5;
 
 const SOURCE_ROWS: { source: EnabledSource; label: string }[] = [
   { source: "following", label: "Following timeline" },
   { source: "lists", label: "Engage lists" },
   { source: "watched", label: "Watched accounts" },
+  { source: "search", label: "Keyword search" },
+];
+
+type QuickFilter = "all" | "watched" | "fresh" | "velocity";
+
+const QUICK_FILTERS: { value: QuickFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "watched", label: "Watched only" },
+  { value: "fresh", label: "< 1h old" },
+  { value: "velocity", label: "High velocity" },
 ];
 
 export function FeedScanner() {
@@ -58,19 +85,58 @@ export function FeedScanner() {
     sessionToken ? { sessionToken } : "skip"
   );
   const [draftKeywords, setDraftKeywords] = useState<string | null>(null);
+  const [draftSearchKeywords, setDraftSearchKeywords] = useState<string | null>(
+    null
+  );
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
+  // Always-on clock for the "fresh" filter. Lazy initializer keeps Date.now()
+  // out of the render body (the interval callback is the only in-effect update).
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [pending, startTransition] = useTransition();
   const scanBaselineRef = useRef<number>(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const savedKeywords = settings?.keywords.join(", ") ?? "";
   const keywords = draftKeywords ?? savedKeywords;
   const keywordsDirty = draftKeywords !== null && draftKeywords !== savedKeywords;
 
+  const savedSearchKeywords = settings?.searchKeywords?.join(", ") ?? "";
+  const searchKeywords = draftSearchKeywords ?? savedSearchKeywords;
+  const searchKeywordsDirty =
+    draftSearchKeywords !== null && draftSearchKeywords !== savedSearchKeywords;
+
   const parsedKeywords = () =>
-    keywords
-      .split(",")
-      .map((k) => k.trim())
-      .filter(Boolean);
+    keywords.split(",").map((k) => k.trim()).filter(Boolean);
+  const parsedSearchKeywords = () =>
+    searchKeywords.split(",").map((k) => k.trim()).filter(Boolean);
+
+  const filteredOpportunities = useMemo(() => {
+    if (!opportunities) return undefined;
+    return opportunities.filter((opp) => {
+      if (quickFilter === "watched") return opp.source === "watched";
+      if (quickFilter === "fresh") {
+        if (nowMs === 0) return true;
+        return nowMs - opp.postedAt < FRESH_AGE_MS;
+      }
+      if (quickFilter === "velocity") {
+        return (opp.velocity ?? 0) >= HIGH_VELOCITY_THRESHOLD;
+      }
+      return true;
+    });
+  }, [opportunities, quickFilter, nowMs]);
+
+  const rows: Opportunity[] = (filteredOpportunities ?? []).map((opp) => ({
+    ...(opp as unknown as Opportunity),
+    _id: String(opp._id),
+  }));
+  const selected = rows.find((o) => o._id === selectedId) ?? null;
 
   const beginScanTracking = () => {
     scanBaselineRef.current = settings?.lastScanAt ?? 0;
@@ -79,33 +145,36 @@ export function FeedScanner() {
 
   useEffect(() => {
     if (!scanning) return;
-
     const lastScanAt = settings?.lastScanAt;
     const completed =
       lastScanAt !== undefined && lastScanAt > scanBaselineRef.current;
-
     if (completed) {
       setScanning(false);
       if (settings?.lastScanError) {
         toast.error(settings.lastScanError);
       } else if ((settings?.lastScanCount ?? 0) === 0) {
-        toast.message("Scan complete — no matching tweets in your feed right now");
+        toast.message(
+          "Scan complete — no matching tweets in your feed right now"
+        );
       } else {
         toast.success(
           `Feed scan complete — ${settings?.lastScanCount} opportunit${settings?.lastScanCount === 1 ? "y" : "ies"} found`
         );
       }
     }
-  }, [scanning, settings?.lastScanAt, settings?.lastScanError, settings?.lastScanCount]);
+  }, [
+    scanning,
+    settings?.lastScanAt,
+    settings?.lastScanError,
+    settings?.lastScanCount,
+  ]);
 
   useEffect(() => {
     if (!scanning) return;
-
     const timeout = window.setTimeout(() => {
       setScanning(false);
       toast.message("Scan is taking longer than usual — check back shortly");
     }, SCAN_TIMEOUT_MS);
-
     return () => window.clearTimeout(timeout);
   }, [scanning]);
 
@@ -124,6 +193,14 @@ export function FeedScanner() {
         keywords: parsedKeywords(),
       });
       setDraftKeywords(null);
+    });
+  };
+
+  const saveSearchKeywords = () => {
+    startTransition(async () => {
+      await updateSearchKeywordsAction(parsedSearchKeywords());
+      setDraftSearchKeywords(null);
+      toast.success("Discovery search terms saved");
     });
   };
 
@@ -153,9 +230,7 @@ export function FeedScanner() {
   const [ownedLists, setOwnedLists] = useState<
     { id: string; name: string }[] | null
   >(null);
-  const [selectedListIds, setSelectedListIds] = useState<Set<string>>(
-    new Set()
-  );
+  const [selectedListIds, setSelectedListIds] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
 
   const openImport = () => {
@@ -174,9 +249,17 @@ export function FeedScanner() {
 
   const toggleListSelection = (id: string) => {
     setSelectedListIds((prev) => {
+      if (prev.has(id)) {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      }
+      if (prev.size >= MAX_ENGAGE_LISTS) {
+        toast.message(`You can import up to ${MAX_ENGAGE_LISTS} lists`);
+        return prev;
+      }
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.add(id);
       return next;
     });
   };
@@ -221,288 +304,394 @@ export function FeedScanner() {
     });
   };
 
-  return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader
-        eyebrow="Live discovery"
-        title="Feed scanner"
-        description="Monitors your feed on a schedule and surfaces high-opportunity conversations before the reply window closes."
-      />
+  const scannerOn = settings?.enabled ?? false;
 
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Scanner settings</CardTitle>
-              <CardDescription>
-                Runs every 30 minutes when enabled
-                {settings?.lastScanAt &&
-                  ` · last scan ${timeAgo(settings.lastScanAt)}`}
-                {typeof settings?.lastScanCount === "number" &&
-                  settings.lastScanAt &&
-                  ` · ${settings.lastScanCount} found`}
-                {scanning && " · scanning now"}
-              </CardDescription>
-            </div>
-            {settings === undefined ? (
-              <Skeleton className="h-5 w-9" />
+  const list = (
+    <div className="flex h-full min-h-0 flex-col bg-background">
+      {/* Top bar */}
+      <div className="flex items-center justify-between gap-2 border-b border-border px-6 py-4">
+        <div className="flex items-center gap-3">
+          <h2 className="text-[15px] font-semibold">Feed scanner</h2>
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground">
+            <span
+              className={
+                scannerOn ? "size-1.5 rounded-full bg-success" : "size-1.5 rounded-full bg-muted-foreground"
+              }
+            />
+            {scanning ? "Scanning…" : scannerOn ? "Live" : "Paused"}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={scanNow}
+            disabled={busy}
+          >
+            {scanning ? (
+              <Loader2 className="animate-spin" />
             ) : (
-              <Switch
-                checked={settings?.enabled ?? false}
-                onCheckedChange={setEnabled}
-                disabled={busy}
-              />
+              <RefreshCw />
             )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="keywords">Topics you care about</Label>
-            <div className="flex gap-2">
-              <Input
-                id="keywords"
-                value={keywords}
-                placeholder="ai, startup, product, design"
-                onChange={(e) => setDraftKeywords(e.target.value)}
-                disabled={scanning}
-              />
-              <Button
-                variant="outline"
-                onClick={saveKeywords}
-                disabled={busy || !keywordsDirty}
-              >
-                Save
-              </Button>
-              <Button variant="outline" onClick={scanNow} disabled={busy}>
-                {scanning ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <RefreshCw />
-                )}
-                {scanning ? "Scanning…" : "Scan now"}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Comma-separated. Only tweets matching at least one keyword are
-              surfaced — off-topic posts are excluded even if they&apos;re viral.
-            </p>
-          </div>
+            Scan now
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <SlidersHorizontal />
+            Sources
+          </Button>
+        </div>
+      </div>
 
-          <p className="flex items-start gap-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-            <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
-            The scanner only suggests. Every reply requires your explicit click
-            to send — permanently, by design. Nothing is ever auto-posted.
-          </p>
-        </CardContent>
-      </Card>
+      {/* Scroll body */}
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
+        {opportunities && opportunities.length > 0 && (
+          <FilterChips
+            value={quickFilter}
+            onValueChange={setQuickFilter}
+            options={QUICK_FILTERS}
+          />
+        )}
 
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">Sources</CardTitle>
-          <CardDescription>
-            Choose where the scanner looks for opportunities.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {SOURCE_ROWS.map((row) => (
-            <div key={row.source} className="flex items-center justify-between">
-              <Label htmlFor={`source-${row.source}`} className="font-normal">
-                {row.label}
-              </Label>
-              {settings === undefined ? (
-                <Skeleton className="h-5 w-9" />
-              ) : (
-                <Switch
-                  id={`source-${row.source}`}
-                  checked={enabledSources.includes(row.source)}
-                  onCheckedChange={(checked) => toggleSource(row.source, checked)}
-                  disabled={busy}
-                />
-              )}
-            </div>
-          ))}
-
-          <div className="space-y-2 border-t border-border pt-4">
-            <Label>Engage lists</Label>
-            {engageListNames.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {engageListNames.map((name, i) => (
-                  <Badge key={engageListIds[i] ?? name} variant="secondary" className="gap-1 pr-1">
-                    {name}
-                    <button
-                      type="button"
-                      onClick={() => removeSavedList(engageListIds[i])}
-                      disabled={busy}
-                      aria-label={`Remove ${name}`}
-                      className="rounded-full p-0.5 hover:bg-background/60"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-
-            {settings?.needsListScope ? (
-              <p className="text-xs text-muted-foreground">
-                <a href="/api/auth/login" className="underline underline-offset-2">
-                  Reconnect your X account
-                </a>{" "}
-                to import lists.
-              </p>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={openImport}
-                disabled={importing || busy}
-              >
-                {importing ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Download />
-                )}
-                Import from X
-              </Button>
-            )}
-
-            {ownedLists !== null && (
-              <div className="space-y-2 rounded-md border border-border p-3">
-                {ownedLists.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    No lists found on your X account.
-                  </p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {ownedLists.map((list) => (
-                      <label
-                        key={list.id}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedListIds.has(list.id)}
-                          onChange={() => toggleListSelection(list.id)}
-                          className="size-3.5"
-                        />
-                        {list.name}
-                      </label>
-                    ))}
-                  </div>
-                )}
-                <div className="flex gap-2 pt-1">
-                  <Button size="sm" onClick={confirmListSelection} disabled={busy}>
-                    Save selection
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setOwnedLists(null)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2 border-t border-border pt-4">
-            <Label htmlFor="watched-handle">Watched accounts</Label>
-            {watchedHandles.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {watchedHandles.map((handle) => (
-                  <Badge key={handle} variant="secondary" className="gap-1 pr-1">
-                    @{handle}
-                    <button
-                      type="button"
-                      onClick={() => removeHandle(handle)}
-                      disabled={busy}
-                      aria-label={`Remove @${handle}`}
-                      className="rounded-full p-0.5 hover:bg-background/60"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <Input
-                id="watched-handle"
-                value={handleDraft}
-                placeholder="@handle"
-                onChange={(e) => setHandleDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addHandle();
-                  }
-                }}
-                disabled={busy}
-              />
-              <Button
-                variant="outline"
-                onClick={addHandle}
-                disabled={busy || !handleDraft.trim()}
-              >
-                <Plus />
-                Add
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-4">
-        <h2 className="font-mono text-xs uppercase tracking-[0.14em] text-primary">
-          Opportunities{" "}
-          {!scanning && opportunities !== undefined && `(${opportunities.length})`}
-        </h2>
+        <PaneEyebrow className="text-primary">
+          Opportunities
+          {!scanning &&
+            filteredOpportunities !== undefined &&
+            ` · ${filteredOpportunities.length}${quickFilter !== "all" && opportunities ? ` of ${opportunities.length}` : ""}`}
+        </PaneEyebrow>
 
         {scanning ? (
-          <FeedScanProgress keywords={parsedKeywords()} />
-        ) : opportunities === undefined ? (
+          <FeedScanProgress
+            keywords={parsedKeywords()}
+            enabledSources={enabledSources}
+          />
+        ) : filteredOpportunities === undefined ? (
           <>
-            <Skeleton className="h-48 w-full" />
-            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-40 w-full" />
+            <Skeleton className="h-40 w-full" />
           </>
-        ) : opportunities.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              {settings?.lastScanError ? (
-                <p className="text-destructive">{settings.lastScanError}</p>
-              ) : settings?.lastScanAt ? (
-                <p>
-                  Last scan found no tweets matching your keywords. Try broader
-                  topics like <span className="text-foreground">ai, saas, startup</span>.
-                </p>
-              ) : (
-                <p>
-                  No opportunities surfaced yet. Enable the scanner or hit
-                  &ldquo;Scan now&rdquo;.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div
-            className={cn(
-              "space-y-4 transition-opacity duration-150",
-              pending && "opacity-60"
+        ) : rows.length === 0 ? (
+          <div className="rounded-xl border border-border py-10 text-center text-sm text-muted-foreground">
+            {quickFilter !== "all" && (opportunities?.length ?? 0) > 0 ? (
+              <p>No opportunities match this filter. Try &ldquo;All&rdquo;.</p>
+            ) : settings?.lastScanError ? (
+              <p className="text-destructive">{settings.lastScanError}</p>
+            ) : settings?.lastScanAt ? (
+              <p>
+                Last scan found no tweets matching your keywords. Try broader
+                topics like <span className="text-foreground">ai, saas, startup</span>.
+              </p>
+            ) : (
+              <p>
+                No opportunities surfaced yet. Enable the scanner or hit
+                &ldquo;Scan now&rdquo;.
+              </p>
             )}
-          >
-            {opportunities.map((opp) => (
-              <OpportunityCard
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {rows.map((opp) => (
+              <OpportunityRow
                 key={opp._id}
-                opportunity={{
-                  ...(opp as unknown as Opportunity),
-                  _id: String(opp._id),
-                }}
+                opportunity={opp}
+                selected={opp._id === selectedId}
+                onSelect={() => setSelectedId(opp._id)}
               />
             ))}
           </div>
         )}
       </div>
+    </div>
+  );
+
+  const emptyDetail = (
+    <div className="flex h-full items-center justify-center border-l border-border bg-canvas px-8 text-center text-sm text-muted-foreground">
+      Select an opportunity to see the full conversation, score, and suggested
+      angle.
+    </div>
+  );
+
+  return (
+    <div className="-mx-4 h-[calc(100dvh-3rem)] overflow-hidden md:-mx-10 md:h-[calc(100dvh-4rem)]">
+      <MasterDetail
+        list={list}
+        detail={
+          selected ? (
+            <OpportunityDetail
+              opportunity={selected}
+              onDismissed={() => setSelectedId(null)}
+            />
+          ) : null
+        }
+        emptyDetail={emptyDetail}
+        hasSelection={!!selected}
+        onBack={() => setSelectedId(null)}
+        autoSaveId="feed-scanner"
+        backLabel="Opportunities"
+      />
+
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Sources &amp; settings</DialogTitle>
+            <DialogDescription>
+              Runs every 30 minutes when enabled
+              {settings?.lastScanAt &&
+                ` · last scan ${timeAgo(settings.lastScanAt)}`}
+              {scanning && " · scanning now"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <Label className="font-normal">Scanner enabled</Label>
+              {settings === undefined ? (
+                <Skeleton className="h-5 w-9" />
+              ) : (
+                <Switch
+                  checked={settings?.enabled ?? false}
+                  onCheckedChange={setEnabled}
+                  disabled={busy}
+                />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="keywords">Topics you care about</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="keywords"
+                  value={keywords}
+                  placeholder="ai, startup, product, design"
+                  onChange={(e) => setDraftKeywords(e.target.value)}
+                  disabled={scanning}
+                />
+                <Button
+                  variant="outline"
+                  onClick={saveKeywords}
+                  disabled={busy || !keywordsDirty}
+                >
+                  Save
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Comma-separated filter keywords. Following-timeline tweets must
+                match at least one — list, watched, and search sources use their
+                own discovery rules.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="search-keywords">Discovery search terms</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="search-keywords"
+                  value={searchKeywords}
+                  placeholder="ai agents, startup growth"
+                  onChange={(e) => setDraftSearchKeywords(e.target.value)}
+                  disabled={scanning}
+                />
+                <Button
+                  variant="outline"
+                  onClick={saveSearchKeywords}
+                  disabled={busy || !searchKeywordsDirty}
+                >
+                  Save
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Used when the Keyword search source is on — up to 3 terms queried
+                per scan via X recent search.
+              </p>
+            </div>
+
+            <div className="space-y-3 border-t border-border pt-4">
+              <Label>Sources</Label>
+              {SOURCE_ROWS.map((row) => (
+                <div
+                  key={row.source}
+                  className="flex items-center justify-between"
+                >
+                  <Label htmlFor={`source-${row.source}`} className="font-normal">
+                    {row.label}
+                  </Label>
+                  {settings === undefined ? (
+                    <Skeleton className="h-5 w-9" />
+                  ) : (
+                    <Switch
+                      id={`source-${row.source}`}
+                      checked={enabledSources.includes(row.source)}
+                      onCheckedChange={(checked) =>
+                        toggleSource(row.source, checked)
+                      }
+                      disabled={busy}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2 border-t border-border pt-4">
+              <Label>Engage lists</Label>
+              {engageListNames.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {engageListNames.map((name, i) => (
+                    <Badge
+                      key={engageListIds[i] ?? name}
+                      variant="secondary"
+                      className="gap-1 pr-1"
+                    >
+                      {name}
+                      <button
+                        type="button"
+                        onClick={() => removeSavedList(engageListIds[i])}
+                        disabled={busy}
+                        aria-label={`Remove ${name}`}
+                        className="rounded-full p-0.5 hover:bg-background/60"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {enabledSources.includes("lists") && engageListIds.length === 0 && (
+                <p className="text-xs text-warning">
+                  Import at least one list for this source to work.
+                </p>
+              )}
+              {settings?.needsListScope ? (
+                <p className="text-xs text-muted-foreground">
+                  <a
+                    href="/api/auth/login"
+                    className="underline underline-offset-2"
+                  >
+                    Reconnect your X account
+                  </a>{" "}
+                  to import lists.
+                </p>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={openImport}
+                  disabled={importing || busy}
+                >
+                  {importing ? <Loader2 className="animate-spin" /> : <Download />}
+                  Import from X
+                </Button>
+              )}
+              {ownedLists !== null && (
+                <div className="space-y-2 rounded-md border border-border p-3">
+                  <p className="text-xs text-muted-foreground">Up to 5 lists.</p>
+                  {ownedLists.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      No lists found on your X account.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {ownedLists.map((listItem) => (
+                        <label
+                          key={listItem.id}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedListIds.has(listItem.id)}
+                            onChange={() => toggleListSelection(listItem.id)}
+                            className="size-3.5"
+                          />
+                          {listItem.name}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      onClick={confirmListSelection}
+                      disabled={busy}
+                    >
+                      Save selection
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setOwnedLists(null)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2 border-t border-border pt-4">
+              <Label htmlFor="watched-handle">Watched accounts</Label>
+              {watchedHandles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {watchedHandles.map((handle) => (
+                    <Badge
+                      key={handle}
+                      variant="secondary"
+                      className="gap-1 pr-1"
+                    >
+                      @{handle}
+                      <button
+                        type="button"
+                        onClick={() => removeHandle(handle)}
+                        disabled={busy}
+                        aria-label={`Remove @${handle}`}
+                        className="rounded-full p-0.5 hover:bg-background/60"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Input
+                  id="watched-handle"
+                  value={handleDraft}
+                  placeholder="@handle"
+                  onChange={(e) => setHandleDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addHandle();
+                    }
+                  }}
+                  disabled={busy}
+                />
+                <Button
+                  variant="outline"
+                  onClick={addHandle}
+                  disabled={busy || !handleDraft.trim()}
+                >
+                  <Plus />
+                  Add
+                </Button>
+              </div>
+              {enabledSources.includes("watched") &&
+                watchedHandles.length === 0 && (
+                  <p className="text-xs text-warning">
+                    Add at least one account to watch.
+                  </p>
+                )}
+            </div>
+
+            <p className="flex items-start gap-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+              <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
+              The scanner only suggests. Every reply requires your explicit click
+              to send — permanently, by design. Nothing is ever auto-posted.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

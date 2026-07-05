@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { currentMonth, requireUser } from "./helpers";
+import {
+  opportunityToAnalyzeRate,
+  type OpportunityFunnelRow,
+} from "../shared/rankingWeights";
 
 export const record = mutation({
   args: {
@@ -80,6 +84,24 @@ export const stats = query({
 
     const medianMs = median(publishDurationsMs);
 
+    const monthPrefix = month;
+    const opportunities = await ctx.db
+      .query("opportunities")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const monthOpportunities: OpportunityFunnelRow[] = opportunities
+      .filter((o) =>
+        new Date(o.scannedAt).toISOString().slice(0, 7) === monthPrefix
+      )
+      .map((o) => ({
+        source: o.source,
+        authorFollowers: o.authorFollowers,
+        score: o.score,
+        scannedAt: o.scannedAt,
+        status: o.status,
+        outcome: o.outcome,
+      }));
+
     return {
       month,
       tokensIn: usage?.tokensIn ?? 0,
@@ -96,6 +118,8 @@ export const stats = query({
       // Supporting metric: median seconds from draft to publish.
       medianSecondsToPublish:
         medianMs === null ? null : Math.round(medianMs / 1000),
+      opportunityToAnalyzeRate: opportunityToAnalyzeRate(monthOpportunities),
+      opportunitiesSurfaced: monthOpportunities.length,
     };
   },
 });

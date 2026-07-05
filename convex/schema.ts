@@ -219,6 +219,24 @@ export default defineSchema({
     ),
     // e.g. "AI Builders list" — only set for source "list".
     sourceLabel: v.optional(v.string()),
+    // Phase 3 semantic relevance (cached 24h when tweet text unchanged).
+    keywordRelevance: v.optional(v.number()),
+    semanticRelevance: v.optional(v.number()),
+    topicRelevance: v.optional(v.number()),
+    semanticClassifiedAt: v.optional(v.number()),
+    textFingerprint: v.optional(v.string()),
+    // Phase 5 outcome funnel (internal ranking + dashboard conversion).
+    outcome: v.optional(
+      v.union(
+        v.literal("ignored"),
+        v.literal("analyzed"),
+        v.literal("sent"),
+        v.literal("responded")
+      )
+    ),
+    analyzedAt: v.optional(v.number()),
+    sentAt: v.optional(v.number()),
+    respondedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
@@ -237,8 +255,12 @@ export default defineSchema({
     engageListNames: v.optional(v.array(v.string())),
     // Max 50, enforced in the mutation (not the schema).
     watchedHandles: v.optional(v.array(v.string())),
-    // Schema field only — search-source fetch ships in a later phase.
+    // Discovery keywords for search/recent (separate from filter keywords).
     searchKeywords: v.optional(v.array(v.string())),
+    // Authors dismissed from feed; hidden until `until` (7-day default).
+    dismissedAuthors: v.optional(
+      v.array(v.object({ handle: v.string(), until: v.number() }))
+    ),
     enabledSources: v.optional(
       v.array(
         v.union(
@@ -248,6 +270,29 @@ export default defineSchema({
           v.literal("search")
         )
       )
+    ),
+    // Learned scan ranking multipliers — never surfaced as ML % in UI.
+    rankingWeights: v.optional(
+      v.object({
+        updatedAt: v.number(),
+        sourceMultipliers: v.optional(
+          v.object({
+            following: v.optional(v.number()),
+            list: v.optional(v.number()),
+            watched: v.optional(v.number()),
+            search: v.optional(v.number()),
+          })
+        ),
+        followerBandMultipliers: v.optional(
+          v.object({
+            micro: v.optional(v.number()),
+            small: v.optional(v.number()),
+            medium: v.optional(v.number()),
+            large: v.optional(v.number()),
+          })
+        ),
+        scoreDecileMultipliers: v.optional(v.record(v.string(), v.number())),
+      })
     ),
   }).index("by_user", ["userId"]),
 
@@ -288,4 +333,52 @@ export default defineSchema({
     value: v.string(), // JSON payload
     expiresAt: v.number(),
   }).index("by_key", ["key"]),
+
+  researchRuns: defineTable({
+    userId: v.id("users"),
+    query: v.string(),
+    seedHandles: v.array(v.string()),
+    resultCount: v.number(),
+    status: v.union(
+      v.literal("running"),
+      v.literal("complete"),
+      v.literal("failed")
+    ),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_created", ["userId", "createdAt"]),
+
+  researchProfiles: defineTable({
+    userId: v.id("users"),
+    runId: v.id("researchRuns"),
+    xUserId: v.optional(v.string()),
+    handle: v.string(),
+    displayName: v.string(),
+    bio: v.optional(v.string()),
+    followers: v.number(),
+    avgLikes: v.number(),
+    postFrequency: v.optional(v.string()),
+    topicTags: v.array(v.string()),
+    /** Internal sort key — never shown as a fake-precision % in the UI. */
+    score: v.number(),
+    reason: v.string(),
+    exampleTweets: v.array(
+      v.object({
+        tweetId: v.string(),
+        text: v.string(),
+        likes: v.number(),
+      })
+    ),
+    status: v.union(
+      v.literal("suggested"),
+      v.literal("watching"),
+      v.literal("passed")
+    ),
+    discoveredAt: v.number(),
+  })
+    .index("by_user_status", ["userId", "status"])
+    .index("by_run", ["runId"])
+    .index("by_user_handle", ["userId", "handle"]),
 });

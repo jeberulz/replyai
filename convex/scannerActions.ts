@@ -5,15 +5,29 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalAction, type ActionCtx } from "./_generated/server";
 import {
-  passesFeedScannerFilter,
   scoreConversation,
   topicRelevanceForKeywords,
   velocityPerHour,
 } from "../shared/scoring";
 import {
+  applySaturatedThreadPenalty,
+  limitPerAuthor,
+  shouldExcludeCandidate,
+} from "../shared/feedFilters";
+import { applyRankingMultiplier, normalizeRankingWeights } from "../shared/rankingWeights";
+import {
+  augmentScoreReason,
+  combineTopicRelevance,
+  fingerprintText,
+  passesCombinedFeedFilter,
+  selectSemanticClassificationTargets,
+  SEMANTIC_CACHE_MS,
+} from "../shared/semanticRelevance";
+import {
   DEMO_TWEETS,
   DEMO_WATCHED_HANDLES,
   demoListTweets,
+  demoSearchTweets,
 } from "../shared/demoData";
 import { refreshAccessToken } from "../shared/xOAuth";
 
@@ -21,6 +35,8 @@ const MIN_OPPORTUNITY_SCORE = 30;
 
 /** Max watched handles fetched per scan; see selectWatchedHandlesForScan. */
 const MAX_WATCHED_HANDLES_PER_SCAN = 15;
+/** Max discovery search queries per scan (1 X API call each). */
+const MAX_SEARCH_KEYWORDS_PER_SCAN = 3;
 /** Cap on merged/deduped candidates before scoring, to bound per-scan cost. */
 const MAX_CANDIDATES = 150;
 
@@ -38,15 +54,17 @@ type TimelineTweet = {
   replies: number;
   quotes: number;
   /** Where this tweet was discovered. Missing = legacy following-timeline tweet. */
-  source?: "following" | "list" | "watched";
+  source?: "following" | "list" | "watched" | "search";
   /** e.g. "AI Builders list" — only set for source "list". */
   sourceLabel?: string;
+  isReply?: boolean;
 };
 
 type ScanContext = {
   xUserId: string;
   isDemo: boolean;
   keywords: string[];
+  searchKeywords: string[];
   accessToken: string | null;
   refreshToken: string | null;
   expiresAt: number;
@@ -59,6 +77,16 @@ type ScanContext = {
 
 function resolveEnabledSources(sources: EnabledSource[]): EnabledSource[] {
   return sources.length > 0 ? sources : ["following"];
+}
+
+function scanHasConfiguredSources(context: ScanContext): boolean {
+  const enabledSources = resolveEnabledSources(context.enabledSources);
+  return (
+    context.keywords.length > 0 ||
+    (enabledSources.includes("lists") && context.engageListIds.length > 0) ||
+    (enabledSources.includes("watched") && context.watchedHandles.length > 0) ||
+    (enabledSources.includes("search") && context.searchKeywords.length > 0)
+  );
 }
 
 /**
@@ -77,8 +105,8 @@ function selectWatchedHandlesForScan(handles: string[]): string[] {
 
 /**
  * Merge candidate lists giving priority to the highest-intent source when the
- * same tweet appears in more than one (watched > list > following), then cap
- * at MAX_CANDIDATES total.
+ * same tweet appears in more than one (watched > list > search > following),
+ * then cap at MAX_CANDIDATES total.
  */
 function dedupeCandidates(bySourcePriority: TimelineTweet[][]): TimelineTweet[] {
   const merged = new Map<string, TimelineTweet>();
@@ -112,14 +140,24 @@ export const scanUser = internalAction({
     if (!context) return;
 
     try {
-      if (context.keywords.length === 0) {
+      if (!scanHasConfiguredSources(context)) {
         await ctx.runMutation(internal.scanner.recordScanResult, {
           userId,
           resultCount: 0,
-          error: "Add at least one topic keyword to scan your feed.",
+          error:
+            "Add topic keywords, discovery search terms, engage lists, or watched accounts to scan.",
         });
         return;
       }
+
+      const filterCtx = await ctx.runQuery(internal.opportunities.scanFilterContext, {
+        userId,
+      });
+      const feedFilterContext = {
+        repliedTweetIds: new Set(filterCtx.repliedTweetIds),
+        dismissedAuthors: filterCtx.dismissedAuthors,
+        now: filterCtx.now,
+      };
 
       await ctx.runMutation(internal.opportunities.reconcileIrrelevant, {
         userId,
@@ -142,10 +180,111 @@ export const scanUser = internalAction({
         candidates = fetched.tweets;
       }
 
+      const eligible = candidates.filter(
+        (t) =>
+          !shouldExcludeCandidate(
+            {
+              tweetId: t.tweetId,
+              authorHandle: t.authorHandle,
+              text: t.text,
+              replies: t.replies,
+              source: t.source,
+              isReply: t.isReply,
+            },
+            feedFilterContext
+          )
+      );
+
       const now = Date.now();
-      const items = candidates.map((t) => {
+
+      const nicheContext = await ctx.runQuery(internal.scannerSemantic.nicheContext, {
+        userId,
+      });
+      const semanticCache = await ctx.runQuery(
+        internal.scannerSemantic.semanticCacheByTweetIds,
+        {
+          userId,
+          tweetIds: eligible.map((t) => t.tweetId),
+        }
+      );
+
+      const candidateMeta = eligible.map((t) => {
         const ageMinutes = Math.max(1, (now - t.postedAt) / 60_000);
-        const relevance = topicRelevanceForKeywords(t.text, context.keywords);
+        const keywordScore = topicRelevanceForKeywords(t.text, context.keywords);
+        return {
+          tweet: t,
+          ageMinutes,
+          keywordScore,
+          velocity: velocityPerHour({ ...t, ageMinutes }),
+        };
+      });
+
+      const classifyTargets = selectSemanticClassificationTargets(
+        candidateMeta.map((m) => ({
+          tweetId: m.tweet.tweetId,
+          text: m.tweet.text,
+          source: m.tweet.source,
+          keywordScore: m.keywordScore,
+          velocity: m.velocity,
+        }))
+      );
+
+      const needFreshClassify = classifyTargets.filter((t) => {
+        const cached = semanticCache[t.tweetId];
+        const fp = fingerprintText(t.text);
+        if (
+          cached &&
+          cached.textFingerprint === fp &&
+          now - cached.semanticClassifiedAt < SEMANTIC_CACHE_MS
+        ) {
+          return false;
+        }
+        return true;
+      });
+
+      const freshSemanticScores =
+        needFreshClassify.length > 0
+          ? await ctx.runAction(internal.semanticActions.classifyBatch, {
+              isDemo: context.isDemo,
+              nicheContext,
+              tweets: needFreshClassify.map((t) => ({
+                tweetId: t.tweetId,
+                text: t.text,
+              })),
+            })
+          : {};
+
+      const semanticByTweetId = new Map<
+        string,
+        { relevance: number; classifiedAt: number }
+      >();
+      for (const target of classifyTargets) {
+        const fp = fingerprintText(target.text);
+        const cached = semanticCache[target.tweetId];
+        if (
+          cached &&
+          cached.textFingerprint === fp &&
+          now - cached.semanticClassifiedAt < SEMANTIC_CACHE_MS
+        ) {
+          semanticByTweetId.set(target.tweetId, {
+            relevance: cached.semanticRelevance,
+            classifiedAt: cached.semanticClassifiedAt,
+          });
+          continue;
+        }
+        const fresh = freshSemanticScores[target.tweetId];
+        if (fresh) {
+          semanticByTweetId.set(target.tweetId, {
+            relevance: fresh.relevance,
+            classifiedAt: now,
+          });
+        }
+      }
+
+      const items = candidateMeta.map(({ tweet: t, ageMinutes, keywordScore }) => {
+        const semantic = semanticByTweetId.get(t.tweetId);
+        const semanticScore = semantic?.relevance ?? 0;
+        const topicRelevance = combineTopicRelevance(keywordScore, semanticScore);
         const score = scoreConversation({
           followers: t.authorFollowers,
           likes: t.likes,
@@ -153,9 +292,19 @@ export const scanUser = internalAction({
           replies: t.replies,
           quotes: t.quotes,
           ageMinutes,
-          topicRelevance: relevance,
+          topicRelevance,
           source: t.source,
+          goal: context.goal,
         });
+        const adjustedScore = applySaturatedThreadPenalty(
+          applyRankingMultiplier(score.value, {
+            source: t.source,
+            authorFollowers: t.authorFollowers,
+          }, normalizeRankingWeights(context.rankingWeights)),
+          t.replies,
+          t.source
+        );
+        const fp = fingerprintText(t.text);
         return {
           tweetId: t.tweetId,
           tweetUrl: `https://x.com/${t.authorHandle}/status/${t.tweetId}`,
@@ -163,34 +312,42 @@ export const scanUser = internalAction({
           authorName: t.authorName,
           authorFollowers: t.authorFollowers,
           text: t.text,
-          score: score.value,
-          reason: score.reason,
+          score: adjustedScore,
+          reason: augmentScoreReason(score.reason, keywordScore, semanticScore),
           suggestedAngle: suggestAngle(t),
           replyCount: t.replies,
           velocity: velocityPerHour({ ...t, ageMinutes }),
           postedAt: t.postedAt,
           source: t.source,
           sourceLabel: t.sourceLabel,
+          keywordRelevance: keywordScore,
+          semanticRelevance: semantic ? semanticScore : undefined,
+          topicRelevance,
+          semanticClassifiedAt: semantic?.classifiedAt,
+          textFingerprint: semantic ? fp : undefined,
         };
       });
 
-      const worthSurfacing = items
-        .filter(
-          (i) =>
-            passesFeedScannerFilter(i.text, context.keywords) &&
-            i.score >= MIN_OPPORTUNITY_SCORE
-        )
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 12);
+      const worthSurfacing = limitPerAuthor(
+        items
+          .filter(
+            (i) =>
+              passesCombinedFeedFilter(
+                i.text,
+                context.keywords,
+                i.keywordRelevance ?? 0,
+                i.semanticRelevance ?? 0,
+                i.source
+              ) && i.score >= MIN_OPPORTUNITY_SCORE
+          )
+          .sort((a, b) => b.score - a.score)
+      );
 
       await ctx.runMutation(internal.opportunities.upsertMany, {
         userId,
         items: worthSurfacing,
       });
-      await ctx.runMutation(internal.opportunities.pruneStale, {
-        userId,
-        activeTweetIds: worthSurfacing.map((i) => i.tweetId),
-      });
+      await ctx.runMutation(internal.opportunities.pruneStale, { userId });
 
       await ctx.runMutation(internal.scanner.recordScanResult, {
         userId,
@@ -322,6 +479,21 @@ async function collectCandidates(
     }
   }
 
+  const search: TimelineTweet[] = [];
+  if (enabledSources.includes("search") && context.searchKeywords.length > 0) {
+    const terms = context.searchKeywords.slice(0, MAX_SEARCH_KEYWORDS_PER_SCAN);
+    for (const term of terms) {
+      attempted = true;
+      const fetched = await fetchSearchTweets(term, accessToken);
+      if (fetched.error) {
+        firstError = firstError ?? fetched.error;
+      } else {
+        succeeded = true;
+        search.push(...fetched.tweets);
+      }
+    }
+  }
+
   if (attempted && !succeeded) {
     return {
       tweets: [],
@@ -329,7 +501,7 @@ async function collectCandidates(
     };
   }
 
-  return { tweets: dedupeCandidates([watched, lists, following]) };
+  return { tweets: dedupeCandidates([watched, lists, search, following]) };
 }
 
 /** Demo-mode mirror of collectCandidates — deterministic, no network calls. */
@@ -337,6 +509,7 @@ function collectDemoCandidates(context: {
   engageListIds: string[];
   engageListNames: string[];
   watchedHandles: string[];
+  searchKeywords: string[];
   enabledSources: EnabledSource[];
 }): TimelineTweet[] {
   const enabledSources = resolveEnabledSources(context.enabledSources);
@@ -381,7 +554,23 @@ function collectDemoCandidates(context: {
       ).map((t) => ({ ...toTimelineTweet(t), source: "watched" as const }))
     : [];
 
-  return dedupeCandidates([watched, lists, following]);
+  const search: TimelineTweet[] = [];
+  if (enabledSources.includes("search")) {
+    const terms =
+      context.searchKeywords.length > 0
+        ? context.searchKeywords.slice(0, MAX_SEARCH_KEYWORDS_PER_SCAN)
+        : ["ai"];
+    for (const term of terms) {
+      search.push(
+        ...demoSearchTweets(term).map((t) => ({
+          ...toTimelineTweet(t),
+          source: "search" as const,
+        }))
+      );
+    }
+  }
+
+  return dedupeCandidates([watched, lists, search, following]);
 }
 
 type XTimelineResponse = {
@@ -390,6 +579,7 @@ type XTimelineResponse = {
     text: string;
     author_id: string;
     created_at: string;
+    referenced_tweets?: Array<{ type: string; id: string }>;
     public_metrics: {
       like_count: number;
       retweet_count: number;
@@ -409,18 +599,36 @@ type XTimelineResponse = {
 
 /** Shared tweet.fields/expansions/user.fields params for all X read endpoints below. */
 function setSharedTweetParams(url: URL): void {
-  url.searchParams.set("tweet.fields", "public_metrics,created_at,author_id");
+  url.searchParams.set(
+    "tweet.fields",
+    "public_metrics,created_at,author_id,referenced_tweets"
+  );
   url.searchParams.set("expansions", "author_id");
   url.searchParams.set("user.fields", "public_metrics,username,name");
+}
+
+function isRetweetOrReply(t: {
+  text: string;
+  referenced_tweets?: Array<{ type: string; id: string }>;
+}): { exclude: boolean; isReply: boolean } {
+  const refs = t.referenced_tweets ?? [];
+  if (refs.some((r) => r.type === "retweeted")) {
+    return { exclude: true, isReply: false };
+  }
+  const isReply = refs.some((r) => r.type === "replied_to");
+  return { exclude: isReply, isReply };
 }
 
 function mapTweetsResponse(json: XTimelineResponse): Omit<TimelineTweet, "source" | "sourceLabel">[] {
   const authors = new Map(
     (json.includes?.users ?? []).map((u) => [u.id, u] as const)
   );
-  return (json.data ?? []).map((t) => {
+  const mapped: Omit<TimelineTweet, "source" | "sourceLabel">[] = [];
+  for (const t of json.data ?? []) {
+    const kind = isRetweetOrReply(t);
+    if (kind.exclude) continue;
     const author = authors.get(t.author_id);
-    return {
+    mapped.push({
       tweetId: t.id,
       authorHandle: author?.username ?? "unknown",
       authorName: author?.name ?? "Unknown",
@@ -431,8 +639,10 @@ function mapTweetsResponse(json: XTimelineResponse): Omit<TimelineTweet, "source
       retweets: t.public_metrics.retweet_count,
       replies: t.public_metrics.reply_count,
       quotes: t.public_metrics.quote_count,
-    };
-  });
+      isReply: kind.isReply,
+    });
+  }
+  return mapped;
 }
 
 async function fetchXTimeline(
@@ -534,6 +744,41 @@ async function fetchHandleTweets(
   const json = (await res.json()) as XTimelineResponse;
   return {
     tweets: mapTweetsResponse(json).map((t) => ({ ...t, source: "watched" as const })),
+  };
+}
+
+/** Recent tweets matching a discovery keyword (original posts only). */
+async function fetchSearchTweets(
+  keyword: string,
+  accessToken: string
+): Promise<{ tweets: TimelineTweet[]; error?: string }> {
+  const url = new URL("https://api.x.com/2/tweets/search/recent");
+  url.searchParams.set("query", `${keyword} -is:retweet -is:reply lang:en`);
+  url.searchParams.set("max_results", "10");
+  setSharedTweetParams(url);
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error("X search fetch failed", { status: res.status, body, keyword });
+    if (res.status === 401 || res.status === 403) {
+      return {
+        tweets: [],
+        error: "X denied search access. Reconnect your account in Settings.",
+      };
+    }
+    return {
+      tweets: [],
+      error: `Could not search for "${keyword}" (${res.status}). Try again shortly.`,
+    };
+  }
+
+  const json = (await res.json()) as XTimelineResponse;
+  return {
+    tweets: mapTweetsResponse(json).map((t) => ({ ...t, source: "search" as const })),
   };
 }
 

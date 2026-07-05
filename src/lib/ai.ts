@@ -4,6 +4,13 @@ import { z } from "zod";
 import { env, hasAnthropicKey } from "./env";
 import type { TweetBundle } from "./x";
 import type { VoiceStyle } from "../../shared/voice";
+import {
+  goalCategoryBias,
+  goalGenerationLean,
+  QUOTE_CATEGORIES,
+  REPLY_CATEGORIES,
+  type GoalId,
+} from "../../shared/onboarding";
 
 let anthropic: Anthropic | null = null;
 function client(): Anthropic {
@@ -13,26 +20,9 @@ function client(): Anthropic {
 
 export type Usage = { tokensIn: number; tokensOut: number };
 
-export const QUOTE_CATEGORIES = [
-  "contrarian",
-  "educational",
-  "story",
-  "founder",
-  "ux",
-  "humorous",
-  "prediction",
-  "question",
-  "data-driven",
-] as const;
-
-export const REPLY_CATEGORIES = [
-  "short",
-  "insightful",
-  "debate",
-  "friendly",
-  "question",
-  "agreement-plus",
-] as const;
+// Generation categories live in shared/onboarding.ts (goal biases are
+// validated against them); re-exported here for existing importers.
+export { QUOTE_CATEGORIES, REPLY_CATEGORIES };
 
 export const REWRITE_DIRECTIONS = [
   "shorter",
@@ -189,6 +179,8 @@ export async function generateOptions(args: {
   analysis: Analysis;
   voice: VoiceStyle | null;
   voiceExamples: string[];
+  /** The user's onboarding goal — leans tone and category choice. */
+  goal?: GoalId | null;
   count?: number;
   avoidContents?: string[];
   /** Claude model override; falls back to ANTHROPIC_GENERATE_MODEL. */
@@ -197,12 +189,17 @@ export async function generateOptions(args: {
   const count = args.count ?? 3;
   if (!hasAnthropicKey()) {
     return {
-      options: demoOptions(args.kind, args.bundle, args.analysis, count, args.voice),
+      options: demoOptions(args.kind, args.bundle, args.analysis, count, args.voice, args.goal),
       usage: { tokensIn: 0, tokensOut: 0 },
     };
   }
 
   const categories = args.kind === "quote" ? QUOTE_CATEGORIES : REPLY_CATEGORIES;
+  const lean = goalGenerationLean(args.goal);
+  const bias = goalCategoryBias(args.goal, args.kind);
+  const goalBlock = lean
+    ? `\n${lean}${bias.length > 0 ? ` When they fit this conversation, prefer the ${bias.join(", ")} categories.` : ""}\n`
+    : "";
   const avoid =
     args.avoidContents && args.avoidContents.length > 0
       ? `\nAlready generated (produce clearly different options):\n${args.avoidContents
@@ -226,7 +223,7 @@ export async function generateOptions(args: {
 - Missing angles: ${args.analysis.missingAngles.join(" | ")}
 
 ${voiceInstructions(args.voice, args.voiceExamples)}
-
+${goalBlock}
 Generate exactly ${count} ${args.kind === "quote" ? "quote tweets" : "replies"}, each from a different category (choose the ${count} best-fitting from: ${categories.join(", ")}). Each must take one of the missing angles or add something genuinely new — never restate what the top replies already said. Keep each under 280 characters. No hashtags unless this person's voice uses them.${avoid}`,
       },
     ],
@@ -453,7 +450,8 @@ function demoOptions(
   bundle: TweetBundle,
   analysis: Analysis,
   count: number,
-  voice: VoiceStyle | null
+  voice: VoiceStyle | null,
+  goal?: GoalId | null
 ): GeneratedOption[] {
   const topic = analysis.topic.replace(/[."]+$/, "").toLowerCase();
   const emoji = voice?.emojiUse === "frequent" ? " 👇" : "";
@@ -493,7 +491,16 @@ function demoOptions(
             reason: "Predictions invite quote-tweet debates and age into proof-of-judgment.",
           },
         ];
-  return all.slice(0, count);
+  // Deterministic goal bias: options in the goal's preferred categories
+  // surface first, mirroring the real model's category preference.
+  const bias = goalCategoryBias(goal, kind);
+  const ordered =
+    bias.length > 0
+      ? [...all].sort(
+          (a, b) => Number(bias.includes(b.category)) - Number(bias.includes(a.category))
+        )
+      : all;
+  return ordered.slice(0, count);
 }
 
 function demoRewrite(text: string, direction: RewriteDirection): string {

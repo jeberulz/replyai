@@ -3,8 +3,12 @@ import {
   buildSetupChecklist,
   DEFAULT_KEYWORDS,
   GOALS,
+  goalCategoryBias,
+  goalGenerationLean,
   goalLabel,
   isGoalId,
+  QUOTE_CATEGORIES,
+  REPLY_CATEGORIES,
   suggestedKeywordsForGoal,
 } from "../shared/onboarding";
 
@@ -103,5 +107,30 @@ describe("buildSetupChecklist", () => {
     });
     expect(checklist.percent).toBe(100);
     expect(checklist.complete).toBe(true);
+  });
+});
+
+describe("goal → generation guidance", () => {
+  it("provides a non-empty lean for every goal, empty without one", () => {
+    for (const goal of GOALS) {
+      expect(goalGenerationLean(goal.id).length).toBeGreaterThan(20);
+    }
+    expect(goalGenerationLean(null)).toBe("");
+    expect(goalGenerationLean(undefined)).toBe("");
+  });
+
+  it("biases only toward real generation categories", () => {
+    for (const goal of GOALS) {
+      for (const kind of ["reply", "quote"] as const) {
+        const bias = goalCategoryBias(goal.id, kind);
+        const valid: readonly string[] =
+          kind === "reply" ? REPLY_CATEGORIES : QUOTE_CATEGORIES;
+        expect(bias.length).toBeGreaterThanOrEqual(2);
+        for (const category of bias) {
+          expect(valid).toContain(category);
+        }
+      }
+    }
+    expect(goalCategoryBias(null, "reply")).toEqual([]);
   });
 });

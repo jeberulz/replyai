@@ -34,6 +34,9 @@ function sourceNote(opportunity: Opportunity): string | null {
   if (opportunity.source === "watched") {
     return "Watched account";
   }
+  if (opportunity.source === "search") {
+    return "From search";
+  }
   return null;
 }
 

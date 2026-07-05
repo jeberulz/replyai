@@ -1,7 +1,43 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { requireUser } from "./helpers";
 import { voiceStyle } from "./schema";
+import {
+  buildVoiceStyleFromTweets,
+  mergeVoiceExamples,
+} from "../shared/voice";
+
+/**
+ * The learning loop: every published reply/quote is text the user approved
+ * as their own voice, so fold it into the default profile's examples
+ * (newest-first, deduped, capped) — these feed every generation prompt.
+ * Trained profiles also get their measured style refreshed from the updated
+ * example set; manually-authored styles are left untouched.
+ * Called from drafts.markResult at the single point where drafts become
+ * "published" (immediate, scheduled, and demo publishes all funnel there).
+ */
+export async function learnFromSentText(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  sentText: string
+): Promise<void> {
+  if (sentText.trim().length === 0) return;
+  const profiles = await ctx.db
+    .query("voiceProfiles")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+  const profile = profiles.find((p) => p.isDefault) ?? profiles[0];
+  if (!profile) return;
+
+  const examples = mergeVoiceExamples(profile.examples, sentText);
+  await ctx.db.patch(profile._id, {
+    examples,
+    ...(profile.source === "trained"
+      ? { style: buildVoiceStyleFromTweets(examples) }
+      : {}),
+  });
+}
 
 export const list = query({
   args: { sessionToken: v.string() },

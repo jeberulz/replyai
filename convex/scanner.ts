@@ -52,6 +52,7 @@ export const updateSettings = mutation({
     sessionToken: v.string(),
     enabled: v.boolean(),
     keywords: v.array(v.string()),
+    searchKeywords: v.optional(v.array(v.string())),
     engageListIds: v.optional(v.array(v.string())),
     engageListNames: v.optional(v.array(v.string())),
     watchedHandles: v.optional(v.array(v.string())),
@@ -63,6 +64,7 @@ export const updateSettings = mutation({
       sessionToken,
       enabled,
       keywords,
+      searchKeywords,
       engageListIds,
       engageListNames,
       watchedHandles,
@@ -78,10 +80,15 @@ export const updateSettings = mutation({
     if (normalizedHandles && normalizedHandles.length > 50) {
       throw new Error("You can watch at most 50 accounts.");
     }
+    const normalizedSearch = searchKeywords?.map((k) => k.trim().toLowerCase()).filter(Boolean);
+    if (normalizedSearch && normalizedSearch.length > 12) {
+      throw new Error("You can use at most 12 discovery search terms.");
+    }
 
     const patch = {
       enabled,
       keywords,
+      ...(normalizedSearch !== undefined ? { searchKeywords: normalizedSearch } : {}),
       ...(engageListIds !== undefined ? { engageListIds } : {}),
       ...(engageListNames !== undefined ? { engageListNames } : {}),
       ...(normalizedHandles !== undefined
@@ -123,8 +130,17 @@ export const importEngageLists = mutation({
       .query("scannerSettings")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
+    const enabledSources: EnabledSource[] = row?.enabledSources?.length
+      ? row.enabledSources.includes("lists")
+        ? row.enabledSources
+        : [...row.enabledSources, "lists"]
+      : ["following", "lists"];
     if (row) {
-      await ctx.db.patch(row._id, { engageListIds, engageListNames });
+      await ctx.db.patch(row._id, {
+        engageListIds,
+        engageListNames,
+        enabledSources,
+      });
     } else {
       await ctx.db.insert("scannerSettings", {
         userId: user._id,
@@ -132,6 +148,7 @@ export const importEngageLists = mutation({
         keywords: [],
         engageListIds,
         engageListNames,
+        enabledSources,
       });
     }
   },
@@ -199,8 +216,10 @@ export const scanContext = internalQuery({
     return {
       xUserId: user.xUserId,
       isDemo: user.isDemo,
-      keywords: settingsRow?.keywords ?? [],
-      accessToken: tokenRow?.accessToken ?? null,
+      goal: user.goal,
+    keywords: settingsRow?.keywords ?? [],
+    searchKeywords: settingsRow?.searchKeywords ?? [],
+    accessToken: tokenRow?.accessToken ?? null,
       refreshToken: tokenRow?.refreshToken ?? null,
       expiresAt: tokenRow?.expiresAt ?? 0,
       scope: tokenRow?.scope ?? "",
@@ -212,6 +231,7 @@ export const scanContext = internalQuery({
       enabledSources: (settingsRow?.enabledSources && settingsRow.enabledSources.length > 0
         ? settingsRow.enabledSources
         : ["following"]) as EnabledSource[],
+      rankingWeights: settingsRow?.rankingWeights ?? null,
     };
   },
 });
