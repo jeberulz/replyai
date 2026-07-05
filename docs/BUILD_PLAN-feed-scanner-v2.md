@@ -178,9 +178,9 @@ badge is visible on cards.
 
 ---
 
-## Phase 2 — Quality filters (P1, not yet built)
+## Phase 2 — Quality filters (P1)
 
-**Status: planned.**
+**Status: implemented.**
 
 **Goal:** TweetHunter-style clean feed — less noise, no repeats.
 
@@ -199,9 +199,9 @@ entry, 1 request/keyword/scan, merged with `source: "search"`.
 **Exit criteria:** re-opening the feed after replying to a tweet does not
 resurface it; dismissed authors stay hidden for the cooldown period.
 
-## Phase 3 — Semantic relevance (P2, not yet built)
+## Phase 3 — Semantic relevance (P2)
 
-**Status: planned.**
+**Status: implemented.**
 
 Cheap classifier pass in a Convex node action (Anthropic Haiku) using user
 keywords + voice-profile topics + recent `tweetAnalyses.topic` values.
@@ -215,9 +215,9 @@ not all raw candidates.
 matches without an exact keyword hit; political content with a generic
 keyword is still filtered.
 
-## Phase 4 — Research Agent v1 (P3, not yet built)
+## Phase 4 — Research Agent v1 (P3)
 
-**Status: planned.**
+**Status: implemented.**
 
 New tables `researchProfiles` and `researchRuns` in
 [convex/schema.ts](../convex/schema.ts). New `convex/researchActions.ts`:
@@ -233,18 +233,18 @@ rate-limited to 3 runs/user/day. Suggest only — no auto-follow/DM/reply.
 **Exit criteria:** a query returns ranked profiles; clicking Watch adds the
 handle to `watchedHandles`, and the next scanner cycle surfaces its tweets.
 
-## Phase 5 — Outcome feedback loop (P4, not yet built)
+## Phase 5 — Outcome feedback loop (P4, built)
 
-**Status: planned.**
+**Status: complete.**
 
 Per [STRATEGY.md](../STRATEGY.md) track 4 — ranking improves from real
-send/response data. Extend `opportunities` with `outcome`
+send/response data. `opportunities` extended with `outcome`
 (`ignored`/`analyzed`/`sent`/`responded`) and timestamps, set on
-analyze-open, publish, and (optionally, v1.1) a weekly reply-thread poll.
-Weekly internal mutation computes conversion rates by source/follower
-band/score decile, stored as per-user `rankingWeights` and applied as an
-internal multiplier in `scoreConversation` — **never shown as an ML % to the
-user**. Dashboard surfaces the opportunity → analyze conversion rate.
+dismiss, analyze-open, and publish. Weekly internal mutation computes
+conversion rates by source/follower band/score decile, stored as per-user
+`rankingWeights` and applied as an internal multiplier during scan scoring —
+**never shown as an ML % to the user**. Dashboard stat strip surfaces
+opportunity → analyze conversion for the current month.
 
 **Exit criteria:** funnel events are stored; list-sourced opportunities that
 convert rank higher after two weeks of data (manual verification in dev).

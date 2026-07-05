@@ -1,6 +1,19 @@
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
-import { passesOpportunityRelevance } from "../shared/scoring";
+import type { Id } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
+import {
+  DISMISSED_AUTHOR_COOLDOWN_MS,
+  isAuthorInCooldown,
+  normalizeHandle,
+  pruneExpiredDismissedAuthors,
+} from "../shared/feedFilters";
+import { opportunityStillRelevant } from "../shared/semanticRelevance";
 import { requireUser } from "./helpers";
 
 export const list = query({
@@ -12,6 +25,10 @@ export const list = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
     const keywords = settings?.keywords ?? [];
+    const dismissedAuthors = pruneExpiredDismissedAuthors(
+      settings?.dismissedAuthors ?? []
+    );
+    const repliedIds = await repliedTweetIdsForUser(ctx, user._id);
 
     const rows = await ctx.db
       .query("opportunities")
@@ -20,8 +37,16 @@ export const list = query({
       )
       .collect();
     return rows
-      .filter((opp) =>
-        passesOpportunityRelevance(opp.text, keywords, opp.source)
+      .filter(
+        (opp) =>
+          !repliedIds.has(opp.tweetId) &&
+          !isAuthorInCooldown(opp.authorHandle, dismissedAuthors) &&
+          opportunityStillRelevant(
+            opp.text,
+            keywords,
+            opp.source,
+            opp.topicRelevance
+          )
       )
       .sort((a, b) => b.score - a.score)
       .slice(0, limit ?? 20);
@@ -34,7 +59,57 @@ export const dismiss = mutation({
     const user = await requireUser(ctx, sessionToken);
     const opp = await ctx.db.get(opportunityId);
     if (!opp || opp.userId !== user._id) throw new Error("Not found");
-    await ctx.db.patch(opportunityId, { status: "dismissed" });
+    await ctx.db.patch(opportunityId, {
+      status: "dismissed",
+      outcome: "ignored",
+    });
+
+    const settings = await ctx.db
+      .query("scannerSettings")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!settings) return;
+
+    const now = Date.now();
+    const handle = normalizeHandle(opp.authorHandle);
+    const pruned = pruneExpiredDismissedAuthors(settings.dismissedAuthors ?? [], now);
+    const dismissedAuthors = [
+      ...pruned.filter((a) => normalizeHandle(a.handle) !== handle),
+      { handle, until: now + DISMISSED_AUTHOR_COOLDOWN_MS },
+    ];
+    await ctx.db.patch(settings._id, { dismissedAuthors });
+  },
+});
+
+/** Tweet IDs the user already published a reply/quote to. */
+async function repliedTweetIdsForUser(
+  ctx: QueryCtx,
+  userId: Id<"users">
+): Promise<Set<string>> {
+  const drafts = await ctx.db
+    .query("savedDrafts")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+  const ids = drafts
+    .filter((d) => d.status === "published" && d.targetTweetId)
+    .map((d) => d.targetTweetId as string);
+  return new Set(ids);
+}
+
+export const scanFilterContext = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const settings = await ctx.db
+      .query("scannerSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    const now = Date.now();
+    const dismissedAuthors = pruneExpiredDismissedAuthors(
+      settings?.dismissedAuthors ?? [],
+      now
+    );
+    const repliedTweetIds = [...(await repliedTweetIdsForUser(ctx, userId))];
+    return { dismissedAuthors, repliedTweetIds, now };
   },
 });
 
@@ -55,7 +130,10 @@ export const pruneStale = internalMutation({
       .collect();
     for (const row of rows) {
       if (row.postedAt < cutoff) {
-        await ctx.db.patch(row._id, { status: "dismissed" });
+        await ctx.db.patch(row._id, {
+          status: "dismissed",
+          outcome: row.outcome ?? "ignored",
+        });
       }
     }
   },
@@ -75,8 +153,15 @@ export const reconcileIrrelevant = internalMutation({
       )
       .collect();
     for (const row of rows) {
-      if (!passesOpportunityRelevance(row.text, keywords, row.source)) {
-        await ctx.db.patch(row._id, { status: "dismissed" });
+      if (
+        !opportunityStillRelevant(
+          row.text,
+          keywords,
+          row.source,
+          row.topicRelevance
+        )
+      ) {
+        await ctx.db.patch(row._id, { status: "dismissed", outcome: "ignored" });
       }
     }
   },
@@ -108,6 +193,11 @@ export const upsertMany = internalMutation({
           )
         ),
         sourceLabel: v.optional(v.string()),
+        keywordRelevance: v.optional(v.number()),
+        semanticRelevance: v.optional(v.number()),
+        topicRelevance: v.optional(v.number()),
+        semanticClassifiedAt: v.optional(v.number()),
+        textFingerprint: v.optional(v.string()),
       })
     ),
   },
@@ -133,6 +223,11 @@ export const upsertMany = internalMutation({
           status: "new",
           source: item.source,
           sourceLabel: item.sourceLabel,
+          keywordRelevance: item.keywordRelevance,
+          semanticRelevance: item.semanticRelevance,
+          topicRelevance: item.topicRelevance,
+          semanticClassifiedAt: item.semanticClassifiedAt,
+          textFingerprint: item.textFingerprint,
         });
       } else {
         await ctx.db.insert("opportunities", {
@@ -143,5 +238,28 @@ export const upsertMany = internalMutation({
         });
       }
     }
+  },
+});
+
+/** Mark opportunity as sent when a reply publishes to its tweet. */
+export const markSentByTweet = internalMutation({
+  args: {
+    userId: v.id("users"),
+    tweetId: v.string(),
+  },
+  handler: async (ctx, { userId, tweetId }) => {
+    const opp = await ctx.db
+      .query("opportunities")
+      .withIndex("by_user_tweet", (q) =>
+        q.eq("userId", userId).eq("tweetId", tweetId)
+      )
+      .unique();
+    if (!opp) return;
+    const now = Date.now();
+    await ctx.db.patch(opp._id, {
+      outcome: "sent",
+      sentAt: now,
+      analyzedAt: opp.analyzedAt ?? now,
+    });
   },
 });

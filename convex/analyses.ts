@@ -58,7 +58,11 @@ export const start = mutation({
       )
       .unique();
     if (opp && opp.status === "new") {
-      await ctx.db.patch(opp._id, { status: "analyzed" });
+      await ctx.db.patch(opp._id, {
+        status: "analyzed",
+        outcome: "analyzed",
+        analyzedAt: Date.now(),
+      });
     }
     const now = Date.now();
     const analysisId = await ctx.db.insert("tweetAnalyses", {

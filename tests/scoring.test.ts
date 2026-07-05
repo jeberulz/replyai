@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  SCORE_WEIGHTS,
   isPoliticalContent,
   parseTweetUrl,
   passesFeedScannerFilter,
@@ -170,11 +171,12 @@ describe("passesOpportunityRelevance", () => {
     expect(passesOpportunityRelevance(offTopic, keywords, "watched")).toBe(true);
   });
 
-  it("applies keyword filter for following and search sources", () => {
+  it("bypasses keyword filter for search sources", () => {
+    expect(passesOpportunityRelevance(offTopic, keywords, "search")).toBe(true);
+  });
+
+  it("applies keyword filter for following source", () => {
     expect(passesOpportunityRelevance(offTopic, keywords, "following")).toBe(
-      false
-    );
-    expect(passesOpportunityRelevance(offTopic, keywords, "search")).toBe(
       false
     );
     expect(
@@ -198,5 +200,62 @@ describe("velocityPerHour", () => {
         ageMinutes: 60,
       })
     ).toBe(120);
+  });
+});
+
+describe("goal-aware score weights", () => {
+  const base = {
+    followers: 900,
+    likes: 40,
+    retweets: 8,
+    replies: 12,
+    quotes: 3,
+    ageMinutes: 45,
+  };
+
+  it("every weight set sums to 1", () => {
+    for (const [goal, w] of Object.entries(SCORE_WEIGHTS)) {
+      const sum =
+        w.audienceSize + w.replyTiming + w.growthVelocity + w.topicRelevance;
+      expect(sum, `weights for ${goal}`).toBeCloseTo(1, 6);
+    }
+  });
+
+  it("keeps topicRelevance the heaviest factor for every goal", () => {
+    for (const w of Object.values(SCORE_WEIGHTS)) {
+      expect(w.topicRelevance).toBeGreaterThanOrEqual(w.audienceSize);
+      expect(w.topicRelevance).toBeGreaterThanOrEqual(w.replyTiming);
+      expect(w.topicRelevance).toBeGreaterThanOrEqual(w.growthVelocity);
+    }
+  });
+
+  it("no goal behaves exactly like the default weights", () => {
+    const withUndefined = scoreConversation({ ...base, topicRelevance: 0.8 });
+    expect(withUndefined.value).toBe(
+      scoreConversation({ ...base, topicRelevance: 0.8, goal: undefined }).value
+    );
+  });
+
+  it("leads ranks a perfect-fit small account above what audience-goal gives it", () => {
+    // Small author, on-topic: worth more when hunting leads than reach.
+    const onTopicSmall = { ...base, followers: 900, topicRelevance: 1 };
+    const leads = scoreConversation({ ...onTopicSmall, goal: "leads" });
+    const audience = scoreConversation({ ...onTopicSmall, goal: "audience" });
+    expect(leads.value).toBeGreaterThan(audience.value);
+  });
+
+  it("audience goal rewards big-author momentum more than leads does", () => {
+    const viralOffNiche = {
+      ...base,
+      followers: 2_000_000,
+      likes: 4000,
+      retweets: 900,
+      replies: 700,
+      quotes: 300,
+      topicRelevance: 0.4,
+    };
+    const audience = scoreConversation({ ...viralOffNiche, goal: "audience" });
+    const leads = scoreConversation({ ...viralOffNiche, goal: "leads" });
+    expect(audience.value).toBeGreaterThan(leads.value);
   });
 });

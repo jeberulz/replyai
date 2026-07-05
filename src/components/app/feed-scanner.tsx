@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useQuery } from "convex/react";
 import { Download, Loader2, Plus, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
+import {
+  FRESH_AGE_MS,
+  HIGH_VELOCITY_THRESHOLD,
+} from "../../../shared/feedFilters";
 import {
   fetchOwnedListsAction,
   saveEngageListsAction,
   scanNowAction,
   updateEnabledSourcesAction,
   updateScannerAction,
+  updateSearchKeywordsAction,
   updateWatchedHandlesAction,
 } from "@/app/actions";
 import { useSessionToken } from "@/components/app/convex-provider";
@@ -46,6 +51,16 @@ const SOURCE_ROWS: { source: EnabledSource; label: string }[] = [
   { source: "following", label: "Following timeline" },
   { source: "lists", label: "Engage lists" },
   { source: "watched", label: "Watched accounts" },
+  { source: "search", label: "Keyword search" },
+];
+
+type QuickFilter = "all" | "watched" | "fresh" | "velocity";
+
+const QUICK_FILTERS: { id: QuickFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "watched", label: "Watched only" },
+  { id: "fresh", label: "< 1h old" },
+  { id: "velocity", label: "High velocity" },
 ];
 
 export function FeedScanner() {
@@ -59,19 +74,55 @@ export function FeedScanner() {
     sessionToken ? { sessionToken } : "skip"
   );
   const [draftKeywords, setDraftKeywords] = useState<string | null>(null);
+  const [draftSearchKeywords, setDraftSearchKeywords] = useState<string | null>(null);
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
   const [scanning, setScanning] = useState(false);
+  const [freshNowMs, setFreshNowMs] = useState(0);
   const [pending, startTransition] = useTransition();
   const scanBaselineRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (quickFilter !== "fresh") return;
+    setFreshNowMs(Date.now());
+    const id = window.setInterval(() => setFreshNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, [quickFilter]);
 
   const savedKeywords = settings?.keywords.join(", ") ?? "";
   const keywords = draftKeywords ?? savedKeywords;
   const keywordsDirty = draftKeywords !== null && draftKeywords !== savedKeywords;
+
+  const savedSearchKeywords = settings?.searchKeywords?.join(", ") ?? "";
+  const searchKeywords = draftSearchKeywords ?? savedSearchKeywords;
+  const searchKeywordsDirty =
+    draftSearchKeywords !== null && draftSearchKeywords !== savedSearchKeywords;
 
   const parsedKeywords = () =>
     keywords
       .split(",")
       .map((k) => k.trim())
       .filter(Boolean);
+
+  const parsedSearchKeywords = () =>
+    searchKeywords
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+
+  const filteredOpportunities = useMemo(() => {
+    if (!opportunities) return undefined;
+    return opportunities.filter((opp) => {
+      if (quickFilter === "watched") return opp.source === "watched";
+      if (quickFilter === "fresh") {
+        const now = freshNowMs || Date.now();
+        return now - opp.postedAt < FRESH_AGE_MS;
+      }
+      if (quickFilter === "velocity") {
+        return (opp.velocity ?? 0) >= HIGH_VELOCITY_THRESHOLD;
+      }
+      return true;
+    });
+  }, [opportunities, quickFilter, freshNowMs]);
 
   const beginScanTracking = () => {
     scanBaselineRef.current = settings?.lastScanAt ?? 0;
@@ -125,6 +176,14 @@ export function FeedScanner() {
         keywords: parsedKeywords(),
       });
       setDraftKeywords(null);
+    });
+  };
+
+  const saveSearchKeywords = () => {
+    startTransition(async () => {
+      await updateSearchKeywordsAction(parsedSearchKeywords());
+      setDraftSearchKeywords(null);
+      toast.success("Discovery search terms saved");
     });
   };
 
@@ -292,8 +351,33 @@ export function FeedScanner() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Comma-separated. Only tweets matching at least one keyword are
-              surfaced — off-topic posts are excluded even if they&apos;re viral.
+              Comma-separated filter keywords. Following-timeline tweets must
+              match at least one — list, watched, and search sources use their
+              own discovery rules.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="search-keywords">Discovery search terms</Label>
+            <div className="flex gap-2">
+              <Input
+                id="search-keywords"
+                value={searchKeywords}
+                placeholder="ai agents, startup growth"
+                onChange={(e) => setDraftSearchKeywords(e.target.value)}
+                disabled={scanning}
+              />
+              <Button
+                variant="outline"
+                onClick={saveSearchKeywords}
+                disabled={busy || !searchKeywordsDirty}
+              >
+                Save
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Used when the Keyword search source is on — up to 3 terms queried
+              per scan via X recent search.
             </p>
           </div>
 
@@ -471,29 +555,59 @@ export function FeedScanner() {
               </p>
             )}
           </div>
+
+          {enabledSources.includes("search") &&
+            (settings?.searchKeywords?.length ?? 0) === 0 && (
+              <p className="text-xs text-warning border-t border-border pt-4">
+                Add discovery search terms above for keyword search to work.
+              </p>
+            )}
         </CardContent>
       </Card>
 
       <div className="space-y-4">
-        <h2 className="font-mono text-xs uppercase tracking-[0.14em] text-primary">
-          Opportunities{" "}
-          {!scanning && opportunities !== undefined && `(${opportunities.length})`}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-mono text-xs uppercase tracking-[0.14em] text-primary">
+            Opportunities{" "}
+            {!scanning &&
+              filteredOpportunities !== undefined &&
+              `(${filteredOpportunities.length}${quickFilter !== "all" && opportunities ? ` of ${opportunities.length}` : ""})`}
+          </h2>
+          {opportunities && opportunities.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {QUICK_FILTERS.map((f) => (
+                <Button
+                  key={f.id}
+                  type="button"
+                  size="sm"
+                  variant={quickFilter === f.id ? "default" : "outline"}
+                  className="h-7 px-2.5 text-xs"
+                  onClick={() => setQuickFilter(f.id)}
+                  disabled={scanning}
+                >
+                  {f.label}
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {scanning ? (
           <FeedScanProgress
             keywords={parsedKeywords()}
             enabledSources={enabledSources}
           />
-        ) : opportunities === undefined ? (
+        ) : filteredOpportunities === undefined ? (
           <>
             <Skeleton className="h-48 w-full" />
             <Skeleton className="h-48 w-full" />
           </>
-        ) : opportunities.length === 0 ? (
+        ) : filteredOpportunities.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              {settings?.lastScanError ? (
+              {quickFilter !== "all" && (opportunities?.length ?? 0) > 0 ? (
+                <p>No opportunities match this filter. Try &ldquo;All&rdquo;.</p>
+              ) : settings?.lastScanError ? (
                 <p className="text-destructive">{settings.lastScanError}</p>
               ) : settings?.lastScanAt ? (
                 <p>
@@ -515,7 +629,7 @@ export function FeedScanner() {
               pending && "opacity-60"
             )}
           >
-            {opportunities.map((opp) => (
+            {filteredOpportunities.map((opp) => (
               <OpportunityCard
                 key={opp._id}
                 opportunity={{

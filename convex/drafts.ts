@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { requireUser } from "./helpers";
+import { learnFromSentText } from "./voiceProfiles";
 
 const publishModeValidator = v.optional(
   v.union(
@@ -167,6 +168,14 @@ export const markResult = internalMutation({
         publishedAt: Date.now(),
         ...(publishMode ? { publishMode } : {}),
       });
+      // Learning loop: the sent text is user-approved voice ground truth.
+      await learnFromSentText(ctx, draft.userId, draft.text);
+      if (draft.targetTweetId) {
+        await ctx.runMutation(internal.opportunities.markSentByTweet, {
+          userId: draft.userId,
+          tweetId: draft.targetTweetId,
+        });
+      }
     } else {
       await ctx.db.patch(draftId, { status: "failed", error });
     }

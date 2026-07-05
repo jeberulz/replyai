@@ -22,6 +22,12 @@ export function StatStrip() {
 
   const items: Array<[string, string | number]> = [
     [
+      "Opp → analyze",
+      stats.opportunityToAnalyzeRate === null
+        ? "—"
+        : `${stats.opportunityToAnalyzeRate}%`,
+    ],
+    [
       "No edits",
       stats.noEditRate === null ? "—" : `${stats.noEditRate}%`,
     ],

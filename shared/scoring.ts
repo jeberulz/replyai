@@ -6,6 +6,8 @@
  * plain-language reason instead of fake-precision engagement predictions.
  */
 
+import type { GoalId } from "./onboarding";
+
 export type OpportunitySource = "following" | "list" | "watched" | "search";
 
 export type EngagementInput = {
@@ -20,6 +22,8 @@ export type EngagementInput = {
   topicRelevance?: number;
   /** Where this conversation was discovered. Curated sources get a scoring bonus. */
   source?: OpportunitySource;
+  /** Onboarding goal — shifts factor weights (relevance stays weighted highest). */
+  goal?: GoalId;
 };
 
 export type ScoreFactors = {
@@ -38,6 +42,48 @@ export type ConversationScore = {
 function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
+
+/**
+ * Factor weights per onboarding goal. Every set keeps topicRelevance
+ * weighted highest (timing/velocity alone must never surface off-topic
+ * tweets), but the goal shifts the rest:
+ * - audience: reach and momentum matter more — visibility comes from being
+ *   early in threads that are blowing up under big accounts.
+ * - leads: topic fit dominates and author size matters least — a perfect-fit
+ *   conversation with a 900-follower buyer beats a viral off-topic thread.
+ * - authority: topic fit and being early in the conversation — authority is
+ *   built by being the reference reply in your niche, not by chasing reach.
+ * Weights sum to 1 (tested).
+ */
+export const SCORE_WEIGHTS: Record<
+  GoalId | "default",
+  ScoreFactors
+> = {
+  default: {
+    audienceSize: 0.15,
+    replyTiming: 0.25,
+    growthVelocity: 0.25,
+    topicRelevance: 0.35,
+  },
+  audience: {
+    audienceSize: 0.22,
+    replyTiming: 0.22,
+    growthVelocity: 0.26,
+    topicRelevance: 0.3,
+  },
+  leads: {
+    audienceSize: 0.08,
+    replyTiming: 0.25,
+    growthVelocity: 0.22,
+    topicRelevance: 0.45,
+  },
+  authority: {
+    audienceSize: 0.1,
+    replyTiming: 0.3,
+    growthVelocity: 0.18,
+    topicRelevance: 0.42,
+  },
+};
 
 export function scoreConversation(input: EngagementInput): ConversationScore {
   const ageMinutes = Math.max(1, input.ageMinutes);
@@ -64,13 +110,13 @@ export function scoreConversation(input: EngagementInput): ConversationScore {
     growthVelocity,
   };
 
-  // Relevance weighted highest — timing/velocity alone must not surface off-topic tweets.
+  const weights = SCORE_WEIGHTS[input.goal ?? "default"];
   let value =
     100 *
-    (0.15 * audienceSize +
-      0.25 * replyTiming +
-      0.25 * growthVelocity +
-      0.35 * topicRelevance);
+    (weights.audienceSize * audienceSize +
+      weights.replyTiming * replyTiming +
+      weights.growthVelocity * growthVelocity +
+      weights.topicRelevance * topicRelevance);
 
   // Curated sources (an explicit list or a handle the user chose to watch) are
   // an intentional signal beyond the raw home-feed firehose — worth a flat bonus.
@@ -214,7 +260,7 @@ export function passesOpportunityRelevance(
   keywords: string[],
   source?: OpportunitySource
 ): boolean {
-  if (source === "list" || source === "watched") return true;
+  if (source === "list" || source === "watched" || source === "search") return true;
   return passesFeedScannerFilter(text, keywords);
 }
 

@@ -24,8 +24,12 @@ import {
   type TweetBundle,
 } from "@/lib/x";
 import { DEMO_TWEETS } from "../../shared/demoData";
-import { isGoalId } from "../../shared/onboarding";
-import { parseTweetUrl, scoreConversation } from "../../shared/scoring";
+import { isGoalId, type GoalId } from "../../shared/onboarding";
+import {
+  parseTweetUrl,
+  scoreConversation,
+  topicRelevanceForKeywords,
+} from "../../shared/scoring";
 import { refreshAccessToken } from "../../shared/xOAuth";
 import { buildVoiceStyleFromTweets, type VoiceStyle } from "../../shared/voice";
 
@@ -72,17 +76,24 @@ function bundleFromAnalysis(analysis: Doc<"tweetAnalyses">): TweetBundle {
 }
 
 /**
- * Resolve which Claude model to generate with: explicit per-request override
- * → the user's saved default → undefined (env-configured default in ai.ts).
+ * Per-user generation preferences, resolved in one users.me read:
+ * - model: explicit per-request override → saved default → undefined
+ *   (env-configured default in ai.ts)
+ * - goal: the onboarding goal, which leans generation tone + categories
  */
-async function resolveModel(
+async function resolveGenerationPrefs(
   sessionToken: string,
   override?: string
-): Promise<string | undefined> {
-  if (override && isKnownModel(override)) return override;
+): Promise<{ model: string | undefined; goal: GoalId | undefined }> {
   const me = await convexServer().query(api.users.me, { sessionToken });
   const saved = me?.defaultModel;
-  return saved && isKnownModel(saved) ? saved : undefined;
+  const model =
+    override && isKnownModel(override)
+      ? override
+      : saved && isKnownModel(saved)
+        ? saved
+        : undefined;
+  return { model, goal: me?.goal };
 }
 
 async function defaultVoice(
@@ -154,6 +165,20 @@ export async function startAnalysisAction(input: {
       replySettings = bundle.replySettings;
     }
 
+    // Score manual analyzes with the same signals the scanner uses: niche
+    // keywords drive topicRelevance and the onboarding goal picks the factor
+    // weights. A keyword miss counts as "no signal" (0.5 default), not
+    // irrelevance — the user chose this tweet deliberately, and their
+    // keyword list is narrower than their actual interests.
+    const convex = convexServer();
+    const [me, scannerSettings] = await Promise.all([
+      convex.query(api.users.me, { sessionToken }),
+      convex.query(api.scanner.settings, { sessionToken }),
+    ]);
+    const keywords = scannerSettings?.keywords ?? [];
+    const keywordRelevance =
+      keywords.length > 0 ? topicRelevanceForKeywords(bundle.text, keywords) : 0;
+
     const score = scoreConversation({
       followers: bundle.authorFollowers,
       likes: bundle.likes,
@@ -161,9 +186,11 @@ export async function startAnalysisAction(input: {
       replies: bundle.replies,
       quotes: bundle.quotes,
       ageMinutes: (Date.now() - bundle.postedAt) / 60_000,
+      topicRelevance: keywordRelevance > 0 ? keywordRelevance : undefined,
+      goal: me?.goal,
     });
 
-    const analysisId = await convexServer().mutation(api.analyses.start, {
+    const analysisId = await convex.mutation(api.analyses.start, {
       sessionToken,
       ...(input.projectId
         ? { projectId: input.projectId as Id<"projects"> }
@@ -261,7 +288,7 @@ export async function continueAnalysisAction(
     const { profile } = await defaultVoice(sessionToken);
     const voice = (profile?.style as VoiceStyle | undefined) ?? null;
     const examples = profile?.examples ?? [];
-    const model = await resolveModel(sessionToken);
+    const { model, goal } = await resolveGenerationPrefs(sessionToken);
 
     const generateKind = async (kind: "reply" | "quote") => {
       if (existing.some((r) => r.kind === kind)) return;
@@ -271,6 +298,7 @@ export async function continueAnalysisAction(
         analysis,
         voice,
         voiceExamples: examples,
+        goal,
         model,
       });
       await convex.mutation(api.replies.insertMany, {
@@ -337,7 +365,7 @@ export async function generateMoreAction(args: {
     analysisId,
   });
   const { profile } = await defaultVoice(sessionToken, args.voiceProfileId);
-  const model = await resolveModel(sessionToken, args.model);
+  const { model, goal } = await resolveGenerationPrefs(sessionToken, args.model);
 
   const bundle = bundleFromAnalysis(analysis);
   const result = await generateOptions({
@@ -352,6 +380,7 @@ export async function generateMoreAction(args: {
     },
     voice: (profile?.style as VoiceStyle | undefined) ?? null,
     voiceExamples: profile?.examples ?? [],
+    goal,
     avoidContents: existing
       .filter((r) => r.kind === args.kind)
       .map((r) => r.content),
@@ -402,7 +431,7 @@ export async function rewriteAction(args: {
   if (!reply) throw new Error("Reply not found");
 
   const { profile } = await defaultVoice(sessionToken, reply.voiceProfileId);
-  const model = await resolveModel(sessionToken, reply.model);
+  const { model } = await resolveGenerationPrefs(sessionToken, reply.model);
   const result = await rewriteText({
     text: reply.content,
     direction: direction as RewriteDirection,
@@ -692,6 +721,7 @@ export async function deleteVoiceProfileAction(profileId: string) {
 export async function updateScannerAction(args: {
   enabled: boolean;
   keywords: string[];
+  searchKeywords?: string[];
 }) {
   const { sessionToken } = await requireSession();
   const convex = convexServer();
@@ -699,10 +729,26 @@ export async function updateScannerAction(args: {
     sessionToken,
     enabled: args.enabled,
     keywords: args.keywords,
+    ...(args.searchKeywords !== undefined
+      ? { searchKeywords: args.searchKeywords }
+      : {}),
   });
   if (args.enabled) {
     await convex.mutation(api.scanner.scanNow, { sessionToken });
   }
+  revalidatePath("/feed");
+}
+
+export async function updateSearchKeywordsAction(searchKeywords: string[]) {
+  const { sessionToken } = await requireSession();
+  const convex = convexServer();
+  const current = await convex.query(api.scanner.settings, { sessionToken });
+  await convex.mutation(api.scanner.updateSettings, {
+    sessionToken,
+    enabled: current?.enabled ?? false,
+    keywords: current?.keywords ?? [],
+    searchKeywords,
+  });
   revalidatePath("/feed");
 }
 
@@ -771,6 +817,43 @@ export async function updateEnabledSourcesAction(sources: string[]) {
     )[],
   });
   revalidatePath("/feed");
+}
+
+// ---------------------------------------------------------------------------
+// Research agent
+// ---------------------------------------------------------------------------
+
+export async function runResearchAction(args: {
+  query: string;
+  seedHandle?: string;
+}): Promise<string> {
+  const { sessionToken } = await requireSession();
+  const runId = await convexServer().mutation(api.research.startRun, {
+    sessionToken,
+    query: args.query,
+    seedHandle: args.seedHandle,
+  });
+  revalidatePath("/research");
+  return runId;
+}
+
+export async function watchResearchProfileAction(profileId: string) {
+  const { sessionToken } = await requireSession();
+  await convexServer().mutation(api.research.watchProfile, {
+    sessionToken,
+    profileId: profileId as Id<"researchProfiles">,
+  });
+  revalidatePath("/research");
+  revalidatePath("/feed");
+}
+
+export async function passResearchProfileAction(profileId: string) {
+  const { sessionToken } = await requireSession();
+  await convexServer().mutation(api.research.passProfile, {
+    sessionToken,
+    profileId: profileId as Id<"researchProfiles">,
+  });
+  revalidatePath("/research");
 }
 
 // ---------------------------------------------------------------------------

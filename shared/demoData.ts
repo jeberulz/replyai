@@ -169,3 +169,123 @@ export function demoListTweets(listId: string): DemoTweet[] {
       return [];
   }
 }
+
+/** Demo tweets matching a discovery search keyword. */
+export function demoSearchTweets(keyword: string): DemoTweet[] {
+  const q = keyword.trim().toLowerCase();
+  if (!q) return [];
+  return DEMO_TWEETS.filter(
+    (t) =>
+      t.text.toLowerCase().includes(q) ||
+      t.authorHandle.toLowerCase().includes(q) ||
+      t.authorBio.toLowerCase().includes(q)
+  ).slice(0, 5);
+}
+
+export type DemoResearchProfile = {
+  handle: string;
+  displayName: string;
+  bio: string;
+  followers: number;
+  avgLikes: number;
+  postFrequency: string;
+  topicTags: string[];
+  score: number;
+  reason: string;
+  exampleTweets: { tweetId: string; text: string; likes: number }[];
+};
+
+/** Fixed profiles for demo research runs — no X/Anthropic required. */
+export function demoResearchProfiles(query: string): DemoResearchProfile[] {
+  const q = query.toLowerCase();
+  const pick = (handle: string): DemoTweet | undefined =>
+    DEMO_TWEETS.find((t) => t.authorHandle === handle);
+
+  const profiles: DemoResearchProfile[] = [
+    {
+      handle: "sarahbuilds",
+      displayName: pick("sarahbuilds")?.authorName ?? "Sarah Chen",
+      bio: pick("sarahbuilds")?.authorBio ?? "",
+      followers: pick("sarahbuilds")?.authorFollowers ?? 184000,
+      avgLikes: 2100,
+      postFrequency: "Active this week",
+      topicTags: ["ai", "startup"],
+      score: 88,
+      reason:
+        "Posts sharp AI product takes with high engagement — good for thoughtful replies in your niche.",
+      exampleTweets: DEMO_TWEETS.filter((t) => t.authorHandle === "sarahbuilds")
+        .slice(0, 1)
+        .map((t) => ({ tweetId: t.id, text: t.text, likes: t.likes })),
+    },
+    {
+      handle: "priyaml",
+      displayName: pick("priyaml")?.authorName ?? "Dr. Priya Nair",
+      bio: pick("priyaml")?.authorBio ?? "",
+      followers: pick("priyaml")?.authorFollowers ?? 310000,
+      avgLikes: 3200,
+      postFrequency: "Active this week",
+      topicTags: ["ai", "ml"],
+      score: 85,
+      reason:
+        "Research-grade ML commentary — strong audience, threads stay open long enough to add a credible angle.",
+      exampleTweets: DEMO_TWEETS.filter((t) => t.authorHandle === "priyaml")
+        .slice(0, 1)
+        .map((t) => ({ tweetId: t.id, text: t.text, likes: t.likes })),
+    },
+    {
+      handle: "marcusship",
+      displayName: pick("marcusship")?.authorName ?? "Marcus Rivera",
+      bio: pick("marcusship")?.authorBio ?? "",
+      followers: pick("marcusship")?.authorFollowers ?? 52000,
+      avgLikes: 900,
+      postFrequency: "Active this week",
+      topicTags: ["startup", "build"],
+      score: 79,
+      reason:
+        "Indie builder with fast-shipping stories — reply-friendly threads, mid-size audience.",
+      exampleTweets: DEMO_TWEETS.filter((t) => t.authorHandle === "marcusship")
+        .slice(0, 1)
+        .map((t) => ({ tweetId: t.id, text: t.text, likes: t.likes })),
+    },
+    {
+      handle: "lenacodes",
+      displayName: pick("lenacodes")?.authorName ?? "Lena Fischer",
+      bio: pick("lenacodes")?.authorBio ?? "",
+      followers: pick("lenacodes")?.authorFollowers ?? 27000,
+      avgLikes: 1800,
+      postFrequency: "Occasional poster",
+      topicTags: ["engineering", "product"],
+      score: 74,
+      reason:
+        "Pragmatic engineering posts — contrarian angles perform well in her replies.",
+      exampleTweets: DEMO_TWEETS.filter((t) => t.authorHandle === "lenacodes")
+        .slice(0, 1)
+        .map((t) => ({ tweetId: t.id, text: t.text, likes: t.likes })),
+    },
+    {
+      handle: "alexvc",
+      displayName: pick("alexvc")?.authorName ?? "Alex Kim",
+      bio: pick("alexvc")?.authorBio ?? "",
+      followers: pick("alexvc")?.authorFollowers ?? 145000,
+      avgLikes: 1400,
+      postFrequency: "Active this week",
+      topicTags: ["ai", "saas"],
+      score: 72,
+      reason:
+        "Investor-founder lens on AI roadmaps — good for adding a builder's perspective.",
+      exampleTweets: DEMO_TWEETS.filter((t) => t.authorHandle === "alexvc")
+        .slice(0, 1)
+        .map((t) => ({ tweetId: t.id, text: t.text, likes: t.likes })),
+    },
+  ];
+
+  if (!q) return profiles;
+  const filtered = profiles.filter(
+    (p) =>
+      p.topicTags.some((t) => q.includes(t)) ||
+      p.bio.toLowerCase().includes(q) ||
+      p.displayName.toLowerCase().includes(q) ||
+      p.reason.toLowerCase().includes(q)
+  );
+  return filtered.length > 0 ? filtered : profiles;
+}
