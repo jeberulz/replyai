@@ -208,6 +208,16 @@ export function passesFeedScannerFilter(
   );
 }
 
+/** Relevance gate for surfacing opportunities — curated sources skip keyword matching. */
+export function passesOpportunityRelevance(
+  text: string,
+  keywords: string[],
+  source?: OpportunitySource
+): boolean {
+  if (source === "list" || source === "watched") return true;
+  return passesFeedScannerFilter(text, keywords);
+}
+
 /** Engagement events per hour since posting. */
 export function velocityPerHour(input: {
   likes: number;

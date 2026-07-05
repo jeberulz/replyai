@@ -26,6 +26,7 @@ import {
 import { DEMO_TWEETS } from "../../shared/demoData";
 import { isGoalId } from "../../shared/onboarding";
 import { parseTweetUrl, scoreConversation } from "../../shared/scoring";
+import { refreshAccessToken } from "../../shared/xOAuth";
 import { buildVoiceStyleFromTweets, type VoiceStyle } from "../../shared/voice";
 
 async function requireSession() {
@@ -34,11 +35,31 @@ async function requireSession() {
   return session;
 }
 
-async function xAccessToken(sessionToken: string): Promise<string | null> {
-  const auth = await convexServer().query(api.users.xAuthForSession, {
-    sessionToken,
-  });
-  return auth?.accessToken ?? null;
+async function resolveXAccessToken(sessionToken: string): Promise<string | null> {
+  const convex = convexServer();
+  const auth = await convex.query(api.users.xAuthForSession, { sessionToken });
+  if (!auth || auth.isDemo || auth.expiresAt === 0) return null;
+
+  if (auth.expiresAt > Date.now()) {
+    return auth.accessToken;
+  }
+
+  if (!auth.refreshToken) return null;
+
+  try {
+    const refreshed = await refreshAccessToken(auth.refreshToken);
+    await convex.mutation(api.users.persistXTokensFromSession, {
+      sessionToken,
+      accessToken: refreshed.accessToken,
+      refreshToken: refreshed.refreshToken,
+      expiresAt: refreshed.expiresAt,
+      scope: refreshed.scope || auth.scope,
+    });
+    return refreshed.accessToken;
+  } catch (error) {
+    console.error("X token refresh failed:", error);
+    return null;
+  }
 }
 
 function bundleFromAnalysis(analysis: Doc<"tweetAnalyses">): TweetBundle {
@@ -122,13 +143,13 @@ export async function startAnalysisAction(input: {
         authorFollowers,
       });
       if (urlTweetId) {
-        const accessToken = await xAccessToken(sessionToken);
+        const accessToken = await resolveXAccessToken(sessionToken);
         if (accessToken) {
           replySettings = await fetchTweetReplySettings(urlTweetId, accessToken);
         }
       }
     } else {
-      const accessToken = await xAccessToken(sessionToken);
+      const accessToken = await resolveXAccessToken(sessionToken);
       bundle = await fetchTweetBundle(urlTweetId as string, accessToken);
       replySettings = bundle.replySettings;
     }
@@ -600,7 +621,8 @@ export async function trainVoiceAction(name: string) {
   const { sessionToken } = await requireSession();
   const convex = convexServer();
   const auth = await convex.query(api.users.xAuthForSession, { sessionToken });
-  const tweets = await fetchUserTweets(auth?.xUserId ?? "", auth?.accessToken ?? null);
+  const accessToken = await resolveXAccessToken(sessionToken);
+  const tweets = await fetchUserTweets(auth?.xUserId ?? "", accessToken);
   const style = buildVoiceStyleFromTweets(tweets);
   await convex.mutation(api.voiceProfiles.create, {
     sessionToken,
@@ -709,7 +731,8 @@ export async function fetchOwnedListsAction(): Promise<{
   const auth = await convexServer().query(api.users.xAuthForSession, {
     sessionToken,
   });
-  return fetchOwnedLists(auth?.xUserId ?? "", auth?.accessToken ?? null);
+  const accessToken = await resolveXAccessToken(sessionToken);
+  return fetchOwnedLists(auth?.xUserId ?? "", accessToken);
 }
 
 export async function saveEngageListsAction(
@@ -804,7 +827,8 @@ export async function buildWritingModelAction(args: {
     }
   } else {
     const auth = await convex.query(api.users.xAuthForSession, { sessionToken });
-    tweets = await fetchUserTweets(auth?.xUserId ?? "", auth?.accessToken ?? null);
+    const accessToken = await resolveXAccessToken(sessionToken);
+    tweets = await fetchUserTweets(auth?.xUserId ?? "", accessToken);
   }
   // fetchUserTweets falls back to sample tweets without X credentials —
   // tell the UI so it can say so instead of implying we read the account.

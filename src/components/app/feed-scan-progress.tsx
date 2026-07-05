@@ -1,28 +1,61 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Radar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-const STEPS = [
-  "Pulling posts from your X timeline…",
-  "Filtering for your focus topics…",
-  "Scoring reply windows and velocity…",
-  "Surfacing the best opportunities…",
-] as const;
+type EnabledSource = "following" | "lists" | "watched" | "search";
 
-export function FeedScanProgress({ keywords }: { keywords: string[] }) {
+function buildScanSteps(enabledSources: EnabledSource[]): string[] {
+  const sourceSteps: string[] = [];
+
+  if (enabledSources.includes("following")) {
+    sourceSteps.push("Pulling posts from your following timeline…");
+  }
+  if (enabledSources.includes("lists")) {
+    sourceSteps.push("Checking your engage lists…");
+  }
+  if (enabledSources.includes("watched")) {
+    sourceSteps.push("Reading watched accounts…");
+  }
+  if (enabledSources.includes("search")) {
+    sourceSteps.push("Searching recent posts for your topics…");
+  }
+  if (sourceSteps.length === 0) {
+    sourceSteps.push("Pulling posts from your X timeline…");
+  }
+
+  return [
+    ...sourceSteps,
+    "Filtering for your focus topics…",
+    "Scoring reply windows and velocity…",
+    "Surfacing the best opportunities…",
+  ];
+}
+
+export function FeedScanProgress({
+  keywords,
+  enabledSources = ["following"],
+}: {
+  keywords: string[];
+  enabledSources?: readonly EnabledSource[];
+}) {
+  const steps = useMemo(
+    () => buildScanSteps([...enabledSources]),
+    [enabledSources]
+  );
   const [stepIndex, setStepIndex] = useState(0);
+  const activeStepIndex = stepIndex % steps.length;
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setStepIndex((i) => (i + 1) % STEPS.length);
+      setStepIndex((i) => i + 1);
     }, 2600);
     return () => window.clearInterval(id);
-  }, []);
+  }, [steps.length]);
 
-  const progress = ((stepIndex + 1) / STEPS.length) * 100;
+  const progress = ((activeStepIndex + 1) / steps.length) * 100;
 
   return (
     <Card className="overflow-hidden border-primary/25 bg-card">
@@ -45,10 +78,10 @@ export function FeedScanProgress({ keywords }: { keywords: string[] }) {
             Reading your feed
           </h3>
           <p
-            key={stepIndex}
+            key={activeStepIndex}
             className="mt-3 min-h-10 max-w-[28ch] text-sm leading-relaxed text-muted-foreground animate-in fade-in duration-300"
           >
-            {STEPS[stepIndex]}
+            {steps[activeStepIndex]}
           </p>
 
           {keywords.length > 0 && (
@@ -72,19 +105,19 @@ export function FeedScanProgress({ keywords }: { keywords: string[] }) {
               />
             </div>
             <div className="flex justify-between font-mono text-[0.65rem] uppercase tracking-wider text-muted-foreground">
-              {STEPS.map((label, i) => (
+              {steps.map((label, i) => (
                 <span
                   key={label}
                   className={cn(
                     "hidden sm:inline transition-colors duration-300",
-                    i <= stepIndex ? "text-primary" : "text-muted-foreground/60"
+                    i <= activeStepIndex ? "text-primary" : "text-muted-foreground/60"
                   )}
                 >
                   {i + 1}
                 </span>
               ))}
               <span className="sm:hidden text-primary">
-                Step {stepIndex + 1} of {STEPS.length}
+                Step {activeStepIndex + 1} of {steps.length}
               </span>
             </div>
           </div>

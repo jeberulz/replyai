@@ -5,7 +5,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalAction, type ActionCtx } from "./_generated/server";
 import {
-  passesFeedScannerFilter,
+  passesOpportunityRelevance,
   scoreConversation,
   topicRelevanceForKeywords,
   velocityPerHour,
@@ -61,6 +61,14 @@ function resolveEnabledSources(sources: EnabledSource[]): EnabledSource[] {
   return sources.length > 0 ? sources : ["following"];
 }
 
+function scanHasConfiguredSources(context: ScanContext): boolean {
+  const enabledSources = resolveEnabledSources(context.enabledSources);
+  return (
+    (enabledSources.includes("lists") && context.engageListIds.length > 0) ||
+    (enabledSources.includes("watched") && context.watchedHandles.length > 0)
+  );
+}
+
 /**
  * Watched-handle scans are capped at MAX_WATCHED_HANDLES_PER_SCAN to respect
  * X search rate limits. When more are configured, rotate the starting point
@@ -112,7 +120,7 @@ export const scanUser = internalAction({
     if (!context) return;
 
     try {
-      if (context.keywords.length === 0) {
+      if (context.keywords.length === 0 && !scanHasConfiguredSources(context)) {
         await ctx.runMutation(internal.scanner.recordScanResult, {
           userId,
           resultCount: 0,
@@ -177,7 +185,7 @@ export const scanUser = internalAction({
       const worthSurfacing = items
         .filter(
           (i) =>
-            passesFeedScannerFilter(i.text, context.keywords) &&
+            passesOpportunityRelevance(i.text, context.keywords, i.source) &&
             i.score >= MIN_OPPORTUNITY_SCORE
         )
         .sort((a, b) => b.score - a.score)
@@ -187,10 +195,7 @@ export const scanUser = internalAction({
         userId,
         items: worthSurfacing,
       });
-      await ctx.runMutation(internal.opportunities.pruneStale, {
-        userId,
-        activeTweetIds: worthSurfacing.map((i) => i.tweetId),
-      });
+      await ctx.runMutation(internal.opportunities.pruneStale, { userId });
 
       await ctx.runMutation(internal.scanner.recordScanResult, {
         userId,

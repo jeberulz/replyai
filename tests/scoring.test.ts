@@ -3,6 +3,7 @@ import {
   isPoliticalContent,
   parseTweetUrl,
   passesFeedScannerFilter,
+  passesOpportunityRelevance,
   scoreConversation,
   topicRelevanceForKeywords,
   velocityPerHour,
@@ -153,6 +154,36 @@ describe("topicRelevanceForKeywords", () => {
       "US users are willing to pay $20–$40+/month for AI apps if the value is clear.";
     const keywords = ["ai", "startup", "founder", "build", "product"];
     expect(passesFeedScannerFilter(text, keywords)).toBe(true);
+  });
+});
+
+describe("passesOpportunityRelevance", () => {
+  const offTopic = "great pasta recipe tonight";
+  const keywords = ["ai", "startup"];
+
+  it("bypasses keyword filter for list sources", () => {
+    expect(passesOpportunityRelevance(offTopic, keywords, "list")).toBe(true);
+    expect(passesFeedScannerFilter(offTopic, keywords)).toBe(false);
+  });
+
+  it("bypasses keyword filter for watched sources", () => {
+    expect(passesOpportunityRelevance(offTopic, keywords, "watched")).toBe(true);
+  });
+
+  it("applies keyword filter for following and search sources", () => {
+    expect(passesOpportunityRelevance(offTopic, keywords, "following")).toBe(
+      false
+    );
+    expect(passesOpportunityRelevance(offTopic, keywords, "search")).toBe(
+      false
+    );
+    expect(
+      passesOpportunityRelevance("shipping our AI startup today", keywords, "following")
+    ).toBe(true);
+  });
+
+  it("applies keyword filter when source is omitted", () => {
+    expect(passesOpportunityRelevance(offTopic, keywords)).toBe(false);
   });
 });
 

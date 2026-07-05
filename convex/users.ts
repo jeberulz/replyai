@@ -163,7 +163,36 @@ export const xAuthForSession = query({
       isDemo: user.isDemo,
       accessToken:
         tokenRow && tokenRow.expiresAt > Date.now() ? tokenRow.accessToken : null,
+      refreshToken: tokenRow?.refreshToken,
+      expiresAt: tokenRow?.expiresAt ?? 0,
+      scope: tokenRow?.scope ?? "",
     };
+  },
+});
+
+/** Update stored X OAuth tokens after a refresh from a server action. */
+export const persistXTokensFromSession = mutation({
+  args: {
+    sessionToken: v.string(),
+    accessToken: v.string(),
+    refreshToken: v.optional(v.string()),
+    expiresAt: v.number(),
+    scope: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx, args.sessionToken);
+    const tokenRow = await ctx.db
+      .query("xTokens")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!tokenRow) return;
+
+    await ctx.db.patch(tokenRow._id, {
+      accessToken: args.accessToken,
+      refreshToken: args.refreshToken ?? tokenRow.refreshToken,
+      expiresAt: args.expiresAt,
+      scope: args.scope || tokenRow.scope,
+    });
   },
 });
 

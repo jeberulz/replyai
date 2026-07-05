@@ -40,6 +40,7 @@ const SCAN_TIMEOUT_MS = 45_000;
 type EnabledSource = "following" | "lists" | "watched" | "search";
 
 const DEFAULT_SOURCES: EnabledSource[] = ["following"];
+const MAX_ENGAGE_LISTS = 5;
 
 const SOURCE_ROWS: { source: EnabledSource; label: string }[] = [
   { source: "following", label: "Following timeline" },
@@ -174,9 +175,17 @@ export function FeedScanner() {
 
   const toggleListSelection = (id: string) => {
     setSelectedListIds((prev) => {
+      if (prev.has(id)) {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      }
+      if (prev.size >= MAX_ENGAGE_LISTS) {
+        toast.message(`You can import up to ${MAX_ENGAGE_LISTS} lists`);
+        return prev;
+      }
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.add(id);
       return next;
     });
   };
@@ -343,6 +352,12 @@ export function FeedScanner() {
               </div>
             )}
 
+            {enabledSources.includes("lists") && engageListIds.length === 0 && (
+              <p className="text-xs text-warning">
+                Import at least one list for this source to work.
+              </p>
+            )}
+
             {settings?.needsListScope ? (
               <p className="text-xs text-muted-foreground">
                 <a href="/api/auth/login" className="underline underline-offset-2">
@@ -368,6 +383,7 @@ export function FeedScanner() {
 
             {ownedLists !== null && (
               <div className="space-y-2 rounded-md border border-border p-3">
+                <p className="text-xs text-muted-foreground">Up to 5 lists.</p>
                 {ownedLists.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
                     No lists found on your X account.
@@ -449,6 +465,11 @@ export function FeedScanner() {
                 Add
               </Button>
             </div>
+            {enabledSources.includes("watched") && watchedHandles.length === 0 && (
+              <p className="text-xs text-warning">
+                Add at least one account to watch.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -460,7 +481,10 @@ export function FeedScanner() {
         </h2>
 
         {scanning ? (
-          <FeedScanProgress keywords={parsedKeywords()} />
+          <FeedScanProgress
+            keywords={parsedKeywords()}
+            enabledSources={enabledSources}
+          />
         ) : opportunities === undefined ? (
           <>
             <Skeleton className="h-48 w-full" />

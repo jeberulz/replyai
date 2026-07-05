@@ -123,8 +123,17 @@ export const importEngageLists = mutation({
       .query("scannerSettings")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
+    const enabledSources: EnabledSource[] = row?.enabledSources?.length
+      ? row.enabledSources.includes("lists")
+        ? row.enabledSources
+        : [...row.enabledSources, "lists"]
+      : ["following", "lists"];
     if (row) {
-      await ctx.db.patch(row._id, { engageListIds, engageListNames });
+      await ctx.db.patch(row._id, {
+        engageListIds,
+        engageListNames,
+        enabledSources,
+      });
     } else {
       await ctx.db.insert("scannerSettings", {
         userId: user._id,
@@ -132,6 +141,7 @@ export const importEngageLists = mutation({
         keywords: [],
         engageListIds,
         engageListNames,
+        enabledSources,
       });
     }
   },

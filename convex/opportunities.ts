@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
-import { passesFeedScannerFilter } from "../shared/scoring";
+import { passesOpportunityRelevance } from "../shared/scoring";
 import { requireUser } from "./helpers";
 
 export const list = query({
@@ -20,7 +20,9 @@ export const list = query({
       )
       .collect();
     return rows
-      .filter((opp) => passesFeedScannerFilter(opp.text, keywords))
+      .filter((opp) =>
+        passesOpportunityRelevance(opp.text, keywords, opp.source)
+      )
       .sort((a, b) => b.score - a.score)
       .slice(0, limit ?? 20);
   },
@@ -36,14 +38,15 @@ export const dismiss = mutation({
   },
 });
 
-/** Drop "new" opportunities that no longer qualify after a scan. */
+const STALE_OPPORTUNITY_AGE_MS = 8 * 60 * 60 * 1000;
+
+/** Drop "new" opportunities older than the reply window (8h). */
 export const pruneStale = internalMutation({
   args: {
     userId: v.id("users"),
-    activeTweetIds: v.array(v.string()),
   },
-  handler: async (ctx, { userId, activeTweetIds }) => {
-    const active = new Set(activeTweetIds);
+  handler: async (ctx, { userId }) => {
+    const cutoff = Date.now() - STALE_OPPORTUNITY_AGE_MS;
     const rows = await ctx.db
       .query("opportunities")
       .withIndex("by_user_status", (q) =>
@@ -51,7 +54,7 @@ export const pruneStale = internalMutation({
       )
       .collect();
     for (const row of rows) {
-      if (!active.has(row.tweetId)) {
+      if (row.postedAt < cutoff) {
         await ctx.db.patch(row._id, { status: "dismissed" });
       }
     }
@@ -72,7 +75,7 @@ export const reconcileIrrelevant = internalMutation({
       )
       .collect();
     for (const row of rows) {
-      if (!passesFeedScannerFilter(row.text, keywords)) {
+      if (!passesOpportunityRelevance(row.text, keywords, row.source)) {
         await ctx.db.patch(row._id, { status: "dismissed" });
       }
     }
@@ -118,7 +121,9 @@ export const upsertMany = internalMutation({
         )
         .unique();
       if (existing) {
-        if (existing.status === "analyzed") continue;
+        if (existing.status === "analyzed" || existing.status === "dismissed") {
+          continue;
+        }
         await ctx.db.patch(existing._id, {
           score: item.score,
           reason: item.reason,
