@@ -77,11 +77,16 @@ export default async function SettingsPage() {
               {user.plan} plan
             </Badge>
           </div>
-          <form action="/api/auth/logout" method="POST">
-            <Button variant="outline" type="submit">
-              Sign out
+          <div className="flex items-center gap-2">
+            <form action="/api/auth/logout" method="POST">
+              <Button variant="outline" type="submit">
+                Sign out
+              </Button>
+            </form>
+            <Button variant="ghost" asChild>
+              <a href="/onboarding?rerun=1">Redo onboarding</a>
             </Button>
-          </form>
+          </div>
         </CardContent>
       </Card>
 

@@ -96,6 +96,15 @@ export const upsertMany = internalMutation({
         replyCount: v.number(),
         velocity: v.number(),
         postedAt: v.number(),
+        source: v.optional(
+          v.union(
+            v.literal("following"),
+            v.literal("list"),
+            v.literal("watched"),
+            v.literal("search")
+          )
+        ),
+        sourceLabel: v.optional(v.string()),
       })
     ),
   },
@@ -117,6 +126,8 @@ export const upsertMany = internalMutation({
           velocity: item.velocity,
           scannedAt: now,
           status: "new",
+          source: item.source,
+          sourceLabel: item.sourceLabel,
         });
       } else {
         await ctx.db.insert("opportunities", {

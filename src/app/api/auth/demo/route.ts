@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "../../../../../convex/_generated/api";
 import { convexServer } from "@/lib/convex";
-import { ensureDefaults } from "@/lib/onboarding";
+import { ensureDefaults, postLoginPath } from "@/lib/onboarding";
 import { newSessionToken, setSessionCookie } from "@/lib/session";
 
 /**
@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
     });
     await setSessionCookie(sessionToken);
     await ensureDefaults(sessionToken);
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    const destination = await postLoginPath(sessionToken);
+    return NextResponse.redirect(new URL(destination, request.url));
   } catch (error) {
     console.error("Demo login failed:", error);
     return NextResponse.redirect(new URL("/?error=convex", request.url));

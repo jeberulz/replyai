@@ -2,10 +2,17 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useQuery } from "convex/react";
-import { Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { Download, Loader2, Plus, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
-import { scanNowAction, updateScannerAction } from "@/app/actions";
+import {
+  fetchOwnedListsAction,
+  saveEngageListsAction,
+  scanNowAction,
+  updateEnabledSourcesAction,
+  updateScannerAction,
+  updateWatchedHandlesAction,
+} from "@/app/actions";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { FeedScanProgress } from "@/components/app/feed-scan-progress";
 import {
@@ -13,6 +20,7 @@ import {
   type Opportunity,
 } from "@/components/app/opportunity-card";
 import { PageHeader } from "@/components/app/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,6 +36,16 @@ import { Switch } from "@/components/ui/switch";
 import { cn, timeAgo } from "@/lib/utils";
 
 const SCAN_TIMEOUT_MS = 45_000;
+
+type EnabledSource = "following" | "lists" | "watched" | "search";
+
+const DEFAULT_SOURCES: EnabledSource[] = ["following"];
+
+const SOURCE_ROWS: { source: EnabledSource; label: string }[] = [
+  { source: "following", label: "Following timeline" },
+  { source: "lists", label: "Engage lists" },
+  { source: "watched", label: "Watched accounts" },
+];
 
 export function FeedScanner() {
   const sessionToken = useSessionToken();
@@ -118,6 +136,91 @@ export function FeedScanner() {
 
   const busy = pending || scanning;
 
+  const enabledSources = settings?.enabledSources ?? DEFAULT_SOURCES;
+  const engageListIds = settings?.engageListIds ?? [];
+  const engageListNames = settings?.engageListNames ?? [];
+  const watchedHandles = settings?.watchedHandles ?? [];
+
+  const toggleSource = (source: EnabledSource, checked: boolean) => {
+    const next = checked
+      ? Array.from(new Set([...enabledSources, source]))
+      : enabledSources.filter((s) => s !== source);
+    startTransition(async () => {
+      await updateEnabledSourcesAction(next);
+    });
+  };
+
+  const [ownedLists, setOwnedLists] = useState<
+    { id: string; name: string }[] | null
+  >(null);
+  const [selectedListIds, setSelectedListIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [importing, setImporting] = useState(false);
+
+  const openImport = () => {
+    setImporting(true);
+    startTransition(async () => {
+      const result = await fetchOwnedListsAction();
+      setImporting(false);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      setOwnedLists(result.lists);
+      setSelectedListIds(new Set(engageListIds));
+    });
+  };
+
+  const toggleListSelection = (id: string) => {
+    setSelectedListIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const confirmListSelection = () => {
+    const lists = (ownedLists ?? []).filter((l) => selectedListIds.has(l.id));
+    startTransition(async () => {
+      await saveEngageListsAction(lists);
+      toast.success("Engage lists updated");
+      setOwnedLists(null);
+    });
+  };
+
+  const removeSavedList = (id: string) => {
+    const lists = engageListIds
+      .map((listId, i) => ({ id: listId, name: engageListNames[i] ?? listId }))
+      .filter((l) => l.id !== id);
+    startTransition(async () => {
+      await saveEngageListsAction(lists);
+    });
+  };
+
+  const [handleDraft, setHandleDraft] = useState("");
+
+  const addHandle = () => {
+    const handle = handleDraft.trim().replace(/^@/, "");
+    if (!handle) return;
+    const exists = watchedHandles.some(
+      (h) => h.toLowerCase() === handle.toLowerCase()
+    );
+    const next = exists ? watchedHandles : [...watchedHandles, handle];
+    startTransition(async () => {
+      await updateWatchedHandlesAction(next);
+    });
+    setHandleDraft("");
+  };
+
+  const removeHandle = (handle: string) => {
+    const next = watchedHandles.filter((h) => h !== handle);
+    startTransition(async () => {
+      await updateWatchedHandlesAction(next);
+    });
+  };
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
@@ -190,6 +293,163 @@ export function FeedScanner() {
             The scanner only suggests. Every reply requires your explicit click
             to send — permanently, by design. Nothing is ever auto-posted.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base">Sources</CardTitle>
+          <CardDescription>
+            Choose where the scanner looks for opportunities.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {SOURCE_ROWS.map((row) => (
+            <div key={row.source} className="flex items-center justify-between">
+              <Label htmlFor={`source-${row.source}`} className="font-normal">
+                {row.label}
+              </Label>
+              {settings === undefined ? (
+                <Skeleton className="h-5 w-9" />
+              ) : (
+                <Switch
+                  id={`source-${row.source}`}
+                  checked={enabledSources.includes(row.source)}
+                  onCheckedChange={(checked) => toggleSource(row.source, checked)}
+                  disabled={busy}
+                />
+              )}
+            </div>
+          ))}
+
+          <div className="space-y-2 border-t border-border pt-4">
+            <Label>Engage lists</Label>
+            {engageListNames.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {engageListNames.map((name, i) => (
+                  <Badge key={engageListIds[i] ?? name} variant="secondary" className="gap-1 pr-1">
+                    {name}
+                    <button
+                      type="button"
+                      onClick={() => removeSavedList(engageListIds[i])}
+                      disabled={busy}
+                      aria-label={`Remove ${name}`}
+                      className="rounded-full p-0.5 hover:bg-background/60"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {settings?.needsListScope ? (
+              <p className="text-xs text-muted-foreground">
+                <a href="/api/auth/login" className="underline underline-offset-2">
+                  Reconnect your X account
+                </a>{" "}
+                to import lists.
+              </p>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openImport}
+                disabled={importing || busy}
+              >
+                {importing ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Download />
+                )}
+                Import from X
+              </Button>
+            )}
+
+            {ownedLists !== null && (
+              <div className="space-y-2 rounded-md border border-border p-3">
+                {ownedLists.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No lists found on your X account.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {ownedLists.map((list) => (
+                      <label
+                        key={list.id}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedListIds.has(list.id)}
+                          onChange={() => toggleListSelection(list.id)}
+                          className="size-3.5"
+                        />
+                        {list.name}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" onClick={confirmListSelection} disabled={busy}>
+                    Save selection
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setOwnedLists(null)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2 border-t border-border pt-4">
+            <Label htmlFor="watched-handle">Watched accounts</Label>
+            {watchedHandles.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {watchedHandles.map((handle) => (
+                  <Badge key={handle} variant="secondary" className="gap-1 pr-1">
+                    @{handle}
+                    <button
+                      type="button"
+                      onClick={() => removeHandle(handle)}
+                      disabled={busy}
+                      aria-label={`Remove @${handle}`}
+                      className="rounded-full p-0.5 hover:bg-background/60"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Input
+                id="watched-handle"
+                value={handleDraft}
+                placeholder="@handle"
+                onChange={(e) => setHandleDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addHandle();
+                  }
+                }}
+                disabled={busy}
+              />
+              <Button
+                variant="outline"
+                onClick={addHandle}
+                disabled={busy || !handleDraft.trim()}
+              >
+                <Plus />
+                Add
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

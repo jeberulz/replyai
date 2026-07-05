@@ -38,6 +38,9 @@ export type SessionUser = {
   avatar?: string;
   plan: string;
   defaultModel?: string;
+  goal?: "audience" | "leads" | "authority";
+  onboardingCompletedAt?: number;
+  setupDismissedAt?: number;
   isDemo: boolean;
   createdAt: number;
   xConnected: boolean;

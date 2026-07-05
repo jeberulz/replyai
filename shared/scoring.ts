@@ -6,6 +6,8 @@
  * plain-language reason instead of fake-precision engagement predictions.
  */
 
+export type OpportunitySource = "following" | "list" | "watched" | "search";
+
 export type EngagementInput = {
   followers: number;
   likes: number;
@@ -16,6 +18,8 @@ export type EngagementInput = {
   ageMinutes: number;
   /** 0..1 how well the topic matches the user's interests. Defaults to 0.5 when omitted (manual analyze). */
   topicRelevance?: number;
+  /** Where this conversation was discovered. Curated sources get a scoring bonus. */
+  source?: OpportunitySource;
 };
 
 export type ScoreFactors = {
@@ -61,13 +65,20 @@ export function scoreConversation(input: EngagementInput): ConversationScore {
   };
 
   // Relevance weighted highest — timing/velocity alone must not surface off-topic tweets.
-  const value = Math.round(
+  let value =
     100 *
-      (0.15 * audienceSize +
-        0.25 * replyTiming +
-        0.25 * growthVelocity +
-        0.35 * topicRelevance)
-  );
+    (0.15 * audienceSize +
+      0.25 * replyTiming +
+      0.25 * growthVelocity +
+      0.35 * topicRelevance);
+
+  // Curated sources (an explicit list or a handle the user chose to watch) are
+  // an intentional signal beyond the raw home-feed firehose — worth a flat bonus.
+  if (input.source === "list" || input.source === "watched") {
+    value += 10;
+  }
+
+  value = Math.round(Math.min(100, value));
 
   return { value, reason: describeScore(factors, ageMinutes), factors };
 }

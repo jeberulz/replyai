@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { ArrowRight, MessageCircle, TrendingUp, X } from "lucide-react";
 import { dismissOpportunityAction } from "@/app/actions";
 import { ScoreBadge } from "@/components/app/score-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCount, timeAgo } from "@/lib/utils";
@@ -22,10 +23,23 @@ export type Opportunity = {
   replyCount: number;
   velocity: number;
   postedAt: number;
+  source?: "following" | "list" | "watched" | "search";
+  sourceLabel?: string;
 };
+
+function sourceNote(opportunity: Opportunity): string | null {
+  if (opportunity.source === "list") {
+    return `From ${opportunity.sourceLabel ?? "list"}`;
+  }
+  if (opportunity.source === "watched") {
+    return "Watched account";
+  }
+  return null;
+}
 
 export function OpportunityCard({ opportunity }: { opportunity: Opportunity }) {
   const [pending, startTransition] = useTransition();
+  const note = sourceNote(opportunity);
 
   return (
     <Card className={pending ? "opacity-50" : undefined}>
@@ -41,7 +55,14 @@ export function OpportunityCard({ opportunity }: { opportunity: Opportunity }) {
               </span>
             </div>
           </div>
-          <ScoreBadge value={opportunity.score} reason={opportunity.reason} />
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <ScoreBadge value={opportunity.score} reason={opportunity.reason} />
+            {note && (
+              <Badge variant="outline" className="font-normal text-muted-foreground">
+                {note}
+              </Badge>
+            )}
+          </div>
         </div>
 
         <p className="whitespace-pre-wrap text-sm leading-relaxed">
@@ -67,7 +88,7 @@ export function OpportunityCard({ opportunity }: { opportunity: Opportunity }) {
         <div className="flex items-center gap-2 pt-1">
           <Button size="sm" asChild>
             <Link
-              href={`/analyze?url=${encodeURIComponent(opportunity.tweetUrl)}`}
+              href={`/dashboard?url=${encodeURIComponent(opportunity.tweetUrl)}`}
             >
               Analyze &amp; reply
               <ArrowRight />

@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { SetupChecklist } from "@/components/app/setup-checklist";
 import { SidebarFooter } from "./sidebar-footer";
 import { SidebarHeader } from "./sidebar-header";
 import { SidebarHistory } from "./sidebar-history";
@@ -26,6 +27,7 @@ function SidebarBody({
   };
   showCollapse?: boolean;
 }) {
+  const { collapsed } = useSidebar();
   return (
     <div className="flex h-full min-h-0 flex-col">
       <SidebarHeader showCollapse={showCollapse} />
@@ -33,6 +35,8 @@ function SidebarBody({
       <SidebarProjects />
       <SidebarProjectsCollapsed />
       <SidebarHistory />
+      {/* Ghostbase-style "finish setup" slot — hidden on the icon rail. */}
+      {!collapsed && <SetupChecklist />}
       <SidebarFooter user={user} />
     </div>
   );

@@ -184,9 +184,12 @@ export function SidebarHistory() {
 
   return (
     <div className="mt-4 min-h-0 flex-1 overflow-y-auto border-t border-border/60 pt-3">
+      <div className="mb-2 px-3 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
+        Library
+      </div>
       {!analyses?.length ? (
         <p className="px-3 text-xs text-muted-foreground">
-          No analyses yet. Paste a tweet on Analyze.
+          No analyses yet. Paste a tweet to start.
         </p>
       ) : (
         <>

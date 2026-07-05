@@ -17,7 +17,10 @@ async function requireOwnedProject(
   return project;
 }
 
-export const create = mutation({
+// Creates the analysis shell as soon as the tweet is captured and scored.
+// The AI-written fields start as empty placeholders and are filled in by
+// setAnalysis while the client watches the doc via a live query.
+export const start = mutation({
   args: {
     sessionToken: v.string(),
     projectId: v.optional(v.id("projects")),
@@ -31,11 +34,6 @@ export const create = mutation({
         likes: v.number(),
       })
     ),
-    summary: v.string(),
-    topic: v.string(),
-    stance: v.string(),
-    existingOpinions: v.array(v.string()),
-    missingAngles: v.array(v.string()),
     score: v.object({
       value: v.number(),
       reason: v.string(),
@@ -62,16 +60,86 @@ export const create = mutation({
     if (opp && opp.status === "new") {
       await ctx.db.patch(opp._id, { status: "analyzed" });
     }
+    const now = Date.now();
     const analysisId = await ctx.db.insert("tweetAnalyses", {
       userId: user._id,
       projectId,
       ...args,
-      createdAt: Date.now(),
+      summary: "",
+      topic: "",
+      stance: "",
+      existingOpinions: [],
+      missingAngles: [],
+      status: "analyzing",
+      updatedAt: now,
+      createdAt: now,
     });
     if (projectId) {
-      await ctx.db.patch(projectId, { updatedAt: Date.now() });
+      await ctx.db.patch(projectId, { updatedAt: now });
     }
     return analysisId;
+  },
+});
+
+async function requireOwnedAnalysis(
+  ctx: MutationCtx,
+  sessionToken: string,
+  analysisId: Id<"tweetAnalyses">
+) {
+  const user = await requireUser(ctx, sessionToken);
+  const analysis = await ctx.db.get(analysisId);
+  if (!analysis || analysis.userId !== user._id) {
+    throw new Error("Analysis not found");
+  }
+  return analysis;
+}
+
+export const setAnalysis = mutation({
+  args: {
+    sessionToken: v.string(),
+    analysisId: v.id("tweetAnalyses"),
+    summary: v.string(),
+    topic: v.string(),
+    stance: v.string(),
+    existingOpinions: v.array(v.string()),
+    missingAngles: v.array(v.string()),
+  },
+  handler: async (ctx, { sessionToken, analysisId, ...fields }) => {
+    await requireOwnedAnalysis(ctx, sessionToken, analysisId);
+    await ctx.db.patch(analysisId, {
+      ...fields,
+      status: "generating",
+      error: undefined,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const complete = mutation({
+  args: { sessionToken: v.string(), analysisId: v.id("tweetAnalyses") },
+  handler: async (ctx, { sessionToken, analysisId }) => {
+    await requireOwnedAnalysis(ctx, sessionToken, analysisId);
+    await ctx.db.patch(analysisId, {
+      status: "complete",
+      error: undefined,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const fail = mutation({
+  args: {
+    sessionToken: v.string(),
+    analysisId: v.id("tweetAnalyses"),
+    error: v.string(),
+  },
+  handler: async (ctx, { sessionToken, analysisId, error }) => {
+    await requireOwnedAnalysis(ctx, sessionToken, analysisId);
+    await ctx.db.patch(analysisId, {
+      status: "failed",
+      error,
+      updatedAt: Date.now(),
+    });
   },
 });
 

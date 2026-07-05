@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "../../../../../convex/_generated/api";
 import { env } from "@/lib/env";
 import { convexServer } from "@/lib/convex";
-import { ensureDefaults } from "@/lib/onboarding";
+import { ensureDefaults, postLoginPath } from "@/lib/onboarding";
 import {
   formatAuthError,
   isConvexDeploymentError,
@@ -59,8 +59,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const destination = await postLoginPath(sessionToken);
     const response = NextResponse.redirect(
-      new URL("/dashboard", env.appUrl || request.url)
+      new URL(destination, env.appUrl || request.url)
     );
     response.cookies.delete("rp_oauth_state");
     response.cookies.delete("rp_oauth_verifier");

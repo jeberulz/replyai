@@ -69,6 +69,41 @@ describe("scoreConversation", () => {
     expect(score.value).toBeLessThanOrEqual(100);
     expect(score.reason.length).toBeGreaterThan(10);
   });
+
+  it("boosts the score for curated 'list' sources over no source", () => {
+    const plain = scoreConversation({ ...base, ageMinutes: 60 * 24 });
+    const listed = scoreConversation({
+      ...base,
+      ageMinutes: 60 * 24,
+      source: "list",
+    });
+    expect(listed.value).toBeGreaterThan(plain.value);
+  });
+
+  it("boosts the score for 'watched' sources over no source", () => {
+    const plain = scoreConversation({ ...base, ageMinutes: 60 * 24 });
+    const watched = scoreConversation({
+      ...base,
+      ageMinutes: 60 * 24,
+      source: "watched",
+    });
+    expect(watched.value).toBeGreaterThan(plain.value);
+  });
+
+  it("treats 'following' as the baseline, same as no source", () => {
+    const plain = scoreConversation({ ...base, ageMinutes: 60 * 24 });
+    const following = scoreConversation({
+      ...base,
+      ageMinutes: 60 * 24,
+      source: "following",
+    });
+    expect(following.value).toBe(plain.value);
+  });
+
+  it("clamps at 100 even when a near-max score gets the source boost", () => {
+    const score = scoreConversation({ ...base, ageMinutes: 30, source: "list" });
+    expect(score.value).toBeLessThanOrEqual(100);
+  });
 });
 
 describe("topicRelevanceForKeywords", () => {

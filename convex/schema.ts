@@ -37,6 +37,14 @@ export default defineSchema({
     plan: v.string(), // "free" — monetization decision deferred until after launch testing
     // Preferred Claude model for generation; unset = app default (see shared/models.ts).
     defaultModel: v.optional(v.string()),
+    // Primary goal chosen during onboarding — tunes scanner keywords and copy.
+    goal: v.optional(
+      v.union(v.literal("audience"), v.literal("leads"), v.literal("authority"))
+    ),
+    // When the onboarding wizard was finished or skipped; unset = new user.
+    onboardingCompletedAt: v.optional(v.number()),
+    // When the dashboard "finish setting up" card was dismissed.
+    setupDismissedAt: v.optional(v.number()),
     isDemo: v.boolean(),
     createdAt: v.number(),
   }).index("by_x_user_id", ["xUserId"]),
@@ -105,6 +113,18 @@ export default defineSchema({
     }),
     // X reply_settings when available (everyone, following, mentionedUsers, …)
     replySettings: v.optional(v.string()),
+    // Staged pipeline state; unset = legacy row, treated as "complete".
+    status: v.optional(
+      v.union(
+        v.literal("analyzing"),
+        v.literal("generating"),
+        v.literal("complete"),
+        v.literal("failed")
+      )
+    ),
+    error: v.optional(v.string()),
+    // Bumped on every stage transition — drives stale-pipeline detection.
+    updatedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
@@ -189,6 +209,16 @@ export default defineSchema({
       v.literal("dismissed"),
       v.literal("analyzed")
     ),
+    source: v.optional(
+      v.union(
+        v.literal("following"),
+        v.literal("list"),
+        v.literal("watched"),
+        v.literal("search")
+      )
+    ),
+    // e.g. "AI Builders list" — only set for source "list".
+    sourceLabel: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
@@ -201,6 +231,24 @@ export default defineSchema({
     lastScanAt: v.optional(v.number()),
     lastScanError: v.optional(v.string()),
     lastScanCount: v.optional(v.number()),
+    // Max 5, enforced in the mutation (not the schema).
+    engageListIds: v.optional(v.array(v.string())),
+    // Display cache, parallel array to engageListIds.
+    engageListNames: v.optional(v.array(v.string())),
+    // Max 50, enforced in the mutation (not the schema).
+    watchedHandles: v.optional(v.array(v.string())),
+    // Schema field only — search-source fetch ships in a later phase.
+    searchKeywords: v.optional(v.array(v.string())),
+    enabledSources: v.optional(
+      v.array(
+        v.union(
+          v.literal("following"),
+          v.literal("lists"),
+          v.literal("watched"),
+          v.literal("search")
+        )
+      )
+    ),
   }).index("by_user", ["userId"]),
 
   // Side-by-side model comparisons: the same generation run across several

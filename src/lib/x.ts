@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { env, hasXCredentials } from "./env";
-import { demoTweetForId, DEMO_TWEETS } from "../../shared/demoData";
+import { demoTweetForId, DEMO_TWEETS, DEMO_LISTS } from "../../shared/demoData";
 import { refreshAccessToken as refreshXAccessToken } from "../../shared/xOAuth";
 
 export { refreshXAccessToken as refreshAccessToken };
@@ -14,6 +14,7 @@ export const X_OAUTH_SCOPES = [
   "users.read",
   "tweet.write",
   "offline.access",
+  "list.read",
 ].join(" ");
 
 // ---------------------------------------------------------------------------
@@ -358,4 +359,44 @@ export async function fetchUserTweets(
   if (!res.ok) return DEMO_TWEETS.map((t) => t.text);
   const json = (await res.json()) as { data?: Array<{ text: string }> };
   return (json.data ?? []).map((t) => t.text);
+}
+
+export type XList = { id: string; name: string };
+
+/** Lists owned by the authenticated user. Demo fallback included. */
+export async function fetchOwnedLists(
+  xUserId: string,
+  accessToken: string | null
+): Promise<{ lists: XList[]; error?: string }> {
+  if (!accessToken || !hasXCredentials()) {
+    return { lists: DEMO_LISTS };
+  }
+
+  const url = new URL(`${X_API_BASE}/users/${xUserId}/owned_lists`);
+  url.searchParams.set("list.fields", "name");
+  url.searchParams.set("max_results", "50");
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      return {
+        lists: [],
+        error:
+          "X denied list access. Reconnect your account in Settings to grant list permissions.",
+      };
+    }
+    return {
+      lists: [],
+      error: `Could not load your X lists (${res.status}). Try again shortly.`,
+    };
+  }
+
+  const json = (await res.json()) as {
+    data?: Array<{ id: string; name: string }>;
+  };
+  return {
+    lists: (json.data ?? []).map((l) => ({ id: l.id, name: l.name })),
+  };
 }

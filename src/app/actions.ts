@@ -16,12 +16,15 @@ import { estimateCostUsd, isKnownModel, MODELS } from "../../shared/models";
 import { convexServer } from "@/lib/convex";
 import { getSessionUser } from "@/lib/session";
 import {
+  fetchOwnedLists,
   fetchTweetBundle,
   fetchTweetReplySettings,
   fetchUserTweets,
   manualTweetBundle,
   type TweetBundle,
 } from "@/lib/x";
+import { DEMO_TWEETS } from "../../shared/demoData";
+import { isGoalId } from "../../shared/onboarding";
 import { parseTweetUrl, scoreConversation } from "../../shared/scoring";
 import { buildVoiceStyleFromTweets, type VoiceStyle } from "../../shared/voice";
 
@@ -78,20 +81,23 @@ async function defaultVoice(
 // Analyze
 // ---------------------------------------------------------------------------
 
-export async function analyzeTweetAction(
-  _prev: { error?: string } | null,
-  formData: FormData
-): Promise<{ error?: string } | null> {
+// The analyze pipeline runs in two stages so the chat thread can render
+// progressively via Convex reactivity (PRD §8): startAnalysisAction captures
+// the tweet and creates the doc fast; continueAnalysisAction runs the AI
+// stages, patching the doc as each completes. No token streaming needed.
+
+export async function startAnalysisAction(input: {
+  text?: string;
+  url?: string;
+  authorHandle?: string;
+  authorFollowers?: number;
+  projectId?: string;
+}): Promise<{ analysisId: string } | { error: string }> {
   const { sessionToken } = await requireSession();
-  const text = String(formData.get("text") ?? "").trim();
-  const url = String(formData.get("url") ?? "").trim();
-  const authorHandle = String(formData.get("authorHandle") ?? "").trim();
-  const followersRaw = String(formData.get("authorFollowers") ?? "").replace(
-    /[^0-9]/g,
-    ""
-  );
-  const authorFollowers = followersRaw ? Number(followersRaw) : 0;
-  const projectIdRaw = String(formData.get("projectId") ?? "").trim();
+  const text = (input.text ?? "").trim();
+  const url = (input.url ?? "").trim();
+  const authorHandle = (input.authorHandle ?? "").trim();
+  const authorFollowers = input.authorFollowers ?? 0;
 
   const urlTweetId = url ? parseTweetUrl(url) : null;
   if (!text && !url) {
@@ -104,8 +110,6 @@ export async function analyzeTweetAction(
     };
   }
 
-  const convex = convexServer();
-  let analysisId: Id<"tweetAnalyses">;
   try {
     let bundle: TweetBundle;
     let replySettings: string | undefined;
@@ -129,7 +133,6 @@ export async function analyzeTweetAction(
       replySettings = bundle.replySettings;
     }
 
-    const { analysis, usage } = await analyzeTweet(bundle);
     const score = scoreConversation({
       followers: bundle.authorFollowers,
       likes: bundle.likes,
@@ -139,10 +142,10 @@ export async function analyzeTweetAction(
       ageMinutes: (Date.now() - bundle.postedAt) / 60_000,
     });
 
-    analysisId = await convex.mutation(api.analyses.create, {
+    const analysisId = await convexServer().mutation(api.analyses.start, {
       sessionToken,
-      ...(projectIdRaw
-        ? { projectId: projectIdRaw as Id<"projects"> }
+      ...(input.projectId
+        ? { projectId: input.projectId as Id<"projects"> }
         : {}),
       tweetUrl: url,
       tweetId: bundle.tweetId,
@@ -162,11 +165,6 @@ export async function analyzeTweetAction(
         mediaText: bundle.mediaText,
       },
       topReplies: bundle.topReplies,
-      summary: analysis.summary,
-      topic: analysis.topic,
-      stance: analysis.stance,
-      existingOpinions: analysis.existingOpinions,
-      missingAngles: analysis.missingAngles,
       score: {
         value: score.value,
         reason: score.reason,
@@ -174,59 +172,123 @@ export async function analyzeTweetAction(
       },
       replySettings,
     });
+    return { analysisId };
+  } catch (error) {
+    console.error("Start analysis failed:", error);
+    return {
+      error: "Couldn't capture that tweet. Check that Convex is running and try again.",
+    };
+  }
+}
 
-    // Generate the initial 3 replies and 3 quote tweets. The tweet context
-    // block is cache-marked, so these reuse the analysis call's prefix.
+/**
+ * Runs the AI stages for an analysis created by startAnalysisAction.
+ * Resumable: re-runs only the stages whose results are missing, so Retry
+ * after a failure and Resume after an abandoned tab both call this.
+ */
+export async function continueAnalysisAction(
+  analysisId: string
+): Promise<{ ok: true } | { error: string }> {
+  const { sessionToken } = await requireSession();
+  const convex = convexServer();
+  const id = analysisId as Id<"tweetAnalyses">;
+
+  const doc = await convex.query(api.analyses.get, {
+    sessionToken,
+    analysisId: id,
+  });
+  if (!doc) return { error: "Analysis not found." };
+  if (doc.status === "complete" || doc.status === undefined) {
+    return { ok: true };
+  }
+
+  try {
+    const bundle = bundleFromAnalysis(doc);
+
+    // Stage 1: conversation breakdown (skipped when already stored).
+    let analysis = {
+      summary: doc.summary,
+      topic: doc.topic,
+      stance: doc.stance,
+      existingOpinions: doc.existingOpinions,
+      missingAngles: doc.missingAngles,
+    };
+    if (!doc.summary) {
+      const result = await analyzeTweet(bundle);
+      analysis = result.analysis;
+      await convex.mutation(api.analyses.setAnalysis, {
+        sessionToken,
+        analysisId: id,
+        ...result.analysis,
+      });
+      await convex.mutation(api.usage.record, {
+        sessionToken,
+        tokensIn: result.usage.tokensIn,
+        tokensOut: result.usage.tokensOut,
+        analyses: 1,
+        generations: 0,
+      });
+    }
+
+    // Stage 2: initial options, 3 per kind (PRD: exactly 3 + "generate
+    // more"). Each set is inserted the moment it resolves so the thread
+    // shows replies while quotes are still generating.
+    const existing = await convex.query(api.replies.listByAnalysis, {
+      sessionToken,
+      analysisId: id,
+    });
     const { profile } = await defaultVoice(sessionToken);
     const voice = (profile?.style as VoiceStyle | undefined) ?? null;
     const examples = profile?.examples ?? [];
     const model = await resolveModel(sessionToken);
 
-    const [replies, quotes] = await Promise.all([
-      generateOptions({
-        kind: "reply",
+    const generateKind = async (kind: "reply" | "quote") => {
+      if (existing.some((r) => r.kind === kind)) return;
+      const result = await generateOptions({
+        kind,
         bundle,
         analysis,
         voice,
         voiceExamples: examples,
         model,
-      }),
-      generateOptions({
-        kind: "quote",
-        bundle,
-        analysis,
-        voice,
-        voiceExamples: examples,
-        model,
-      }),
-    ]);
-
-    for (const [kind, result] of [
-      ["reply", replies],
-      ["quote", quotes],
-    ] as const) {
+      });
       await convex.mutation(api.replies.insertMany, {
         sessionToken,
-        analysisId,
+        analysisId: id,
         voiceProfileId: profile?._id,
         model,
         options: result.options.map((o) => ({ kind, ...o })),
       });
-    }
+      await convex.mutation(api.usage.record, {
+        sessionToken,
+        tokensIn: result.usage.tokensIn,
+        tokensOut: result.usage.tokensOut,
+        analyses: 0,
+        generations: result.options.length,
+      });
+    };
+    await Promise.all([generateKind("reply"), generateKind("quote")]);
 
-    await convex.mutation(api.usage.record, {
+    await convex.mutation(api.analyses.complete, {
       sessionToken,
-      tokensIn: usage.tokensIn + replies.usage.tokensIn + quotes.usage.tokensIn,
-      tokensOut: usage.tokensOut + replies.usage.tokensOut + quotes.usage.tokensOut,
-      analyses: 1,
-      generations: replies.options.length + quotes.options.length,
+      analysisId: id,
     });
+    return { ok: true };
   } catch (error) {
-    console.error("Analyze failed:", error);
-    return { error: "Analysis failed. Check that Convex is running and try again." };
+    console.error("Continue analysis failed:", error);
+    const message =
+      "Analysis failed partway through. Nothing was lost — you can retry.";
+    try {
+      await convex.mutation(api.analyses.fail, {
+        sessionToken,
+        analysisId: id,
+        error: message,
+      });
+    } catch {
+      // The doc write failed too; the client still gets the error below.
+    }
+    return { error: message };
   }
-
-  redirect(`/analysis/${analysisId}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -635,5 +697,153 @@ export async function dismissOpportunityAction(opportunityId: string) {
     opportunityId: opportunityId as Id<"opportunities">,
   });
   revalidatePath("/feed");
+  revalidatePath("/dashboard");
+}
+
+/** Lists owned by the connected X account, for the "import lists to engage" picker. */
+export async function fetchOwnedListsAction(): Promise<{
+  lists: { id: string; name: string }[];
+  error?: string;
+}> {
+  const { sessionToken } = await requireSession();
+  const auth = await convexServer().query(api.users.xAuthForSession, {
+    sessionToken,
+  });
+  return fetchOwnedLists(auth?.xUserId ?? "", auth?.accessToken ?? null);
+}
+
+export async function saveEngageListsAction(
+  lists: { id: string; name: string }[]
+) {
+  const { sessionToken } = await requireSession();
+  await convexServer().mutation(api.scanner.importEngageLists, {
+    sessionToken,
+    lists,
+  });
+  revalidatePath("/feed");
+}
+
+export async function updateWatchedHandlesAction(handles: string[]) {
+  const { sessionToken } = await requireSession();
+  await convexServer().mutation(api.scanner.updateWatchedHandles, {
+    sessionToken,
+    handles,
+  });
+  revalidatePath("/feed");
+}
+
+export async function updateEnabledSourcesAction(sources: string[]) {
+  const { sessionToken } = await requireSession();
+  const convex = convexServer();
+  const current = await convex.query(api.scanner.settings, { sessionToken });
+  await convex.mutation(api.scanner.updateSettings, {
+    sessionToken,
+    enabled: current?.enabled ?? false,
+    keywords: current?.keywords ?? [],
+    enabledSources: sources as (
+      | "following"
+      | "lists"
+      | "watched"
+      | "search"
+    )[],
+  });
+  revalidatePath("/feed");
+}
+
+// ---------------------------------------------------------------------------
+// Onboarding
+// ---------------------------------------------------------------------------
+
+export async function setGoalAction(goal: string) {
+  const { sessionToken } = await requireSession();
+  if (!isGoalId(goal)) throw new Error("Unknown goal");
+  await convexServer().mutation(api.users.setGoal, { sessionToken, goal });
+}
+
+export async function saveOnboardingNicheAction(keywords: string[]) {
+  const { sessionToken } = await requireSession();
+  const cleaned = [
+    ...new Set(keywords.map((k) => k.trim().toLowerCase()).filter(Boolean)),
+  ].slice(0, 12);
+  if (cleaned.length === 0) return;
+  await convexServer().mutation(api.scanner.updateSettings, {
+    sessionToken,
+    enabled: true,
+    keywords: cleaned,
+  });
+}
+
+export type BuildModelResult = {
+  postCount: number;
+  style: VoiceStyle;
+  profileName: string;
+  usedSampleTweets: boolean;
+};
+
+/**
+ * The onboarding "build your writing model" step. Runs the real training
+ * pipeline (import or pasted posts → measured style → trained default
+ * profile), kicks off a feed scan, and marks onboarding complete. Returns
+ * real counts — the wizard shows these, never invented numbers.
+ */
+export async function buildWritingModelAction(args: {
+  source: "import" | "paste";
+  examples?: string[];
+}): Promise<BuildModelResult> {
+  const { user, sessionToken } = await requireSession();
+  const convex = convexServer();
+
+  let tweets: string[];
+  if (args.source === "paste") {
+    tweets = (args.examples ?? [])
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .slice(0, 50);
+    if (tweets.length === 0) {
+      throw new Error("Paste at least one post to train on");
+    }
+  } else {
+    const auth = await convex.query(api.users.xAuthForSession, { sessionToken });
+    tweets = await fetchUserTweets(auth?.xUserId ?? "", auth?.accessToken ?? null);
+  }
+  // fetchUserTweets falls back to sample tweets without X credentials —
+  // tell the UI so it can say so instead of implying we read the account.
+  const usedSampleTweets =
+    args.source === "import" &&
+    tweets.length === DEMO_TWEETS.length &&
+    tweets[0] === DEMO_TWEETS[0].text;
+
+  const style = buildVoiceStyleFromTweets(tweets);
+  const profileName = `${user.displayName.split(" ")[0]}'s voice`;
+  const profileId = await convex.mutation(api.voiceProfiles.create, {
+    sessionToken,
+    name: profileName,
+    style,
+    examples: tweets.slice(0, 8),
+    source: "trained",
+  });
+  await convex.mutation(api.voiceProfiles.setDefault, {
+    sessionToken,
+    profileId,
+  });
+  await convex.mutation(api.scanner.scanNow, { sessionToken });
+  await convex.mutation(api.users.completeOnboarding, { sessionToken });
+  // No revalidatePath here: it would re-render /onboarding mid-wizard, and the
+  // page guard (onboarding now complete) would yank the user to /dashboard
+  // before the ready screen. Voice list and dashboard are live Convex queries.
+  return { postCount: tweets.length, style, profileName, usedSampleTweets };
+}
+
+/** Skip the wizard — starter defaults from ensureDefaults stay in place. */
+export async function skipOnboardingAction() {
+  const { sessionToken } = await requireSession();
+  await convexServer().mutation(api.users.completeOnboarding, { sessionToken });
+}
+
+export async function dismissSetupChecklistAction() {
+  const { sessionToken } = await requireSession();
+  await convexServer().mutation(api.users.dismissSetupChecklist, {
+    sessionToken,
+  });
   revalidatePath("/dashboard");
 }

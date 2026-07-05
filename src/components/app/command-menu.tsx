@@ -140,10 +140,10 @@ export function CommandMenu() {
         <CommandSeparator />
         <CommandGroup heading="Actions">
           <CommandItem
-            value="analyze tweet paste url"
-            onSelect={() => navigate("/analyze")}
+            value="analyze tweet paste url new analysis"
+            onSelect={() => navigate("/dashboard")}
           >
-            Analyze a tweet…
+            New analysis…
           </CommandItem>
         </CommandGroup>
       </CommandList>

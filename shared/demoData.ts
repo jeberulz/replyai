@@ -145,3 +145,27 @@ export function demoTweetForId(id: string): DemoTweet {
   for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return DEMO_TWEETS[hash % DEMO_TWEETS.length];
 }
+
+export type DemoList = { id: string; name: string };
+
+export const DEMO_LISTS: DemoList[] = [
+  { id: "demo-list-1", name: "AI Builders" },
+  { id: "demo-list-2", name: "Indie Hackers" },
+];
+
+export const DEMO_WATCHED_HANDLES: string[] = ["sarahbuilds", "priyaml"];
+
+/** Deterministic, non-random split of DEMO_TWEETS by demo list id. */
+export function demoListTweets(listId: string): DemoTweet[] {
+  const byHandle = (handles: string[]): DemoTweet[] =>
+    DEMO_TWEETS.filter((t) => handles.includes(t.authorHandle));
+
+  switch (listId) {
+    case "demo-list-1":
+      return byHandle(["marcusship", "tomgrows"]);
+    case "demo-list-2":
+      return byHandle(["lenacodes", "alexvc"]);
+    default:
+      return [];
+  }
+}

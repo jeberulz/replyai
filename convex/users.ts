@@ -92,10 +92,47 @@ export const me = query({
       avatar: user.avatar,
       plan: user.plan,
       defaultModel: user.defaultModel,
+      goal: user.goal,
+      onboardingCompletedAt: user.onboardingCompletedAt,
+      setupDismissedAt: user.setupDismissedAt,
       isDemo: user.isDemo,
       createdAt: user.createdAt,
       xConnected: xToken !== null && xToken.expiresAt > Date.now(),
     };
+  },
+});
+
+/** Save the primary goal chosen in onboarding. */
+export const setGoal = mutation({
+  args: {
+    sessionToken: v.string(),
+    goal: v.union(
+      v.literal("audience"),
+      v.literal("leads"),
+      v.literal("authority")
+    ),
+  },
+  handler: async (ctx, { sessionToken, goal }) => {
+    const user = await requireUser(ctx, sessionToken);
+    await ctx.db.patch(user._id, { goal });
+  },
+});
+
+/** Mark onboarding finished (or skipped) so auth stops routing to the wizard. */
+export const completeOnboarding = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const user = await requireUser(ctx, sessionToken);
+    await ctx.db.patch(user._id, { onboardingCompletedAt: Date.now() });
+  },
+});
+
+/** Hide the dashboard "finish setting up" card. */
+export const dismissSetupChecklist = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const user = await requireUser(ctx, sessionToken);
+    await ctx.db.patch(user._id, { setupDismissedAt: Date.now() });
   },
 });
 

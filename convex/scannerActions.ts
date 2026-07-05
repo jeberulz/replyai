@@ -10,10 +10,21 @@ import {
   topicRelevanceForKeywords,
   velocityPerHour,
 } from "../shared/scoring";
-import { DEMO_TWEETS } from "../shared/demoData";
+import {
+  DEMO_TWEETS,
+  DEMO_WATCHED_HANDLES,
+  demoListTweets,
+} from "../shared/demoData";
 import { refreshAccessToken } from "../shared/xOAuth";
 
 const MIN_OPPORTUNITY_SCORE = 30;
+
+/** Max watched handles fetched per scan; see selectWatchedHandlesForScan. */
+const MAX_WATCHED_HANDLES_PER_SCAN = 15;
+/** Cap on merged/deduped candidates before scoring, to bound per-scan cost. */
+const MAX_CANDIDATES = 150;
+
+type EnabledSource = "following" | "lists" | "watched" | "search";
 
 type TimelineTweet = {
   tweetId: string;
@@ -26,6 +37,10 @@ type TimelineTweet = {
   retweets: number;
   replies: number;
   quotes: number;
+  /** Where this tweet was discovered. Missing = legacy following-timeline tweet. */
+  source?: "following" | "list" | "watched";
+  /** e.g. "AI Builders list" — only set for source "list". */
+  sourceLabel?: string;
 };
 
 type ScanContext = {
@@ -36,7 +51,44 @@ type ScanContext = {
   refreshToken: string | null;
   expiresAt: number;
   scope: string;
+  engageListIds: string[];
+  engageListNames: string[];
+  watchedHandles: string[];
+  enabledSources: EnabledSource[];
 };
+
+function resolveEnabledSources(sources: EnabledSource[]): EnabledSource[] {
+  return sources.length > 0 ? sources : ["following"];
+}
+
+/**
+ * Watched-handle scans are capped at MAX_WATCHED_HANDLES_PER_SCAN to respect
+ * X search rate limits. When more are configured, rotate the starting point
+ * through a coarse 30-minute time bucket (matching the cron cadence) so every
+ * handle gets periodic coverage across scans instead of only the first N ever
+ * running.
+ */
+function selectWatchedHandlesForScan(handles: string[]): string[] {
+  if (handles.length <= MAX_WATCHED_HANDLES_PER_SCAN) return handles;
+  const bucket = Math.floor(Date.now() / (30 * 60_000)) % handles.length;
+  const rotated = [...handles.slice(bucket), ...handles.slice(0, bucket)];
+  return rotated.slice(0, MAX_WATCHED_HANDLES_PER_SCAN);
+}
+
+/**
+ * Merge candidate lists giving priority to the highest-intent source when the
+ * same tweet appears in more than one (watched > list > following), then cap
+ * at MAX_CANDIDATES total.
+ */
+function dedupeCandidates(bySourcePriority: TimelineTweet[][]): TimelineTweet[] {
+  const merged = new Map<string, TimelineTweet>();
+  for (const tweets of bySourcePriority) {
+    for (const t of tweets) {
+      if (!merged.has(t.tweetId)) merged.set(t.tweetId, t);
+    }
+  }
+  return Array.from(merged.values()).slice(0, MAX_CANDIDATES);
+}
 
 /** Cron entry point: scan every user who has the feed scanner enabled. */
 export const scanAll = internalAction({
@@ -74,11 +126,11 @@ export const scanUser = internalAction({
         keywords: context.keywords,
       });
 
-      let timeline: TimelineTweet[];
+      let candidates: TimelineTweet[];
       if (context.isDemo) {
-        timeline = demoTimeline();
+        candidates = collectDemoCandidates(context);
       } else {
-        const fetched = await fetchTimelineForUser(ctx, userId, context);
+        const fetched = await collectCandidates(ctx, userId, context);
         if (fetched.error) {
           await ctx.runMutation(internal.scanner.recordScanResult, {
             userId,
@@ -87,11 +139,11 @@ export const scanUser = internalAction({
           });
           return;
         }
-        timeline = fetched.tweets;
+        candidates = fetched.tweets;
       }
 
       const now = Date.now();
-      const items = timeline.map((t) => {
+      const items = candidates.map((t) => {
         const ageMinutes = Math.max(1, (now - t.postedAt) / 60_000);
         const relevance = topicRelevanceForKeywords(t.text, context.keywords);
         const score = scoreConversation({
@@ -102,6 +154,7 @@ export const scanUser = internalAction({
           quotes: t.quotes,
           ageMinutes,
           topicRelevance: relevance,
+          source: t.source,
         });
         return {
           tweetId: t.tweetId,
@@ -116,6 +169,8 @@ export const scanUser = internalAction({
           replyCount: t.replies,
           velocity: velocityPerHour({ ...t, ageMinutes }),
           postedAt: t.postedAt,
+          source: t.source,
+          sourceLabel: t.sourceLabel,
         };
       });
 
@@ -155,17 +210,18 @@ export const scanUser = internalAction({
   },
 });
 
-async function fetchTimelineForUser(
+/** Resolve a usable X access token for this user, refreshing it if expired. */
+async function resolveAccessToken(
   ctx: ActionCtx,
   userId: Id<"users">,
   context: ScanContext
-): Promise<{ tweets: TimelineTweet[]; error?: string }> {
+): Promise<{ accessToken: string | null; error?: string }> {
   let accessToken = context.accessToken;
 
   if (!accessToken || context.expiresAt <= Date.now()) {
     if (!context.refreshToken) {
       return {
-        tweets: [],
+        accessToken: null,
         error: "X session expired. Reconnect your account in Settings.",
       };
     }
@@ -179,24 +235,113 @@ async function fetchTimelineForUser(
         expiresAt: refreshed.expiresAt,
         scope: refreshed.scope || context.scope,
       });
-    } catch (error) {
+    } catch {
       return {
-        tweets: [],
+        accessToken: null,
         error: "X session expired. Reconnect your account in Settings.",
       };
     }
   }
 
-  const result = await fetchXTimeline(context.xUserId, accessToken);
-  if (result.error) {
-    return { tweets: [], error: result.error };
-  }
-  return { tweets: result.tweets };
+  return { accessToken };
 }
 
-function demoTimeline(): TimelineTweet[] {
+/**
+ * Fetch following-timeline + configured X lists + watched-handle tweets,
+ * tag each with its source, dedup by tweetId (watched > list > following
+ * priority), and cap the merged set at MAX_CANDIDATES.
+ *
+ * Error propagation: a single source failing (e.g. missing list.read scope)
+ * is a soft warning — we proceed with whatever sources succeeded. Only when
+ * every *attempted* source fails (or the access token itself can't be
+ * resolved) do we return a hard error with an empty candidate list, mirroring
+ * the previous single-source "reconnect in Settings" behavior.
+ */
+async function collectCandidates(
+  ctx: ActionCtx,
+  userId: Id<"users">,
+  context: ScanContext
+): Promise<{ tweets: TimelineTweet[]; error?: string }> {
+  const enabledSources = resolveEnabledSources(context.enabledSources);
+
+  const resolved = await resolveAccessToken(ctx, userId, context);
+  if (!resolved.accessToken) {
+    return {
+      tweets: [],
+      error: resolved.error ?? "X session expired. Reconnect your account in Settings.",
+    };
+  }
+  const accessToken = resolved.accessToken;
+
+  const following: TimelineTweet[] = [];
+  const lists: TimelineTweet[] = [];
+  const watched: TimelineTweet[] = [];
+  let firstError: string | undefined;
+  let attempted = false;
+  let succeeded = false;
+
+  if (enabledSources.includes("following")) {
+    attempted = true;
+    const fetched = await fetchXTimeline(context.xUserId, accessToken);
+    if (fetched.error) {
+      firstError = firstError ?? fetched.error;
+    } else {
+      succeeded = true;
+      following.push(...fetched.tweets.map((t) => ({ ...t, source: "following" as const })));
+    }
+  }
+
+  if (enabledSources.includes("lists") && context.engageListIds.length > 0) {
+    for (let i = 0; i < context.engageListIds.length; i++) {
+      attempted = true;
+      const listId = context.engageListIds[i];
+      const listName = context.engageListNames[i];
+      const fetched = await fetchListTweets(listId, accessToken);
+      if (fetched.error) {
+        firstError = firstError ?? fetched.error;
+      } else {
+        succeeded = true;
+        lists.push(
+          ...fetched.tweets.map((t) => ({ ...t, sourceLabel: listName }))
+        );
+      }
+    }
+  }
+
+  if (enabledSources.includes("watched") && context.watchedHandles.length > 0) {
+    const handles = selectWatchedHandlesForScan(context.watchedHandles);
+    for (const handle of handles) {
+      attempted = true;
+      const fetched = await fetchHandleTweets(handle, accessToken);
+      if (fetched.error) {
+        firstError = firstError ?? fetched.error;
+      } else {
+        succeeded = true;
+        watched.push(...fetched.tweets);
+      }
+    }
+  }
+
+  if (attempted && !succeeded) {
+    return {
+      tweets: [],
+      error: firstError ?? "Could not read your feed. Reconnect your account in Settings.",
+    };
+  }
+
+  return { tweets: dedupeCandidates([watched, lists, following]) };
+}
+
+/** Demo-mode mirror of collectCandidates — deterministic, no network calls. */
+function collectDemoCandidates(context: {
+  engageListIds: string[];
+  engageListNames: string[];
+  watchedHandles: string[];
+  enabledSources: EnabledSource[];
+}): TimelineTweet[] {
+  const enabledSources = resolveEnabledSources(context.enabledSources);
   const now = Date.now();
-  return DEMO_TWEETS.map((t) => ({
+  const toTimelineTweet = (t: (typeof DEMO_TWEETS)[number]) => ({
     tweetId: t.id,
     authorHandle: t.authorHandle,
     authorName: t.authorName,
@@ -207,7 +352,87 @@ function demoTimeline(): TimelineTweet[] {
     retweets: t.retweets,
     replies: t.replies,
     quotes: t.quotes,
-  }));
+  });
+
+  const following: TimelineTweet[] = enabledSources.includes("following")
+    ? DEMO_TWEETS.map((t) => ({ ...toTimelineTweet(t), source: "following" as const }))
+    : [];
+
+  const lists: TimelineTweet[] = [];
+  if (enabledSources.includes("lists")) {
+    for (let i = 0; i < context.engageListIds.length; i++) {
+      const listName = context.engageListNames[i];
+      lists.push(
+        ...demoListTweets(context.engageListIds[i]).map((t) => ({
+          ...toTimelineTweet(t),
+          source: "list" as const,
+          sourceLabel: listName,
+        }))
+      );
+    }
+  }
+
+  const watched: TimelineTweet[] = enabledSources.includes("watched")
+    ? DEMO_TWEETS.filter((t) =>
+        (context.watchedHandles.length > 0
+          ? context.watchedHandles
+          : DEMO_WATCHED_HANDLES
+        ).includes(t.authorHandle)
+      ).map((t) => ({ ...toTimelineTweet(t), source: "watched" as const }))
+    : [];
+
+  return dedupeCandidates([watched, lists, following]);
+}
+
+type XTimelineResponse = {
+  data?: Array<{
+    id: string;
+    text: string;
+    author_id: string;
+    created_at: string;
+    public_metrics: {
+      like_count: number;
+      retweet_count: number;
+      reply_count: number;
+      quote_count: number;
+    };
+  }>;
+  includes?: {
+    users?: Array<{
+      id: string;
+      name: string;
+      username: string;
+      public_metrics?: { followers_count: number };
+    }>;
+  };
+};
+
+/** Shared tweet.fields/expansions/user.fields params for all X read endpoints below. */
+function setSharedTweetParams(url: URL): void {
+  url.searchParams.set("tweet.fields", "public_metrics,created_at,author_id");
+  url.searchParams.set("expansions", "author_id");
+  url.searchParams.set("user.fields", "public_metrics,username,name");
+}
+
+function mapTweetsResponse(json: XTimelineResponse): Omit<TimelineTweet, "source" | "sourceLabel">[] {
+  const authors = new Map(
+    (json.includes?.users ?? []).map((u) => [u.id, u] as const)
+  );
+  return (json.data ?? []).map((t) => {
+    const author = authors.get(t.author_id);
+    return {
+      tweetId: t.id,
+      authorHandle: author?.username ?? "unknown",
+      authorName: author?.name ?? "Unknown",
+      authorFollowers: author?.public_metrics?.followers_count ?? 0,
+      text: t.text,
+      postedAt: Date.parse(t.created_at),
+      likes: t.public_metrics.like_count,
+      retweets: t.public_metrics.retweet_count,
+      replies: t.public_metrics.reply_count,
+      quotes: t.public_metrics.quote_count,
+    };
+  });
 }
 
 async function fetchXTimeline(
@@ -218,9 +443,7 @@ async function fetchXTimeline(
     `https://api.x.com/2/users/${xUserId}/timelines/reverse_chronological`
   );
   url.searchParams.set("max_results", "50");
-  url.searchParams.set("tweet.fields", "public_metrics,created_at,author_id");
-  url.searchParams.set("expansions", "author_id");
-  url.searchParams.set("user.fields", "public_metrics,username,name");
+  setSharedTweetParams(url);
 
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -241,49 +464,77 @@ async function fetchXTimeline(
     };
   }
 
-  const json = (await res.json()) as {
-    data?: Array<{
-      id: string;
-      text: string;
-      author_id: string;
-      created_at: string;
-      public_metrics: {
-        like_count: number;
-        retweet_count: number;
-        reply_count: number;
-        quote_count: number;
-      };
-    }>;
-    includes?: {
-      users?: Array<{
-        id: string;
-        name: string;
-        username: string;
-        public_metrics?: { followers_count: number };
-      }>;
-    };
-  };
+  const json = (await res.json()) as XTimelineResponse;
+  return { tweets: mapTweetsResponse(json) };
+}
 
-  const authors = new Map(
-    (json.includes?.users ?? []).map((u) => [u.id, u] as const)
-  );
-  const tweets = (json.data ?? []).map((t) => {
-    const author = authors.get(t.author_id);
-    return {
-      tweetId: t.id,
-      authorHandle: author?.username ?? "unknown",
-      authorName: author?.name ?? "Unknown",
-      authorFollowers: author?.public_metrics?.followers_count ?? 0,
-      text: t.text,
-      postedAt: Date.parse(t.created_at),
-      likes: t.public_metrics.like_count,
-      retweets: t.public_metrics.retweet_count,
-      replies: t.public_metrics.reply_count,
-      quotes: t.public_metrics.quote_count,
-    };
+/** Tweets from a single X list the user has chosen to engage with. */
+async function fetchListTweets(
+  listId: string,
+  accessToken: string
+): Promise<{ tweets: TimelineTweet[]; error?: string }> {
+  const url = new URL(`https://api.x.com/2/lists/${listId}/tweets`);
+  url.searchParams.set("max_results", "50");
+  setSharedTweetParams(url);
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 
-  return { tweets };
+  if (!res.ok) {
+    const body = await res.text();
+    console.error("X list tweets fetch failed", { status: res.status, body, listId });
+    if (res.status === 401 || res.status === 403) {
+      return {
+        tweets: [],
+        error: "X denied list access. Reconnect your account in Settings to grant list permissions.",
+      };
+    }
+    return {
+      tweets: [],
+      error: `Could not read list tweets (${res.status}). Try again shortly.`,
+    };
+  }
+
+  const json = (await res.json()) as XTimelineResponse;
+  return {
+    tweets: mapTweetsResponse(json).map((t) => ({ ...t, source: "list" as const })),
+  };
+}
+
+/** Recent original tweets from a single watched handle. */
+async function fetchHandleTweets(
+  handle: string,
+  accessToken: string
+): Promise<{ tweets: TimelineTweet[]; error?: string }> {
+  const url = new URL("https://api.x.com/2/tweets/search/recent");
+  url.searchParams.set("query", `from:${handle} -is:retweet -is:reply`);
+  url.searchParams.set("max_results", "10");
+  setSharedTweetParams(url);
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error("X handle search fetch failed", { status: res.status, body, handle });
+    if (res.status === 401 || res.status === 403) {
+      return {
+        tweets: [],
+        error: "X denied search access. Reconnect your account in Settings.",
+      };
+    }
+    return {
+      tweets: [],
+      error: `Could not read @${handle}'s tweets (${res.status}). Try again shortly.`,
+    };
+  }
+
+  const json = (await res.json()) as XTimelineResponse;
+  return {
+    tweets: mapTweetsResponse(json).map((t) => ({ ...t, source: "watched" as const })),
+  };
 }
 
 function suggestAngle(t: TimelineTweet): string {

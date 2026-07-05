@@ -1,8 +1,8 @@
 import {
-  LayoutDashboard,
+  FileText,
   Mic2,
+  Plus,
   Radar,
-  Search,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -15,14 +15,11 @@ export type NavLink = {
   matchPrefixes?: string[];
 };
 
+// The chat-first home owns /dashboard; /analysis/* routes light up their
+// row in the Library list instead of a nav link.
 export const navLinks: NavLink[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  {
-    href: "/analyze",
-    label: "Analyze",
-    icon: Search,
-    matchPrefixes: ["/analysis"],
-  },
+  { href: "/dashboard", label: "New analysis", icon: Plus },
+  { href: "/drafts", label: "Drafts", icon: FileText },
   { href: "/feed", label: "Feed scanner", icon: Radar },
   { href: "/voice", label: "Voice", icon: Mic2 },
   { href: "/settings", label: "Settings", icon: Settings },
