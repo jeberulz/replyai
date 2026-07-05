@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildVoiceStyleFromTweets, topPhrases } from "../shared/voice";
+import {
+  buildVoiceStyleFromTweets,
+  mergeVoiceExamples,
+  topPhrases,
+  VOICE_EXAMPLES_CAP,
+} from "../shared/voice";
 
 describe("buildVoiceStyleFromTweets", () => {
   it("returns sensible defaults for empty input", () => {
@@ -50,5 +55,34 @@ describe("topPhrases", () => {
   it("requires at least 3 occurrences", () => {
     const phrases = topPhrases(["ship fast daily", "ship fast daily"]);
     expect(phrases).toEqual([]);
+  });
+});
+
+describe("mergeVoiceExamples", () => {
+  it("prepends the sent text, newest first", () => {
+    const merged = mergeVoiceExamples(["old one", "old two"], "fresh reply");
+    expect(merged).toEqual(["fresh reply", "old one", "old two"]);
+  });
+
+  it("dedupes case- and whitespace-insensitively", () => {
+    const merged = mergeVoiceExamples(
+      ["Ship  it every  day", "another"],
+      "ship it every day"
+    );
+    expect(merged).toEqual(["ship it every day", "another"]);
+  });
+
+  it("caps at VOICE_EXAMPLES_CAP, dropping the oldest", () => {
+    const existing = Array.from({ length: 20 }, (_, i) => `post ${i}`);
+    const merged = mergeVoiceExamples(existing, "newest");
+    expect(merged).toHaveLength(VOICE_EXAMPLES_CAP);
+    expect(merged[0]).toBe("newest");
+    expect(merged).not.toContain("post 19");
+  });
+
+  it("ignores empty sent text but still applies the cap", () => {
+    const existing = Array.from({ length: 20 }, (_, i) => `post ${i}`);
+    expect(mergeVoiceExamples(existing, "   ")).toHaveLength(VOICE_EXAMPLES_CAP);
+    expect(mergeVoiceExamples([], "")).toEqual([]);
   });
 });

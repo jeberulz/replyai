@@ -67,6 +67,73 @@ export function suggestedKeywordsForGoal(goal: GoalId): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// Goal → generation. The wizard promises the goal "tunes how your replies
+// lean" — these are the two mechanisms: a prompt lean and a category bias.
+// ---------------------------------------------------------------------------
+
+/** Generation categories (PRD §4). Shared so goal biases stay validated. */
+export const QUOTE_CATEGORIES = [
+  "contrarian",
+  "educational",
+  "story",
+  "founder",
+  "ux",
+  "humorous",
+  "prediction",
+  "question",
+  "data-driven",
+] as const;
+
+export const REPLY_CATEGORIES = [
+  "short",
+  "insightful",
+  "debate",
+  "friendly",
+  "question",
+  "agreement-plus",
+] as const;
+
+const GOAL_GENERATION_LEAN: Record<GoalId, string> = {
+  audience:
+    "Their goal is growing their audience: favor takes that stand out in a busy thread and make bigger accounts want to respond — bold, specific, screenshot-able. Never generic engagement bait.",
+  leads:
+    "Their goal is finding leads and clients: favor replies that open a real conversation and quietly demonstrate what they build or know — helpful and credible, never salesy, no pitching.",
+  authority:
+    "Their goal is building authority in their niche: favor evidence-backed, quotable takes that teach something concrete — the reply people bookmark and cite.",
+};
+
+/** One prompt line describing how generated options should lean for a goal. */
+export function goalGenerationLean(goal: GoalId | null | undefined): string {
+  return goal ? GOAL_GENERATION_LEAN[goal] : "";
+}
+
+const GOAL_CATEGORY_BIAS: Record<
+  GoalId,
+  { reply: string[]; quote: string[] }
+> = {
+  audience: {
+    reply: ["debate", "insightful", "question"],
+    quote: ["contrarian", "humorous", "story"],
+  },
+  leads: {
+    reply: ["question", "friendly", "agreement-plus"],
+    quote: ["founder", "story", "educational"],
+  },
+  authority: {
+    reply: ["insightful", "debate", "agreement-plus"],
+    quote: ["data-driven", "educational", "prediction"],
+  },
+};
+
+/** Categories to prefer (when they fit) for a goal; empty without a goal. */
+export function goalCategoryBias(
+  goal: GoalId | null | undefined,
+  kind: "reply" | "quote"
+): string[] {
+  return goal ? GOAL_CATEGORY_BIAS[goal][kind] : [];
+}
+
+// ---------------------------------------------------------------------------
 // Setup checklist — derived from real state, never a stored progress counter
 // (PRD: show real reasons/progress, no fake scores).
 // ---------------------------------------------------------------------------
