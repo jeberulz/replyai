@@ -642,6 +642,16 @@ export async function deleteDraftAction(draftId: string) {
   revalidatePath("/dashboard");
 }
 
+export async function updateDraftAction(draftId: string, text: string) {
+  const { sessionToken } = await requireSession();
+  await convexServer().mutation(api.drafts.updateContent, {
+    sessionToken,
+    draftId: draftId as Id<"savedDrafts">,
+    text,
+  });
+  revalidatePath("/drafts");
+}
+
 // ---------------------------------------------------------------------------
 // Voice profiles
 // ---------------------------------------------------------------------------

@@ -117,6 +117,22 @@ export const retryAsStandalone = mutation({
   },
 });
 
+/** Edit a not-yet-published draft's text in place. */
+export const updateContent = mutation({
+  args: {
+    sessionToken: v.string(),
+    draftId: v.id("savedDrafts"),
+    text: v.string(),
+  },
+  handler: async (ctx, { sessionToken, draftId, text }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const draft = await ctx.db.get(draftId);
+    if (!draft || draft.userId !== user._id) throw new Error("Not found");
+    if (draft.status === "published") throw new Error("Already published");
+    await ctx.db.patch(draftId, { text });
+  },
+});
+
 export const remove = mutation({
   args: { sessionToken: v.string(), draftId: v.id("savedDrafts") },
   handler: async (ctx, { sessionToken, draftId }) => {
