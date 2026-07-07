@@ -22,7 +22,7 @@ export function Pane({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 flex-col border-l border-border bg-canvas",
+        "flex h-full min-h-0 flex-col overflow-x-hidden bg-canvas md:border-l md:border-border",
         className
       )}
     >
@@ -39,10 +39,10 @@ export function PaneHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between border-b border-border px-4 py-3">
+    <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
       {tab}
       {actions ? (
-        <div className="flex items-center gap-3.5 text-muted-foreground">
+        <div className="flex shrink-0 items-center gap-3 text-muted-foreground">
           {actions}
         </div>
       ) : null}
@@ -58,9 +58,9 @@ export function PaneTabPill({
   children: React.ReactNode;
 }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px] font-medium">
+    <span className="inline-flex max-w-full items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px] font-medium">
       {icon}
-      {children}
+      <span className="truncate">{children}</span>
     </span>
   );
 }
@@ -73,7 +73,7 @@ export function PaneTitleRow({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between px-5 pb-1.5 pt-4">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-1.5 pt-4 sm:px-5">
       <h2 className="font-serif text-[22px] leading-none text-foreground">
         {title}
       </h2>
@@ -91,7 +91,12 @@ export function PaneBody({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("min-h-0 flex-1 overflow-y-auto px-5 py-3.5", className)}>
+    <div
+      className={cn(
+        "min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-3.5 sm:px-5",
+        className
+      )}
+    >
       {children}
     </div>
   );
@@ -106,7 +111,7 @@ export function PaneActionBar({
   note?: React.ReactNode;
 }) {
   return (
-    <div className="space-y-2.5 border-t border-border bg-background px-5 pb-4.5 pt-3.5">
+    <div className="shrink-0 space-y-2.5 border-t border-border bg-background px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3.5 sm:px-5 sm:pb-4.5">
       <div className="flex flex-wrap items-center gap-2">{children}</div>
       {note ? (
         <p className="flex items-start gap-2 text-[11.5px] leading-snug text-muted-foreground">
