@@ -58,6 +58,17 @@ describe("runGuardrailChecks — happy path", () => {
   it("defaults expected count to the PRD guardrail (3)", () => {
     expect(GENERATION_OPTION_COUNT).toBe(3);
   });
+
+  it("never emits an explicit undefined `detail` (Convex-serializable report)", () => {
+    // internal.evals.runGuardrails returns this verbatim; `detail: undefined`
+    // is not a valid Convex value, so passing findings must omit the key.
+    const report = check(goodReplyOptions());
+    for (const f of report.findings) {
+      expect(Object.prototype.hasOwnProperty.call(f, "detail")).toBe(
+        f.detail !== undefined
+      );
+    }
+  });
 });
 
 describe("runGuardrailChecks — output shape", () => {

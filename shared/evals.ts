@@ -151,6 +151,19 @@ function allowedCategories(kind: GuardrailKind): readonly string[] {
 }
 
 /**
+ * Build a finding, omitting `detail` entirely when there is none. An explicit
+ * `detail: undefined` is not a valid Convex value, so a passing check must not
+ * carry the key — this report is returned verbatim by `internal.evals.runGuardrails`.
+ */
+function finding(
+  rule: GuardrailRule,
+  ok: boolean,
+  detail?: string
+): GuardrailFinding {
+  return detail ? { rule, ok, detail } : { rule, ok };
+}
+
+/**
  * Run every deterministic guardrail against one generation result. `options`
  * is untyped-at-the-boundary on purpose: real callers may hand us a parsed
  * LLM payload, so the first rule is a zod shape check and the rest only run on
@@ -167,85 +180,98 @@ export function runGuardrailChecks(
     Array.isArray(options) ? { options } : options
   );
   if (!parsed.success) {
-    findings.push({
-      rule: "output-shape",
-      ok: false,
-      detail: parsed.error.issues[0]?.message ?? "invalid options shape",
-    });
+    findings.push(
+      finding(
+        "output-shape",
+        false,
+        parsed.error.issues[0]?.message ?? "invalid options shape"
+      )
+    );
     return { pass: false, findings };
   }
-  findings.push({ rule: "output-shape", ok: true });
+  findings.push(finding("output-shape", true));
 
   const set = parsed.data.options;
 
-  findings.push({
-    rule: "option-count",
-    ok: set.length === expectedCount,
-    detail:
+  findings.push(
+    finding(
+      "option-count",
+      set.length === expectedCount,
       set.length === expectedCount
         ? undefined
-        : `expected ${expectedCount} options, got ${set.length}`,
-  });
+        : `expected ${expectedCount} options, got ${set.length}`
+    )
+  );
 
   const categoriesLower = set.map((o) => o.category.trim().toLowerCase());
   const duplicate = categoriesLower.find(
     (c, i) => categoriesLower.indexOf(c) !== i
   );
-  findings.push({
-    rule: "distinct-categories",
-    ok: duplicate === undefined,
-    detail: duplicate ? `duplicate category "${duplicate}"` : undefined,
-  });
+  findings.push(
+    finding(
+      "distinct-categories",
+      duplicate === undefined,
+      duplicate ? `duplicate category "${duplicate}"` : undefined
+    )
+  );
 
   const allowed = allowedCategories(opts.kind).map((c) => c.toLowerCase());
   const invalid = categoriesLower.find((c) => !allowed.includes(c));
-  findings.push({
-    rule: "valid-categories",
-    ok: invalid === undefined,
-    detail: invalid
-      ? `"${invalid}" is not a ${opts.kind} category`
-      : undefined,
-  });
+  findings.push(
+    finding(
+      "valid-categories",
+      invalid === undefined,
+      invalid ? `"${invalid}" is not a ${opts.kind} category` : undefined
+    )
+  );
 
   const missingReason = set.find(
     (o) => o.reason.trim().length < MIN_REASON_LENGTH
   );
-  findings.push({
-    rule: "reason-present",
-    ok: missingReason === undefined,
-    detail: missingReason ? "an option is missing a real reason" : undefined,
-  });
+  findings.push(
+    finding(
+      "reason-present",
+      missingReason === undefined,
+      missingReason ? "an option is missing a real reason" : undefined
+    )
+  );
 
   const tooLong = set.find((o) => weightedLength(o.content) > MAX_WEIGHTED_LENGTH);
-  findings.push({
-    rule: "weighted-length",
-    ok: tooLong === undefined,
-    detail: tooLong
-      ? `option exceeds ${MAX_WEIGHTED_LENGTH} weighted chars (${weightedLength(
-          tooLong.content
-        )})`
-      : undefined,
-  });
+  findings.push(
+    finding(
+      "weighted-length",
+      tooLong === undefined,
+      tooLong
+        ? `option exceeds ${MAX_WEIGHTED_LENGTH} weighted chars (${weightedLength(
+            tooLong.content
+          )})`
+        : undefined
+    )
+  );
 
   let bannedHit: string | null = null;
   for (const o of set) {
     bannedHit = bannedPhraseIn(o.content);
     if (bannedHit) break;
   }
-  findings.push({
-    rule: "no-banned-phrases",
-    ok: bannedHit === null,
-    detail: bannedHit ? `banned phrase "${bannedHit}"` : undefined,
-  });
+  findings.push(
+    finding(
+      "no-banned-phrases",
+      bannedHit === null,
+      bannedHit ? `banned phrase "${bannedHit}"` : undefined
+    )
+  );
 
   const fakeScore = set.find(
     (o) => hasFakeScore(o.content) || hasFakeScore(o.reason)
   );
-  findings.push({
-    rule: "no-fake-scores",
-    ok: fakeScore === undefined,
-    detail: fakeScore ? "fake-precision score surfaced" : undefined,
-  });
+  findings.push(
+    finding(
+      "no-fake-scores",
+      fakeScore === undefined,
+      fakeScore ? "fake-precision score surfaced" : undefined
+    )
+  );
 
   return { pass: findings.every((f) => f.ok), findings };
 }
