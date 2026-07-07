@@ -287,7 +287,7 @@ export function OptionCard({
   };
 
   return (
-    <Card className={cn(pending && "opacity-60")}>
+    <Card data-testid={`option-card-${option._id}`} className={cn(pending && "opacity-60")}>
       <CardContent className="space-y-3 p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">

@@ -40,7 +40,7 @@ the branch state that includes it.
   - **Acceptance:** both surfaces are usable one-handed on 375px and preserve
     existing desktop behavior.
 
-- [ ] **S4 — Playwright viewport suite for critical mobile flows (`tests/`, Playwright config)**
+- [x] **S4 — Playwright viewport suite for critical mobile flows (`tests/`, Playwright config)**
   Add repo-owned viewport verification for the three critical 375px flows from
   `docs/PRODUCT_STRATEGY.md` §9.
   - Coverage: (1) feed opportunity → detail → analyze entrypoint, (2) analyze
@@ -51,7 +51,7 @@ the branch state that includes it.
   - **Acceptance:** the viewport tests pass at 375px and fail if a split-pane
     regresses into x-overflow.
 
-- [ ] **S5 — WP6 PR pass**
+- [x] **S5 — WP6 PR pass**
   Final verification and reviewer map for this WP only.
   - `docs/wp/wp06-stories.md` fully checked and `docs/wp/wp06-progress.md`
     updated append-only with decisions and gotchas.

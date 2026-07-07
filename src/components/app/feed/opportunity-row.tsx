@@ -35,6 +35,7 @@ export function OpportunityRow({
   return (
     <Card
       onClick={onSelect}
+      data-testid={`opportunity-row-${opportunity._id}`}
       className={cn(
         "cursor-pointer transition-colors hover:border-border",
         selected && "border-primary/60 ring-1 ring-primary/40",

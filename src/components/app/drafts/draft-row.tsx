@@ -84,6 +84,7 @@ export function DraftRow({
   return (
     <div
       onClick={onSelect}
+      data-testid={`draft-row-${draft._id}`}
       className={cn(
         "flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-muted-foreground/30 sm:flex-row sm:items-center",
         selected && "border-primary/60 ring-1 ring-primary/40",

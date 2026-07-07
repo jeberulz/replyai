@@ -59,3 +59,35 @@
   - `npm run lint` passed with generated Convex-file warnings only
   - `npm test` passed (`154 passed`, `1 skipped`)
   - `npm run build` passed
+
+## S4 — Playwright viewport suite
+- Added `@playwright/test`, `playwright.config.ts`, `npm run test:mobile`, and a
+  repo-owned `playwright/mobile-375.e2e.ts` suite targeted at the 375px flows.
+- Testability additions are scoped to the mobile surfaces only:
+  `data-testid` hooks on opportunity rows, draft rows, and option cards so the
+  viewport tests can drive those flows without brittle visual selectors.
+- Because the clean WP6 worktree is separate from the main checkout, demo-mode
+  browser runs needed the existing `.env.local` for `NEXT_PUBLIC_CONVEX_URL`.
+  Linked `.env.local -> ../replyai/.env.local` locally in the worktree; no repo
+  file change required.
+- Feed caveat: the persistent demo account's scanner can legitimately have zero
+  surfaced opportunities. The Playwright feed test first tries to surface one
+  by enabling keyword search + scan-now; if none appear, it still verifies the
+  375px feed shell and settings dialog without failing on absent data.
+- `npm run test:mobile` passed (`3 passed`) at 375px on Chromium.
+
+## S5 — Final PR pass
+- Final repo gate on the clean WP6 worktree:
+  - `npm run typecheck` passed
+  - `npm run lint` passed with generated Convex warnings only
+  - `npm test` passed (`154 passed`, `1 skipped`)
+  - `npm run build` passed
+  - `npm run test:mobile` passed (`3 passed`)
+- Browser verification details:
+  - Feed scanner shell verified at 375px, including no horizontal scroll and
+    accessible Sources/Scan-now controls; when opportunity data exists the test
+    also walks the stacked detail handoff.
+  - Analysis flow verified at 375px from composer submit to `/analysis/[id]`,
+    with options visible and no horizontal scroll.
+  - Draft detail verified at 375px by scheduling from the analysis flow, then
+    opening `/drafts` detail with stacked navigation and no horizontal scroll.
