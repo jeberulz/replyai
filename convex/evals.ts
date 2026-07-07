@@ -1,6 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalAction, mutation, query } from "./_generated/server";
 import { requireUser } from "./helpers";
+import { runGuardrailChecks } from "../shared/evals";
 
 const candidateValidator = v.object({
   model: v.string(),
@@ -37,6 +38,34 @@ export const save = mutation({
       createdAt: Date.now(),
     });
   },
+});
+
+/**
+ * Internal eval-agent surface: run the deterministic generation guardrails
+ * against a supplied option set and return a structured report. Internal-only
+ * (no session/`requireUser`) and key-free — it is a pure regression check the
+ * CI gate and any future scheduled shadow-sampling can call. Publishes nothing
+ * and touches no user data. The LLM-judged pass stays out of this V8 function
+ * (it would require the Node runtime, which cannot host the queries/mutations
+ * in this same file); it lives behind a key check in the test layer instead.
+ */
+export const runGuardrails = internalAction({
+  args: {
+    kind: v.union(v.literal("reply"), v.literal("quote")),
+    options: v.array(
+      v.object({
+        category: v.string(),
+        content: v.string(),
+        reason: v.string(),
+      })
+    ),
+    expectedCount: v.optional(v.number()),
+  },
+  handler: (_ctx, args) =>
+    runGuardrailChecks(args.options, {
+      kind: args.kind,
+      expectedCount: args.expectedCount,
+    }),
 });
 
 /** Most recent eval for an analysis (drives the comparison panel). */

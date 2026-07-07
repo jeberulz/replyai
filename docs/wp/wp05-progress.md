@@ -46,3 +46,14 @@
   `voiceFidelity` bounds/threshold. Loops over `BANNED_PHRASES` so adding a
   phrase is automatically covered.
 - Full suite after S5: 129 → (unit adds) tests green; typecheck + eslint clean.
+
+## S6 — Convex internal eval-agent surface
+- Added `internal.evals.runGuardrails` (internalAction, V8 runtime) that runs
+  the pure `runGuardrailChecks` over supplied options. Internal-only, no
+  `requireUser`, no keys, no db, publishes nothing.
+- Kept the file's default V8 runtime deliberately: `save`/`latestForAnalysis`
+  are a query/mutation and cannot coexist with `"use node"`. The optional
+  LLM-judged pass therefore lives in the test layer, not here.
+- Adding an export to an existing Convex module does not require regenerating
+  `convex/_generated/api.d.ts` (it types the whole module); typecheck confirms.
+- Full suite: 153 tests green.

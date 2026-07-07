@@ -59,7 +59,7 @@ Each story is atomic, verifiable in one sitting, and committed only when
   - Cover each checker, `weightedLength`, and `voiceFidelity` edge cases.
   - **Acceptance:** `npm test` green.
 
-- [ ] **S6 — Convex internal eval-agent surface (`convex/evals.ts`)**
+- [x] **S6 — Convex internal eval-agent surface (`convex/evals.ts`)**
   Extend without breaking `save` / `latestForAnalysis`.
   - Add an **internal** deterministic eval runner (no `requireUser` needed —
     internal-only, no keys) that returns a guardrail report for supplied options.
