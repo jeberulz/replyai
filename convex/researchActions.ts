@@ -7,6 +7,7 @@ import { z } from "zod";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalAction, type ActionCtx } from "./_generated/server";
+import { captureConvexException } from "./lib/sentry";
 import { demoResearchProfiles } from "../shared/demoData";
 import {
   rankResearchProfiles,
@@ -332,6 +333,7 @@ export const runResearch = internalAction({
       });
     } catch (error) {
       console.error("runResearch failed", { userId, runId, error });
+      await captureConvexException(error, { action: "runResearch", userId, runId });
       await ctx.runMutation(internal.research.markRunFailed, {
         runId,
         error:

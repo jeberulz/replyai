@@ -4,6 +4,8 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalAction, type ActionCtx } from "./_generated/server";
+import { trackConvexEvent } from "./lib/analytics";
+import { captureConvexException } from "./lib/sentry";
 import {
   scoreConversation,
   topicRelevanceForKeywords,
@@ -343,10 +345,13 @@ export const scanUser = internalAction({
           .sort((a, b) => b.score - a.score)
       );
 
-      await ctx.runMutation(internal.opportunities.upsertMany, {
+      const { inserted } = await ctx.runMutation(internal.opportunities.upsertMany, {
         userId,
         items: worthSurfacing,
       });
+      if (inserted > 0) {
+        await trackConvexEvent("opportunity_surfaced", userId, { count: inserted });
+      }
       await ctx.runMutation(internal.opportunities.pruneStale, { userId });
 
       await ctx.runMutation(internal.scanner.recordScanResult, {
@@ -355,6 +360,7 @@ export const scanUser = internalAction({
       });
     } catch (error) {
       console.error("scanUser failed", { userId, error });
+      await captureConvexException(error, { action: "scanUser", userId });
       await ctx.runMutation(internal.scanner.recordScanResult, {
         userId,
         resultCount: 0,

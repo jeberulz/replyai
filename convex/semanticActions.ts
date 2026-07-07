@@ -5,6 +5,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { v } from "convex/values";
 import { z } from "zod";
 import { internalAction } from "./_generated/server";
+import { captureConvexException } from "./lib/sentry";
 import {
   demoSemanticRelevance,
   SEMANTIC_HAIKU_MODEL,
@@ -125,6 +126,10 @@ export const classifyBatch = internalAction({
       return await classifyWithHaiku(nicheContext, tweets);
     } catch (error) {
       console.error("semantic classifyBatch failed, falling back to demo", error);
+      await captureConvexException(error, {
+        action: "semanticClassifyBatch",
+        tweetCount: tweets.length,
+      });
       const out: Record<string, SemanticScore> = {};
       for (const t of tweets) {
         out[t.tweetId] = demoSemanticRelevance(t.text, nicheContext);
