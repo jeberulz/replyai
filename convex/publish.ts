@@ -9,13 +9,6 @@ import { parseXPublishError } from "../shared/xErrors";
 import { refreshAccessToken } from "../shared/xOAuth";
 import { composeQuotePostText } from "../shared/xPublish";
 
-// A publish more than a minute after the draft was created is treated as a
-// user-scheduled send for the `published` event's `scheduled` property.
-// savedDrafts.scheduledFor is always set (drafts.publish defaults it to
-// Date.now() for an immediate send), so presence alone can't distinguish
-// "scheduled" from "now" — see docs/wp/wp04-progress.md.
-const SCHEDULED_THRESHOLD_MS = 60_000;
-
 const X_API_BASE = "https://api.x.com/2";
 const USE_NATIVE_QUOTES = process.env.X_PUBLISH_NATIVE_QUOTES === "true";
 
@@ -47,16 +40,23 @@ async function postTweet(
  * user click on this specific draft — never triggered automatically.
  */
 export const run = internalAction({
-  args: { draftId: v.id("savedDrafts") },
-  handler: async (ctx, { draftId }) => {
+  args: {
+    draftId: v.id("savedDrafts"),
+    // Whether this run was queued for a future time the user picked (vs an
+    // immediate send/retry) — passed by the caller (drafts.ts) rather than
+    // inferred here. savedDrafts.scheduledFor is always populated (even for
+    // an immediate publish), so it alone can't distinguish "scheduled" from
+    // "now"; retryAsStandalone in particular reuses an old draft whose
+    // createdAt is far in the past, which would misclassify a retry as
+    // "scheduled" under a time-since-creation heuristic.
+    scheduled: v.boolean(),
+  },
+  handler: async (ctx, { draftId, scheduled }) => {
     const bundle = await ctx.runQuery(internal.drafts.getForPublish, { draftId });
     if (!bundle) return;
     const { draft, isDemo, userId, refreshToken, expiresAt, scope, editedBeforeSend } = bundle;
     if (draft.status === "published") return;
 
-    const scheduled = Boolean(
-      draft.scheduledFor && draft.scheduledFor > draft.createdAt + SCHEDULED_THRESHOLD_MS
-    );
     const resolvedMode = draft.publishMode ?? (draft.kind === "quote" ? "url_quote" : "threaded");
 
     if (isDemo) {

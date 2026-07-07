@@ -87,9 +87,12 @@ export const publish = mutation({
       createdAt: Date.now(),
     });
     if (scheduledFor && scheduledFor > Date.now()) {
-      await ctx.scheduler.runAt(scheduledFor, internal.publish.run, { draftId });
+      await ctx.scheduler.runAt(scheduledFor, internal.publish.run, {
+        draftId,
+        scheduled: true,
+      });
     } else {
-      await ctx.scheduler.runAfter(0, internal.publish.run, { draftId });
+      await ctx.scheduler.runAfter(0, internal.publish.run, { draftId, scheduled: false });
     }
     return draftId;
   },
@@ -113,7 +116,7 @@ export const retryAsStandalone = mutation({
       publishMode: "standalone",
       scheduledFor: Date.now(),
     });
-    await ctx.scheduler.runAfter(0, internal.publish.run, { draftId });
+    await ctx.scheduler.runAfter(0, internal.publish.run, { draftId, scheduled: false });
   },
 });
 

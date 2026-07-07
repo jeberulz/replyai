@@ -133,3 +133,26 @@ What I did instead, and what the PR states plainly:
 
 I am not claiming a live dashboard or a live click-through was verified —
 it wasn't, for the reasons above.
+
+## Bug caught in self-review (before the PR was opened)
+
+The first version of the `published` event's `scheduled` property computed
+`draft.scheduledFor > draft.createdAt + 60_000` inside `convex/publish.ts`
+as a heuristic to distinguish a user-scheduled send from an immediate one
+(`savedDrafts.scheduledFor` is always populated, even for immediate sends —
+see the "Convex mutations cannot call fetch" gotcha above for why this
+couldn't just be a stored field instead). That heuristic is wrong for
+`drafts.retryAsStandalone`: it patches `scheduledFor: Date.now()` on an
+*old* draft whose `createdAt` is from whenever the original (now-failed)
+publish attempt was created — often well over a minute earlier — so a
+same-second retry-after-failure would have been misreported as
+`scheduled: true`.
+
+Fixed by threading an explicit `scheduled: boolean` through the scheduler
+call itself instead of inferring it after the fact: `drafts.publish` passes
+`scheduled: true` on the `runAt` (future) branch and `false` on the
+`runAfter(0, …)` (immediate) branch; `retryAsStandalone` passes `false`
+(it's always an immediate retry). `convex/publish.ts`'s `run` action takes
+`scheduled` as a required argument instead of computing it. This is an
+additive argument on an internal Convex action, not a schema change — still
+within the WP4 boundary ("schema changes: none should be needed").
