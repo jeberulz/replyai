@@ -1,6 +1,6 @@
 # ReplyPilot AI — Product Strategy & Delivery Roadmap
 
-**Status:** working document · **Owner:** product · **Last updated:** 2026-07-07 (rev 2: feature-by-feature review added)
+**Status:** working document · **Owner:** product · **Last updated:** 2026-07-07 (rev 3: feature review + format-intelligence research added)
 **Companion docs:** `PRD.md` (v3, product source of truth) · `STRATEGY.md`
 (concise strategy note) · `design.md` (Dark Chrome design system) ·
 `README.md` (architecture)
@@ -452,6 +452,104 @@ roadmap (§10) sequences the committed subset.
 
 ---
 
+### 5.5 Format intelligence & the reply-to-post ladder (research-informed, July 2026)
+
+External research on what currently earns reach on X (sources at the end of
+this subsection). These are secondary, SEO-flavored sources with conflicting
+numbers — treat directions as reliable, magnitudes as indicative. Consistent
+with our own guardrails, none of these numbers go in the UI until our
+reply-back data confirms them per user.
+
+**Findings, ordered by strategic weight:**
+
+1. **Replies are the most-weighted engagement signal in X's ranking** —
+   sources put replies at anywhere from ~15x to ~150x the weight of a like,
+   and consistently agree conversation quality now beats raw engagement.
+   The "reply-guy" playbook (≈70% of time on strategic replies to larger
+   accounts, ~15–20 quality replies/day, staying under ~50/day to avoid
+   spam heuristics) is reported to grow accounts 3–5x faster than
+   post-first strategies. *Implication: our wedge is aligned with where the
+   algorithm is going, not fighting it.*
+2. **The window is tighter than our model assumes.** Engagement velocity in
+   the first 30–60 minutes decides distribution, and replies posted within
+   5–15 minutes reportedly earn 3–5x the visibility of replies after two
+   hours. Our scoring gives full timing credit for 2 hours and the scanner
+   runs on a 30-minute cron — *both are too slow for the top of this
+   curve.*
+3. **Sentiment now matters.** The ranking model is reported to reward
+   constructive content and throttle combative/negative posts. Our
+   "debate" and "contrarian" categories sit close to that line.
+4. **Long-form is X's strategic bet.** Long-form posts (25k chars, all
+   Premium tiers) are now reported to out-distribute threads; X opened
+   Articles to all Premium subscribers (Jan 2026) and is running a $1M
+   top-article prize. Threads (4–8 posts) still earn boosted impressions.
+   Short text posts (~71–100 chars) show higher engagement rates than
+   longer ones.
+5. **External links are suppressed; native media and Premium are boosted**
+   (Premium reportedly worth 4–8x distribution). Native short video gets
+   the largest raw boost — noted, and deliberately not our fight (see
+   below).
+
+**Product response — five moves:**
+
+1. **The golden-15 lane (sharpens the wedge).** Tiered urgency replaces the
+   flat 2h window: opportunities from watched/list authors detected young
+   get an "instant" tier — push notification immediately, feed pinned, UI
+   shows "reply in the next ~15 min beats 95% of later replies." Requires
+   the WP19 adaptive cadence to give watched handles a faster scan lane
+   (Pro+ 15-min cadence exists in pricing; add a 5-min lane for a user's
+   top ~10 watched handles). The browser extension (WP10) is the true
+   sub-minute path — on-page detection needs no polling at all. → WP19,
+   WP8, WP10
+2. **Reply budget & pacing coach (account health, productized).** Encode
+   the researched envelope as a daily rhythm: a "today's best 15 windows"
+   framing on the dashboard, a soft target of 15–20 sent replies/day, and
+   escalating warnings approaching ~50/day (spam-heuristic territory).
+   This turns an abstract safety guardrail into a visible daily workflow —
+   and it caps LLM cost per user as a side effect. → WP22
+3. **Ladder-up targeting.** Reported sweet spot: reply to authors 5–20x
+   your own follower count — big enough to expose you, small enough that
+   your reply gets seen and answered. We know the user's follower count and
+   every author's; add a scoring factor and a "ladder" reason string
+   ("author is ~8x your size — prime visibility range"). Validate against
+   our own responded-outcomes once WP7 lands. → WP18
+4. **Constructive-framing pass on spiky categories.** Generation prompt
+   already bans engagement-bait; add an explicit constraint that debate/
+   contrarian options must disagree with the *idea*, never the person, and
+   open a genuine question where possible. Cheap sentiment self-check in
+   the eval agent (WP5) keeps it honest. Protects users from the
+   negativity throttle and fits the brand. → WP17, WP5
+5. **The reply-to-post ladder (new feature, Phase 2 flagship).** Winning
+   replies are proven demand signals. Build the repurposing flow: cluster a
+   user's responded-replies and unused missing-angles by topic, then
+   generate — in their voice — (a) a standalone short post (the 71–100
+   char high-engagement form), (b) a 4–8 post thread, or (c) a long-form
+   post/Article draft. Strategic bonus: **standalone posts avoid the
+   Feb-2026 X API reply restriction entirely** — this is the one publishing
+   surface where the API fight isn't uphill — and it rides X's own
+   long-form incentive push. Human clicks send, as always; Articles ship
+   as copy-to-clipboard drafts until the API supports them. → WP23
+   *Scope note: this extends "replies and quote tweets" into original-post
+   territory — deliberate, PRD §11 roadmap already contemplates it, and the
+   input (your proven replies) keeps it on-wedge: we're compounding won
+   conversations, not becoming a generic scheduler.*
+
+**Deliberate non-responses:** native video (different product, different
+muscle; revisit only if reply-adjacent video quote posts become a thing);
+posting-time optimizers as a headline feature (commodity — our timing story
+is reply windows, not "Tuesday 9am"); chasing the $1M article prize as a
+marketing stunt (fine as content, not as roadmap).
+
+*Sources: [OpenTweet algorithm data study](https://opentweet.io/blog/how-twitter-x-algorithm-works-2026) ·
+[Teract reply-guy strategy 2026](https://www.teract.ai/resources/twitter-reply-guy-strategy-2026) ·
+[Teract algorithm 2026](https://www.teract.ai/resources/twitter-algorithm-2026) ·
+[Avenue Z X organic guide 2026](https://avenuez.com/blog/2025-2026-x-twitter-organic-social-media-guide-for-brands/) ·
+[PostEverywhere algorithm source-code walkthrough](https://posteverywhere.ai/blog/how-the-x-twitter-algorithm-works) ·
+[ppc.land: Articles for all Premium](https://ppc.land/x-opens-articles-to-all-premium-users-ending-exclusive-pricing-tier/) ·
+[Social Media Today: $1M article prize](https://www.socialmediatoday.com/news/x-formerly-twitter-offers-million-dollar-prize-best-article-long-form-post/809930/) ·
+[Buffer format study](https://buffer.com/resources/data-best-content-format-social-media/) ·
+[Bisonary: growing with replies](https://www.bisonary.com/blog/how-to-grow-on-twitter-with-replies-in-2026)*
+
 ## 6. Monetization (decide at Phase 0 exit, ship at launch)
 
 **Recommendation: freemium subscription with usage-aware fair-use caps** —
@@ -669,8 +767,10 @@ mobile = triage + send.**
 ### Phase 1 — Wedge sharpening (weeks 3–9) · *Exit: north star moving*
 1. Reply-back tracker + outcome agent (§5.1, §7.2.3) — unblocks the
    response-rate metric and the learning loop.
-2. Hot-window push notifications + digest email (§5.1).
+2. Hot-window push notifications + digest email (§5.1), including the
+   golden-15 instant tier for watched/list authors (§5.5).
 3. Freshness decay + auto-archive in the feed.
+3b. Reply budget & pacing coach (§5.5) — ships with personal analytics.
 4. Scan-triage agent upgrade (§7.2.1) and research agent v2 (§7.2.2).
 5. Browser extension MVP (read + deep-link only) (§5.3).
 6. Personal analytics v1 + account-health warnings (§5.4).
@@ -681,6 +781,9 @@ mobile = triage + send.**
 
 ### Phase 2 — Compounding intelligence (weeks 9–19) · *Exit: data moat visible*
 1. Daily briefing agent + surface (§7.2.4).
+1b. **Reply-to-post ladder (§5.5) — Phase 2 flagship:** compound won
+   conversations into standalone posts, threads, and long-form drafts;
+   also the publishing surface free of the X API reply restriction.
 2. Engagement-window prediction from accumulated reply-back data (§5.1) —
    the first honest number.
 3. Author relationship memory + trend radar (§5.1, §7.2.8).
@@ -785,6 +888,8 @@ npm test && npm run build`), Convex guidelines
 | WP19 | Scanner scale & cost | P0 | `convex/scannerActions.ts`, `convex/crons.ts` | Per-user fan-out scan jobs with failure isolation; plan/activity-adaptive cadence; text-fingerprint dedupe; plan-aware search budgets |
 | WP20 | Edit-distance north star | P0 | `generatedReplies`, drafts flow, usage stats | Normalized edit distance stored per sent reply; no/minor/major buckets replace the boolean; dashboards updated before launch baselines |
 | WP21 | Research agent tightening | P1 | `shared/researchScoring.ts`, research UI | Band-normalized engagement scoring; timestamp-based post frequency; watched-handle dedupe + one-click watch with keyword seeding |
+| WP22 | Reply budget & pacing coach | P1 | dashboard, drafts flow, `usage` | Daily sent-reply count with 15–20 target framing; escalating warnings near ~50/day; "today's best windows" dashboard module |
+| WP23 | Reply-to-post ladder | P2 | new `convex/compose.ts`, generation prompts, drafts | Topic-clustered winning replies + unused angles → voice-matched standalone post / 4–8 thread / long-form draft; standalone publish via existing API path; Articles as copy-out drafts; human click on every send |
 
 ---
 
