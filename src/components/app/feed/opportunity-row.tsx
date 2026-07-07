@@ -42,7 +42,7 @@ export function OpportunityRow({
       )}
     >
       <CardContent className="space-y-3 p-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 text-sm font-semibold">
             {opportunity.authorName}{" "}
             <span className="font-normal text-muted-foreground">
@@ -80,8 +80,13 @@ export function OpportunityRow({
           {opportunity.suggestedAngle}
         </p>
 
-        <div className="flex items-center gap-2 pt-1">
-          <Button size="sm" asChild onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
+          <Button
+            size="sm"
+            asChild
+            onClick={(e) => e.stopPropagation()}
+            className="w-full sm:w-auto"
+          >
             <Link href={`/dashboard?url=${encodeURIComponent(opportunity.tweetUrl)}`}>
               Analyze &amp; reply
               <ArrowRight />
@@ -91,6 +96,7 @@ export function OpportunityRow({
             size="sm"
             variant="ghost"
             disabled={pending}
+            className="w-full sm:w-auto"
             onClick={(e) => {
               e.stopPropagation();
               startTransition(() => dismissOpportunityAction(opportunity._id));

@@ -75,8 +75,8 @@ export function OpportunityDetail({
       <PaneBody className="space-y-4">
         <Card>
           <CardContent className="space-y-3 p-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0 text-sm">
                 <span className="font-semibold">{opportunity.authorName}</span>{" "}
                 <span className="text-muted-foreground">
                   @{opportunity.authorHandle} ·{" "}
@@ -130,13 +130,18 @@ export function OpportunityDetail({
       <PaneActionBar
         note="Analyzing opens the reply workbench with 3 replies + 3 quote tweets in your voice."
       >
-        <Button asChild className="flex-1">
+        <Button asChild className="w-full sm:flex-1">
           <Link href={`/dashboard?url=${encodeURIComponent(opportunity.tweetUrl)}`}>
             <ArrowRight />
             Analyze &amp; reply
           </Link>
         </Button>
-        <Button variant="outline" onClick={dismiss} disabled={pending}>
+        <Button
+          variant="outline"
+          onClick={dismiss}
+          disabled={pending}
+          className="w-full sm:w-auto"
+        >
           Dismiss
         </Button>
       </PaneActionBar>

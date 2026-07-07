@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { MasterDetail } from "@/components/app/split/master-detail";
-import { FilterChips, PaneEyebrow } from "@/components/app/split/pane-chrome";
+import { FilterChips } from "@/components/app/split/pane-chrome";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DraftRow, type Draft } from "@/components/app/drafts/draft-row";
 import { DraftDetail } from "@/components/app/drafts/draft-detail";
@@ -47,14 +47,14 @@ export function DraftsList() {
 
   const list = (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-4 sm:px-6">
         <h2 className="text-[15px] font-semibold">Drafts &amp; published</h2>
         <span className="text-xs tabular-nums text-muted-foreground">
           {drafts === undefined ? "" : `${drafts.length} items`}
         </span>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
         <FilterChips
           value={filter}
           onValueChange={setFilter}

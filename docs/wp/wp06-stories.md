@@ -29,7 +29,7 @@ the branch state that includes it.
   - **Acceptance:** mobile analyze flow renders as a single-column stack with no
     horizontal scroll and preserves the 3-option guardrail.
 
-- [ ] **S3 — Feed and drafts mobile stacked details (`src/components/app/feed-*`, `src/components/app/drafts-*`)**
+- [x] **S3 — Feed and drafts mobile stacked details (`src/components/app/feed-*`, `src/components/app/drafts-*`)**
   Bring the two split-pane list/detail surfaces in line with the stacked mobile
   navigation strategy.
   - Feed opportunity list pushes a readable detail screen with accessible back,

@@ -45,3 +45,17 @@
   - `npm run lint` passed with the same pre-existing warnings noted in S1
   - `npm test` passed (`154 passed`, `1 skipped`)
   - `npm run build` passed
+
+## S3 — Feed and drafts mobile stacked details
+- `FeedScanner` and `DraftsList` now use tighter mobile padding and stack their
+  top-bar controls instead of forcing desktop button rows into a 375px header.
+- `OpportunityRow`, `OpportunityDetail`, `DraftRow`, and `DraftDetail` now
+  reflow action buttons into mobile-safe columns/rows, so selection and publish
+  fallback controls stay readable without horizontal scroll.
+- Removed the stale `PaneEyebrow` import from `DraftsList`, which cleared the
+  only non-generated lint warning seen in S1/S2.
+- Verification on the clean WP6 worktree:
+  - `npm run typecheck` passed
+  - `npm run lint` passed with generated Convex-file warnings only
+  - `npm test` passed (`154 passed`, `1 skipped`)
+  - `npm run build` passed
