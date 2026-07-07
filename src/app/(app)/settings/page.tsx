@@ -252,37 +252,6 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Observed reply quality</CardTitle>
-          <CardDescription>
-            Based on normalized edit distance for sent generated replies only.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
-            {(
-              [
-                ["North star", stats.noOrMinorEditRate === null ? "—" : `${stats.noOrMinorEditRate}%`],
-                ["Observed sent", formatCount(stats.generatedPublishedWithObservedEdits)],
-                ["No edit", formatCount(stats.noEditCount)],
-                ["Minor edit", formatCount(stats.minorEditCount)],
-                ["Major edit", formatCount(stats.majorEditCount)],
-              ] as const
-            ).map(([label, value]) => (
-              <div key={label} className="rounded-lg border p-3">
-                <dt className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-                  {label}
-                </dt>
-                <dd className="mt-1.5 font-mono text-lg tabular-nums text-foreground">
-                  {value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle className="text-base">How publishing works</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
