@@ -6,6 +6,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # ReplyPilot AI — project notes
 
+- **Building a work package (WP) from `docs/PRODUCT_STRATEGY.md` §14?**
+  Read `docs/AGENT_PLAYBOOK.md` first and follow it exactly — it defines
+  the branch/PR protocol, WP sequencing and file-collision rules, scope
+  discipline, and the definition of done for every PR.
 - **Product source of truth**: `PRD.md` (v3). Read it before building or
   changing any feature — it defines the bet (conversation discovery + timing
   is the wedge, not voice-matched generation), scope (single account in v1, no
