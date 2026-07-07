@@ -117,9 +117,48 @@ violates any of them gets closed, regardless of how good the code is.
   not guess product behavior. Technical implementation choices within the
   DoD are yours to make.
 
-## 5. Definition of done — every PR
+## 5. The story loop — how to work inside your WP
 
-1. Your WP row's "Definition of done" from §14 is satisfied, item by item.
+(Adapted from the Ralph/Antfarm pattern: atomic stories, checked-in state,
+fresh-context-safe iterations.)
+
+Before your first code edit, decompose your WP's Definition of Done into
+**atomic stories** and check them in as `docs/wp/wpNN-stories.md` on your
+branch — a checklist where each story has an id, a one-line title, and
+concrete acceptance criteria. Size each story to be completable and
+verifiable in one sitting ("add the outcome index + query", "wire the
+dashboard card") — "build the tracker" is not a story, it's the WP.
+
+Then loop:
+
+1. Pick the highest-priority unchecked story. **One story at a time.**
+2. Implement it. Run `npm run typecheck && npm test` (plus lint/build when
+   the story warrants).
+3. **Commit only when checks pass**, one commit per story, message
+   referencing the story id. UI stories: verify the actual flow in the
+   running app (`/verify`), not just the compile.
+4. Mark the story checked in `wpNN-stories.md` and append what you learned
+   to `docs/wp/wpNN-progress.md` (append-only: decisions made, dead ends,
+   gotchas the next iteration or a replacement agent needs).
+5. Repeat until every story is checked, then do the §6 PR pass.
+
+Why this is mandatory: sessions are ephemeral and context gets compacted.
+The branch itself must carry your state — a fresh agent (or you, after a
+context loss) must be able to resume from `git log` + the stories file +
+the progress file alone, without the chat transcript. The two `docs/wp/`
+files are working artifacts: keep them in the PR (they double as the
+review map), but they are not product documentation.
+
+Verification is adversarial by design: the `/code-review` pass and the
+merging reviewer check your *stories' acceptance criteria against actual
+behavior*, not your claims. Write acceptance criteria you'd be willing to
+be graded on.
+
+## 6. Definition of done — every PR
+
+1. Your WP row's "Definition of done" from §14 is satisfied, item by item,
+   and every story in `docs/wp/wpNN-stories.md` is checked with its
+   acceptance criteria actually met.
 2. `npm run typecheck && npm run lint && npm test && npm run build` all
    pass locally.
 3. New logic in `shared/` has unit tests in `tests/` (this repo's
@@ -133,7 +172,7 @@ violates any of them gets closed, regardless of how good the code is.
 7. Commits are clean and descriptive. Do not include model identifiers in
    commits, code comments, or PR text.
 
-## 6. Working agreement
+## 7. Working agreement
 
 - **Small and merged beats big and perfect.** Bias toward the smallest PR
   that satisfies the DoD.
