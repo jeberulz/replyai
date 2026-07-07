@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
+import {
+  openBillingPortalAction,
+  startProCheckoutAction,
+} from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,7 +54,10 @@ export default async function SettingsPage() {
   if (!session) redirect("/");
   const { user, sessionToken } = session;
 
-  const stats = await convexServer().query(api.usage.stats, { sessionToken });
+  const [stats, billing] = await Promise.all([
+    convexServer().query(api.usage.stats, { sessionToken }),
+    convexServer().query(api.billing.status, { sessionToken }),
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -92,6 +99,82 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Billing</CardTitle>
+          <CardDescription>
+            Free keeps manual analysis and reply generation. Pro unlocks the
+            feed scanner, all scanner sources, and hot-window notifications.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+            <div>
+              <div className="text-sm font-medium">
+                {billing.hasProAccess ? "Pro" : "Free"}
+                {billing.subscriptionStatus
+                  ? ` · ${billing.subscriptionStatus.replace(/_/g, " ")}`
+                  : ""}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {user.isDemo
+                  ? "Demo accounts keep Pro access without Stripe so the full product stays testable."
+                  : billing.currentPeriodEnd
+                    ? `Current access through ${new Date(billing.currentPeriodEnd).toLocaleDateString()}`
+                    : billing.trialEndsAt
+                      ? `Trial ends ${new Date(billing.trialEndsAt).toLocaleDateString()}`
+                      : "Billing runs in Stripe test mode while launch pricing is being finalized."}
+              </div>
+            </div>
+            <Badge variant={billing.hasProAccess ? "success" : "secondary"}>
+              {billing.hasProAccess ? "Pro unlocked" : "Free plan"}
+            </Badge>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border p-3">
+              <div className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+                Free
+              </div>
+              <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                <li>3 analyses per day</li>
+                <li>1 voice profile</li>
+                <li>No live scanner or notifications</li>
+              </ul>
+            </div>
+            <div className="rounded-lg border p-3">
+              <div className="font-mono text-xs uppercase tracking-[0.1em] text-primary">
+                Pro
+              </div>
+              <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                <li>Unlimited analyses under fair use</li>
+                <li>Feed scanner across all 4 sources</li>
+                <li>Hot-window notifications</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {billing.canStartCheckout ? (
+              <form action={startProCheckoutAction}>
+                <Button type="submit">Start Pro trial</Button>
+              </form>
+            ) : (
+              <Button type="button" disabled>
+                {user.isDemo ? "Demo includes Pro" : "Stripe not configured"}
+              </Button>
+            )}
+            {billing.canManageBilling && (
+              <form action={openBillingPortalAction}>
+                <Button variant="outline" type="submit">
+                  Open billing portal
+                </Button>
+              </form>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Connections</CardTitle>
           <CardDescription>
             Configured via environment variables — see .env.example in the repo.
@@ -123,6 +206,15 @@ export default async function SettingsPage() {
                 : "ANTHROPIC_API_KEY missing — using deterministic demo generation"
             }
           />
+          <ConnectionRow
+            name="Stripe billing"
+            connected={billing.stripeConfigured}
+            detail={
+              billing.stripeConfigured
+                ? "Stripe checkout, portal, and webhook are live in test mode"
+                : "STRIPE_SECRET_KEY / STRIPE_PRO_PRICE_ID / STRIPE_WEBHOOK_SECRET missing — billing stays hidden"
+            }
+          />
         </CardContent>
       </Card>
 
@@ -151,6 +243,37 @@ export default async function SettingsPage() {
                 </dt>
                 <dd className="mt-1.5 font-mono text-lg tabular-nums text-foreground">
                   {formatCount(value)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Observed reply quality</CardTitle>
+          <CardDescription>
+            Based on normalized edit distance for sent generated replies only.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
+            {(
+              [
+                ["North star", stats.noOrMinorEditRate === null ? "—" : `${stats.noOrMinorEditRate}%`],
+                ["Observed sent", formatCount(stats.generatedPublishedWithObservedEdits)],
+                ["No edit", formatCount(stats.noEditCount)],
+                ["Minor edit", formatCount(stats.minorEditCount)],
+                ["Major edit", formatCount(stats.majorEditCount)],
+              ] as const
+            ).map(([label, value]) => (
+              <div key={label} className="rounded-lg border p-3">
+                <dt className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+                  {label}
+                </dt>
+                <dd className="mt-1.5 font-mono text-lg tabular-nums text-foreground">
+                  {value}
                 </dd>
               </div>
             ))}

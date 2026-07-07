@@ -19,6 +19,7 @@ import {
   trackServer,
 } from "@/lib/analytics/server";
 import { convexServer } from "@/lib/convex";
+import { env } from "@/lib/env";
 import { getSessionUser } from "@/lib/session";
 import {
   fetchOwnedLists,
@@ -815,6 +816,27 @@ export async function scanNowAction() {
   const { sessionToken } = await requireSession();
   await convexServer().mutation(api.scanner.scanNow, { sessionToken });
   revalidatePath("/feed");
+}
+
+export async function startProCheckoutAction() {
+  const { sessionToken } = await requireSession();
+  const result = await convexServer().action(
+    api.billingNode.createCheckoutSession,
+    {
+      sessionToken,
+      returnUrl: env.appUrl,
+    }
+  );
+  redirect(result.url);
+}
+
+export async function openBillingPortalAction() {
+  const { sessionToken } = await requireSession();
+  const result = await convexServer().action(api.billingNode.createPortalSession, {
+    sessionToken,
+    returnUrl: env.appUrl,
+  });
+  redirect(result.url);
 }
 
 export async function dismissOpportunityAction(opportunityId: string) {
