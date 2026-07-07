@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { AnalyticsProvider } from "@/components/app/analytics-provider";
 import { ConvexClientProvider } from "@/components/app/convex-provider";
 import { CommandMenu } from "@/components/app/command-menu";
 import { AppNav } from "@/components/app/nav";
@@ -26,6 +27,7 @@ export default async function AppLayout({
 
   return (
     <ConvexClientProvider sessionToken={session.sessionToken}>
+      <AnalyticsProvider userId={session.user._id} />
       <SidebarProvider>
         <div className="flex min-h-screen flex-col md:flex-row">
           <AppNav user={session.user} />
