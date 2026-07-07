@@ -78,9 +78,14 @@ Append-only. Decisions, dead ends, gotchas for the next iteration.
   Verified against the installed package's `.d.ts` before writing
   `next.config.ts` — the public docs prose doesn't always match the current
   major version's option names.
-- `captureRouterTransitionStart` is not exported by the installed
-  `@sentry/nextjs` version — skipped that optional instrumentation-client
-  hook rather than guessing at an API that doesn't exist in this version.
+- `captureRouterTransitionStart` isn't exported from `@sentry/nextjs`'s
+  shared type entrypoint (`index.types.d.ts`) — only from its
+  browser-specific `client/index.d.ts`, which is what actually resolves at
+  `import * as Sentry from "@sentry/nextjs"` inside
+  `instrumentation-client.ts` (package.json `exports` conditions pick the
+  client build there). Confirmed by running `next build`: it emitted an
+  explicit "ACTION REQUIRED" warning asking for this export, which is the
+  SDK's own way of flagging the gap — added it once the build surfaced it.
 - Convex mutations cannot call `fetch` (no external I/O in transactions) —
   `opportunity_surfaced` has to be captured from the calling action
   (`scannerActions.ts`), not from the `opportunities.upsertMany` mutation
