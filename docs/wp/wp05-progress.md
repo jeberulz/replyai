@@ -83,3 +83,10 @@
   passed with zero keys. YAML validated via js-yaml (2 jobs, correct steps).
 - Gotcha: `next build` (Turbopack) rejects a symlinked `node_modules`
   ("points out of the filesystem root"). The worktree now has a real install.
+
+## S9 — docs
+- AGENTS.md: added an "Eval gate & CI" bullet (zero-keys required gate, what the
+  guardrails cover, optional key-gated LLM pass, the Convex internal surface,
+  how to add a guardrail).
+- README.md: added `npm run evals` / `npm run evals:llm` to the commands table
+  and an "Eval gate & CI" architecture note.

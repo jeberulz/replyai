@@ -81,7 +81,7 @@ Each story is atomic, verifiable in one sitting, and committed only when
   - **Acceptance:** with no key, block is reported skipped; `npm run evals` runs
     the deterministic gate.
 
-- [ ] **S9 — Docs (`AGENTS.md`, `README.md`)**
+- [x] **S9 — Docs (`AGENTS.md`, `README.md`)**
   - Document the CI gate (what it checks, zero-keys behavior) and how to run
     evals locally, in the same PR (§7 docs-are-infrastructure).
   - **Acceptance:** docs describe reality; no stale claims.
