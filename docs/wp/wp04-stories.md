@@ -92,13 +92,13 @@ WP20).
   `scheduled`, and `editedBeforeSend` (looked up via an additive field on
   `drafts.getForPublish`).
 
-- [ ] S10 — Dashboard definition doc + env docs
+- [x] S10 — Dashboard definition doc + env docs
   Acceptance: `docs/observability.md` specifies exact PostHog funnel/insight
   definitions (event names, properties, step order, breakdowns) and Sentry
   project setup notes. `.env.example` documents new env vars.
   `AGENTS.md`/`README.md` updated per playbook §7 doc-drift rule.
 
-- [ ] S11 — Debug-sink verification tests
+- [x] S11 — Debug-sink verification tests
   Acceptance: `tests/analytics.test.ts` asserts (a) `trackServer`/
   `trackClient`/`captureServerException` no-op without keys (no throw, sink
   not called), and (b) with an injected debug sink, calling `trackServer`
