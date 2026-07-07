@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "evals": "vitest run tests/evals.test.ts tests/evals.fixtures.test.ts",
+    "evals:llm": "vitest run tests/evals.llm.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

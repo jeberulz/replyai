@@ -73,7 +73,7 @@ Each story is atomic, verifiable in one sitting, and committed only when
   - **Acceptance:** the exact commands the required job runs pass locally in a
     clean state; workflow YAML is valid.
 
-- [ ] **S8 — Optional LLM-judged pass (`tests/evals.llm.test.ts` + `npm run evals`)**
+- [x] **S8 — Optional LLM-judged pass (`tests/evals.llm.test.ts` + `npm run evals`)**
   - Vitest block gated with `describe.runIf(ANTHROPIC_API_KEY)`; skipped (with a
     clear skip annotation) when absent, so the default suite and CI stay
     deterministic and never make a paid call.
