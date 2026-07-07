@@ -97,3 +97,39 @@ Append-only. Decisions, dead ends, gotchas for the next iteration.
   Not touched — out of scope for this WP (not an observability concern, and
   changing cron scheduling is a behavior change, not instrumentation).
   Flagged in the PR under "Found, not fixed."
+
+## Demo-mode verification — what I did and did not do
+
+The shared checkout's `.env.local` (outside this worktree, not committed)
+points at a real Convex dev deployment with real `ANTHROPIC_API_KEY` and
+`X_CLIENT_ID`/`X_CLIENT_SECRET` already configured — i.e. it is not in demo
+mode, and I have no way to check or control what env vars that deployment's
+Convex *server* side has been given via prior `npx convex env set` calls.
+Copying it into this worktree and clicking through the running app would
+risk spending real Anthropic credits and potentially attempting a real X
+publish against a live shared dev account — not something to do
+incidentally while verifying instrumentation.
+
+I could not start a fresh, isolated demo-only Convex deployment either:
+`npx convex dev` requires an interactive browser login on first run, which
+isn't available in this non-interactive environment.
+
+What I did instead, and what the PR states plainly:
+- Full check suite (`typecheck`, `lint`, `test`, `build`) green after every
+  story, including a real `next build` that proves the Sentry wiring
+  doesn't break a production build with zero keys set.
+- `tests/analytics.test.ts` exercises the actual no-op behavior of every
+  new helper with no keys configured — this *is* demo mode for the
+  analytics layer specifically (the thing most likely to almost-work
+  differently with vs. without keys).
+- Manual review of every new event call site confirms: (a) none are gated
+  behind `!isDemo` — the demo branches (`convex/publish.ts`'s `isDemo`
+  short-circuit, `scannerActions.ts`'s `collectDemoCandidates` path) flow
+  through the exact same event-firing code as the real branches; (b) every
+  `trackServer`/`trackClient`/`trackConvexEvent`/`captureServerException`/
+  `captureConvexException` call is internally try/catch-wrapped and returns
+  `void`/`Promise<void>` — none can throw synchronously into a calling
+  action, mutation, or component and break the flow it's attached to.
+
+I am not claiming a live dashboard or a live click-through was verified —
+it wasn't, for the reasons above.
