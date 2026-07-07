@@ -25,14 +25,14 @@ WP20).
 
 ## Stories
 
-- [ ] S1 — Typed event catalog module
+- [x] S1 — Typed event catalog module
   Acceptance: `src/lib/analytics/events.ts` exports a single source of truth
   for event names (`FUNNEL_EVENTS` / `AnalyticsEvent` union) and a
   `properties` type per event. No side effects, importable from both
   Next.js (`@/lib/analytics/events`) and Convex (relative path) without
   pulling in any Node- or browser-only code.
 
-- [ ] S2 — Server-side track/capture adapter
+- [x] S2 — Server-side track/capture adapter
   Acceptance: `src/lib/analytics/server.ts` exports `trackServer(event,
   distinctId, properties)` backed by `posthog-node`, and
   `captureServerException(error, context)` backed by `@sentry/nextjs`. Both
@@ -40,13 +40,13 @@ WP20).
   `POSTHOG_KEY`/`SENTRY_DSN` are unset. A debug sink can be injected for
   tests.
 
-- [ ] S3 — Client-side track/capture adapter
+- [x] S3 — Client-side track/capture adapter
   Acceptance: `src/lib/analytics/client.ts` exports `initAnalyticsClient()`,
   `identifyClient(userId)`, `trackClient(event, properties)` backed by
   `posthog-js`. No-ops when `NEXT_PUBLIC_POSTHOG_KEY` is unset. Never throws
   if called before init.
 
-- [ ] S4 — Sentry Next.js wiring
+- [x] S4 — Sentry Next.js wiring
   Acceptance: `@sentry/nextjs` added; `next.config.ts` wrapped with
   `withSentryConfig` (source map upload disabled — no auth token in this
   env); `src/instrumentation.ts` (server/edge init + `onRequestError`),
@@ -54,7 +54,7 @@ WP20).
   `initAnalyticsClient()`), `src/app/global-error.tsx` added. `npm run
   build` succeeds with zero Sentry/PostHog env vars set.
 
-- [ ] S5 — Convex-side event + error capture helper
+- [x] S5 — Convex-side event + error capture helper
   Acceptance: `convex/lib/analytics.ts` (fetch-based PostHog capture,
   no-ops without `POSTHOG_KEY`) and `convex/lib/sentry.ts` (fetch-based
   Sentry Store API capture, no-ops without `SENTRY_DSN`) added as plain
@@ -64,13 +64,13 @@ WP20).
   `convex/semanticActions.ts`, `convex/publish.ts` call
   `captureConvexException` additively (no logic change).
 
-- [ ] S6 — Funnel: `opportunity_surfaced`
+- [x] S6 — Funnel: `opportunity_surfaced`
   Acceptance: `convex/opportunities.upsertMany` returns `{ inserted,
   updated }` counts (additive return-value change only). The scan action in
   `convex/scannerActions.ts` fires `opportunity_surfaced` with `{ count }`
   once per user scan when `inserted > 0`.
 
-- [ ] S7 — Funnel: `opportunity_opened` + `generation_requested`
+- [x] S7 — Funnel: `opportunity_opened` + `generation_requested`
   Acceptance: `opportunity_opened` fires client-side when a feed row/detail
   is opened (`src/components/app/feed/opportunity-row.tsx`,
   `.../opportunity-detail.tsx` or their shared selection handler in
@@ -79,14 +79,14 @@ WP20).
   Stage 2 generation, `trigger: "initial"`; `generateMoreAction`, `trigger:
   "more"`).
 
-- [ ] S8 — Funnel: `option_selected` + `draft_saved`
+- [x] S8 — Funnel: `option_selected` + `draft_saved`
   Acceptance: `option_selected` fires on copy (client,
   `src/components/app/option-card.tsx`), on `saveDraftAction` and
   `publishAction` (server, `src/app/actions.ts`), tagged with `action:
   "copied"|"saved"|"published"` and `editedBeforeSend` when known.
   `draft_saved` fires in `saveDraftAction`.
 
-- [ ] S9 — Funnel: `published`
+- [x] S9 — Funnel: `published`
   Acceptance: `convex/publish.ts` fires `published` on every successful
   branch (including the demo-mode short-circuit) with `publishMode`,
   `scheduled`, and `editedBeforeSend` (looked up via an additive field on
