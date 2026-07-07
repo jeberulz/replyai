@@ -91,3 +91,5 @@
     with options visible and no horizontal scroll.
   - Draft detail verified at 375px by scheduling from the analysis flow, then
     opening `/drafts` detail with stacked navigation and no horizontal scroll.
+- Working tree was clean immediately after the S4 commit; this final docs-only
+  append exists to give S5 its own commit boundary in the branch history.
