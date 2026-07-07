@@ -49,9 +49,14 @@ export const run = internalAction({
     // "now"; retryAsStandalone in particular reuses an old draft whose
     // createdAt is far in the past, which would misclassify a retry as
     // "scheduled" under a time-since-creation heuristic.
-    scheduled: v.boolean(),
+    // Optional only for in-flight scheduled jobs enqueued under the old
+    // {draftId}-only signature — Convex serializes scheduler args at enqueue
+    // time, and a required arg would fail validation and silently drop those
+    // publishes. Current callers always pass an explicit true/false.
+    scheduled: v.optional(v.boolean()),
   },
   handler: async (ctx, { draftId, scheduled }) => {
+    const wasScheduled = scheduled ?? false;
     const bundle = await ctx.runQuery(internal.drafts.getForPublish, { draftId });
     if (!bundle) return;
     const { draft, isDemo, userId, refreshToken, expiresAt, scope, editedBeforeSend } = bundle;
@@ -68,7 +73,7 @@ export const run = internalAction({
         draftId,
         kind: draft.kind,
         publishMode: resolvedMode,
-        scheduled,
+        scheduled: wasScheduled,
         editedBeforeSend,
       });
       return;
@@ -176,7 +181,7 @@ export const run = internalAction({
         draftId,
         kind: draft.kind,
         publishMode: successMode,
-        scheduled,
+        scheduled: wasScheduled,
         editedBeforeSend,
       });
     } catch (error) {
