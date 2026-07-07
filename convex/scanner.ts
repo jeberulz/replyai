@@ -7,6 +7,7 @@ import {
   query,
 } from "./_generated/server";
 import { requireUser } from "./helpers";
+import { hasProAccess, paidFeatureGateMessage } from "../shared/billing";
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
 
@@ -43,7 +44,7 @@ export const settings = query({
       needsListScope = !!tokenRow && !tokenRow.scope.includes("list.read");
     }
 
-    return { ...row, needsListScope };
+    return { ...row, needsListScope, scannerLocked: !hasProAccess(user) };
   },
 });
 
@@ -72,6 +73,9 @@ export const updateSettings = mutation({
     }
   ) => {
     const user = await requireUser(ctx, sessionToken);
+    if (enabled && !hasProAccess(user)) {
+      throw new Error(paidFeatureGateMessage("scanner"));
+    }
 
     if (engageListIds && engageListIds.length > 5) {
       throw new Error("You can engage with at most 5 lists.");
@@ -186,6 +190,9 @@ export const scanNow = mutation({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
     const user = await requireUser(ctx, sessionToken);
+    if (!hasProAccess(user)) {
+      throw new Error(paidFeatureGateMessage("scanner"));
+    }
     await ctx.scheduler.runAfter(0, internal.scannerActions.scanUser, {
       userId: user._id,
     });
@@ -196,7 +203,14 @@ export const enabledSettings = internalQuery({
   args: {},
   handler: async (ctx) => {
     const all = await ctx.db.query("scannerSettings").collect();
-    return all.filter((s) => s.enabled).map((s) => ({ userId: s.userId }));
+    const enabled: { userId: typeof all[number]["userId"] }[] = [];
+    for (const settings of all) {
+      const user = await ctx.db.get(settings.userId);
+      if (user && settings.enabled && hasProAccess(user)) {
+        enabled.push({ userId: settings.userId });
+      }
+    }
+    return enabled;
   },
 });
 
@@ -216,10 +230,11 @@ export const scanContext = internalQuery({
     return {
       xUserId: user.xUserId,
       isDemo: user.isDemo,
+      plan: user.plan,
       goal: user.goal,
-    keywords: settingsRow?.keywords ?? [],
-    searchKeywords: settingsRow?.searchKeywords ?? [],
-    accessToken: tokenRow?.accessToken ?? null,
+      keywords: settingsRow?.keywords ?? [],
+      searchKeywords: settingsRow?.searchKeywords ?? [],
+      accessToken: tokenRow?.accessToken ?? null,
       refreshToken: tokenRow?.refreshToken ?? null,
       expiresAt: tokenRow?.expiresAt ?? 0,
       scope: tokenRow?.scope ?? "",

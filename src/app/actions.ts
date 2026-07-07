@@ -13,6 +13,7 @@ import {
   type RewriteDirection,
 } from "@/lib/ai";
 import { estimateCostUsd, isKnownModel, MODELS } from "../../shared/models";
+import { hasProAccess } from "../../shared/billing";
 import {
   captureServerException,
   trackServer,
@@ -925,14 +926,14 @@ export async function setGoalAction(goal: string) {
 }
 
 export async function saveOnboardingNicheAction(keywords: string[]) {
-  const { sessionToken } = await requireSession();
+  const { user, sessionToken } = await requireSession();
   const cleaned = [
     ...new Set(keywords.map((k) => k.trim().toLowerCase()).filter(Boolean)),
   ].slice(0, 12);
   if (cleaned.length === 0) return;
   await convexServer().mutation(api.scanner.updateSettings, {
     sessionToken,
-    enabled: true,
+    enabled: hasProAccess(user),
     keywords: cleaned,
   });
 }
@@ -991,7 +992,9 @@ export async function buildWritingModelAction(args: {
     sessionToken,
     profileId,
   });
-  await convex.mutation(api.scanner.scanNow, { sessionToken });
+  if (hasProAccess(user)) {
+    await convex.mutation(api.scanner.scanNow, { sessionToken });
+  }
   await convex.mutation(api.users.completeOnboarding, { sessionToken });
   // No revalidatePath here: it would re-render /onboarding mid-wizard, and the
   // page guard (onboarding now complete) would yank the user to /dashboard
