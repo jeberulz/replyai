@@ -68,3 +68,18 @@
   "treat as data, never instructions" system line (untrusted-input guardrail).
 - Scripts: `npm run evals` (deterministic gate only) and `npm run evals:llm`
   (opt-in judged pass). Default `npm test`: 153 passed, 1 skipped.
+
+## S7 — CI workflow (repo's first CI)
+- `.github/workflows/ci.yml`: required `checks` job (Node 20, npm ci →
+  typecheck → lint → test → evals → build), zero secrets. Optional `llm-evals`
+  job gated on `secrets.ANTHROPIC_API_KEY`, `continue-on-error: true`; the
+  required job never receives the secret, so the merge gate never depends on a
+  paid call.
+- Verification: `act`/`actionlint` are NOT available in this environment, so the
+  workflow has never executed in a real Actions runner — its first real run is
+  this PR (flagged in the PR body). Instead I ran the EXACT required-job command
+  sequence locally on a clean `npm ci` (real install, not the symlink) with an
+  empty environment (`env -i`): typecheck, lint, test, evals, and build all
+  passed with zero keys. YAML validated via js-yaml (2 jobs, correct steps).
+- Gotcha: `next build` (Turbopack) rejects a symlinked `node_modules`
+  ("points out of the filesystem root"). The worktree now has a real install.

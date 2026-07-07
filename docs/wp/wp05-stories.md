@@ -65,7 +65,7 @@ Each story is atomic, verifiable in one sitting, and committed only when
     internal-only, no keys) that returns a guardrail report for supplied options.
   - **Acceptance:** typecheck green; existing eval functions unchanged in behavior.
 
-- [ ] **S7 — CI workflow (`.github/workflows/ci.yml`)**
+- [x] **S7 — CI workflow (`.github/workflows/ci.yml`)**
   This repo's first CI. Required job runs the full deterministic suite with no
   secrets: `typecheck → lint → test → build`.
   - Optional LLM-eval job gated on an `ANTHROPIC_API_KEY` secret, `continue-on-error`,
