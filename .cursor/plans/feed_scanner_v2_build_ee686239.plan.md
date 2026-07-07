@@ -4,22 +4,22 @@ overview: Phased build plan to upgrade ReplyPilot's feed scanner from a single f
 todos:
   - id: write-build-doc
     content: Write docs/BUILD_PLAN-feed-scanner-v2.md from this plan on user approval
-    status: pending
+    status: completed
   - id: phase0-prereqs
     content: "Phase 0: OAuth list.read scope, shared X timeline helpers, demo data extensions"
-    status: pending
+    status: completed
   - id: phase1-multisource
     content: "Phase 1: Schema + list/watched ingestion, source badges, scanner UI sources panel"
-    status: pending
+    status: completed
   - id: phase2-filters
     content: "Phase 2: Hard filters (already-replied, dismissed authors), search source, UI quick filters"
-    status: pending
+    status: completed
   - id: phase3-semantic
     content: "Phase 3: Semantic relevance pass + scoring formula update + caching"
-    status: pending
+    status: completed
   - id: phase4-research
     content: "Phase 4: researchProfiles schema, researchActions agent, /research UI, Watch → watchedHandles"
-    status: pending
+    status: completed
   - id: phase5-feedback
     content: "Phase 5: Opportunity outcome funnel, ranking weights, dashboard conversion metric"
     status: pending
