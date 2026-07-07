@@ -114,21 +114,21 @@ export function OptionsPanel({
 
   return (
     <Tabs defaultValue="replies" className="w-full">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <TabsList>
-          <TabsTrigger value="replies">
+      <div className="mb-2 space-y-3">
+        <TabsList className="grid h-auto w-full grid-cols-2">
+          <TabsTrigger value="replies" className="min-w-0 px-2 text-xs sm:text-sm">
             Replies ({options.filter((o) => o.kind === "reply").length})
           </TabsTrigger>
-          <TabsTrigger value="quotes">
+          <TabsTrigger value="quotes" className="min-w-0 px-2 text-xs sm:text-sm">
             Quote tweets ({options.filter((o) => o.kind === "quote").length})
           </TabsTrigger>
         </TabsList>
 
-        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="grid gap-1.5 sm:flex sm:items-center sm:gap-2">
             Model
             <Select value={model} onValueChange={setModel}>
-              <SelectTrigger className="h-8 w-36">
+              <SelectTrigger className="h-9 w-full sm:h-8 sm:w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -142,10 +142,10 @@ export function OptionsPanel({
             </Select>
           </div>
           {voiceProfiles.length > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="grid gap-1.5 sm:flex sm:items-center sm:gap-2">
               Voice
               <Select value={voiceProfileId} onValueChange={setVoiceProfileId}>
-                <SelectTrigger className="h-8 w-44">
+                <SelectTrigger className="h-9 w-full sm:h-8 sm:w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

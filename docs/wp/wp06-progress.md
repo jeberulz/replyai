@@ -30,3 +30,18 @@
     existing unused `PaneEyebrow` import in `src/components/app/drafts-list.tsx`
   - `npm test` passed (`154 passed`, `1 skipped`)
   - `npm run build` passed
+
+## S2 — Analysis workbench mobile triage flow
+- `AnalysisThread` mobile layout now explicitly clips x-overflow, so the
+  single-column mobile thread cannot inherit width expansion from inner cards or
+  controls.
+- `OptionsPanel` now stacks model/voice controls on narrow screens and forces
+  the reply/quote tab strip into a 2-column mobile grid.
+- `OptionCard` action rows were reflowed for mobile: copy/edit stay reachable,
+  rewrite expands to full width when needed, and publish/save actions no longer
+  compete for one horizontal row at 375px.
+- Verification on the clean WP6 worktree:
+  - `npm run typecheck` passed
+  - `npm run lint` passed with the same pre-existing warnings noted in S1
+  - `npm test` passed (`154 passed`, `1 skipped`)
+  - `npm run build` passed

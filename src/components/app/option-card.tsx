@@ -288,9 +288,9 @@ export function OptionCard({
 
   return (
     <Card className={cn(pending && "opacity-60")}>
-      <CardContent className="space-y-3 p-5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+      <CardContent className="space-y-3 p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="accent" className="capitalize">
               {option.category}
             </Badge>
@@ -317,8 +317,13 @@ export function OptionCard({
               className="text-sm"
               autoFocus
             />
-            <div className="flex gap-2">
-              <Button size="sm" onClick={saveEdit} disabled={pending || overLimit}>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                size="sm"
+                onClick={saveEdit}
+                disabled={pending || overLimit}
+                className="w-full sm:w-auto"
+              >
                 <Check /> Save
               </Button>
               <Button
@@ -328,6 +333,7 @@ export function OptionCard({
                   setDraft(option.content);
                   setEditing(false);
                 }}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
@@ -344,39 +350,53 @@ export function OptionCard({
           {option.reason}
         </p>
 
-        <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-          <Button size="sm" variant="outline" onClick={copy}>
-            {copied ? <Check /> : <Copy />} Copy
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setEditing(true)}
-            disabled={editing}
-          >
-            <Pencil /> Edit
-          </Button>
+        <div className="space-y-2 border-t pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={copy}
+              className="flex-1 sm:flex-none"
+            >
+              {copied ? <Check /> : <Copy />} Copy
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditing(true)}
+              disabled={editing}
+              className="flex-1 sm:flex-none"
+            >
+              <Pencil /> Edit
+            </Button>
 
-          <Select onValueChange={rewrite} value="">
-            <SelectTrigger className="h-8 w-auto gap-1 rounded-md px-3 text-xs font-medium">
-              {pending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Wand2 className="size-3.5" />
-              )}
-              <SelectValue placeholder="Rewrite" />
-            </SelectTrigger>
-            <SelectContent>
-              {REWRITE_DIRECTIONS.map((d) => (
-                <SelectItem key={d} value={d} className="capitalize">
-                  {d}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select onValueChange={rewrite} value="">
+              <SelectTrigger className="h-8 w-full gap-1 rounded-md px-3 text-xs font-medium sm:w-auto">
+                {pending ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Wand2 className="size-3.5" />
+                )}
+                <SelectValue placeholder="Rewrite" />
+              </SelectTrigger>
+              <SelectContent>
+                {REWRITE_DIRECTIONS.map((d) => (
+                  <SelectItem key={d} value={d} className="capitalize">
+                    {d}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-            <Button size="sm" variant="ghost" onClick={saveAsDraft} disabled={pending}>
+          <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={saveAsDraft}
+              disabled={pending}
+              className="w-full sm:w-auto"
+            >
               Save draft
             </Button>
             <Button
@@ -384,6 +404,7 @@ export function OptionCard({
               variant="outline"
               onClick={() => setScheduleOpen(true)}
               disabled={pending}
+              className="w-full sm:w-auto"
             >
               <CalendarClock /> Schedule
             </Button>
@@ -393,6 +414,7 @@ export function OptionCard({
                 variant="outline"
                 onClick={() => publish("standalone")}
                 disabled={pending || overLimit}
+                className="w-full sm:w-auto"
               >
                 <Send /> Post as tweet
               </Button>
@@ -403,6 +425,7 @@ export function OptionCard({
                 variant="outline"
                 onClick={() => openReplyOnX(content)}
                 disabled={pending || overLimit}
+                className="w-full sm:w-auto"
               >
                 <ExternalLink /> Reply on X
               </Button>
@@ -416,6 +439,7 @@ export function OptionCard({
                   ? "Posts your text with the tweet linked — shows as a quote card"
                   : undefined
               }
+              className="w-full sm:w-auto"
             >
               <Send /> {option.kind === "quote" ? "Quote on X" : "Reply"}
             </Button>

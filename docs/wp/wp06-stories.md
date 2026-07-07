@@ -19,7 +19,7 @@ the branch state that includes it.
   - **Acceptance:** feed and drafts surfaces inherit the stack behavior without
     per-screen hacks; mobile viewport has no x-overflow.
 
-- [ ] **S2 — Analysis workbench mobile triage flow (`src/components/app/chat/*`)**
+- [x] **S2 — Analysis workbench mobile triage flow (`src/components/app/chat/*`)**
   Make the analyze/reply surface support the phone-first flow from §9.
   - At 375px, analysis context, options, and actions are reachable without the
     desktop split view.
