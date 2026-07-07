@@ -238,6 +238,25 @@ tokens, anything touching production data:
    convex-migration-helper skill) — irreversible narrowing goes last,
    behind its own approval.
 
+**Model routing policy.** Worker sessions inherit the orchestrator's model
+unless a model is set at spawn — never leave it to the default. The
+orchestrator sets the model per assignment, matching cost to the task's
+correctness risk, not its size:
+
+| Task | Tier | Rationale |
+|---|---|---|
+| Orchestrator itself | top (Fable/Opus-class) | Holds the whole program; judgment-dense, low token volume |
+| Security-critical or architecture-heavy WPs (e.g. WP1, WP7, WP16) | high (Opus-class) | Correctness risk outweighs model cost |
+| Standard feature WPs with clear stories (e.g. WP2, WP6, WP20, WP22) | mid (Sonnet-class) | Well-specified stories are where mid-tier models perform closest to top-tier |
+| Mechanical/low-risk work: docs updates, gate-runner sessions, story scaffolding, event wiring | mid or low (Sonnet/Haiku-class) | Gates and adversarial review catch mistakes |
+
+The story loop (§5) is what makes cheap workers safe: atomic stories,
+acceptance criteria, and checks-gated commits reduce the judgment each
+worker must exercise. Spend model quality on the orchestrator, reviews,
+and gates — not uniformly on workers. If a worker on a cheaper model
+stalls or repeatedly fails its gate, the orchestrator re-runs that
+assignment one tier up rather than debugging the model choice.
+
 **Docs are load-bearing infrastructure.** In an agent-built repo, stale
 instructions produce confidently wrong future agents. Any WP that changes
 architecture, conventions, schema shape, or workflows must update the
