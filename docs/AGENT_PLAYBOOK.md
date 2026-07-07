@@ -1,0 +1,147 @@
+# Agent Build Playbook — ReplyPilot AI
+
+**Audience: any agent (or human) assigned a work package.** Read this file
+top to bottom before writing code. It defines how work packages from
+`docs/PRODUCT_STRATEGY.md` §14 get built, reviewed, and merged. If anything
+here conflicts with `PRD.md`, the PRD wins; if it conflicts with
+`AGENTS.md`/`CLAUDE.md`, those win — this file adds process, it does not
+override product truth.
+
+---
+
+## 0. Your assignment
+
+You own **exactly one work package (WP)** from the table in
+`docs/PRODUCT_STRATEGY.md` §14. Your assignment message names it
+(e.g. "you own WP7"). If no WP was named, stop and ask — do not pick one
+yourself.
+
+Read, in this order, before your first edit:
+
+1. `PRD.md` — the product source of truth.
+2. `AGENTS.md` — project notes, permanent constraints, checks.
+3. `docs/PRODUCT_STRATEGY.md` — at minimum: §4 (guardrails), your WP's row
+   in §14, and every section your WP row or its description references.
+   If your WP came from the feature review (WP16–WP23), read that review
+   subsection — it contains the code-level rationale for your task.
+4. `convex/_generated/ai/guidelines.md` — before touching any Convex code.
+5. The relevant guide in `node_modules/next/dist/docs/` — before touching
+   Next.js code; this Next version differs from training data.
+6. `design.md` — before touching UI.
+
+## 1. Branch & PR protocol
+
+- **One WP = one branch = one PR.** Branch from the latest `main`, named
+  `feat/wpNN-short-slug` (e.g. `feat/wp07-reply-back-tracker`). Docs-only
+  changes use `docs/` prefix instead of `feat/`.
+- Never commit to `main` directly. Never push to another WP's branch.
+  Never create integration branches that combine multiple WPs.
+- Rebase on `main` before opening the PR and again before merge if `main`
+  moved.
+- Keep the PR reviewable: if your WP is honestly too big for one PR, split
+  it into sequential PRs on the same branch lineage (part 1 merges before
+  part 2 opens) — not parallel branches.
+- PR description must include: the WP number and its Definition of Done
+  copied from §14, what you built, how you verified each DoD item, and any
+  deliberate deviations (with reasons).
+- Do not merge your own PR unless your assignment explicitly says so.
+  Default: a human (or designated reviewer agent) merges.
+
+## 2. Sequencing & file-collision rules
+
+Waves (from the delivery plan — do not start a wave-2 WP while its blocker
+is unmerged):
+
+| Wave | WPs | Notes |
+|---|---|---|
+| 0 (sequential) | WP4 → WP5 | Observability, then the eval CI gate. These are the safety net; they land before everything else. |
+| 1 (parallel) | WP1, WP2, WP6, WP16, WP19, WP20 | Mostly disjoint files. |
+| 2 (parallel) | WP3, WP7, WP17 (after WP16 merges), WP18, WP22 | |
+| 3 | WP8–WP15, WP21, WP23 | Per the phase plan in §10. |
+
+Known collisions — check before you start; if the other WP's branch is
+open, coordinate or wait:
+
+- **WP16 and WP17 both edit `src/lib/ai.ts`** — WP16 merges first, WP17
+  rebases on it.
+- **WP2 and WP3 both touch the settings UI** — whoever opens second
+  rebases.
+- **WP4 touches instrumentation everywhere** — it merges before wave 1.
+
+Dependencies that override wave order: nothing that consumes outcome data
+(`responded`, reply-back rates) ships its user-facing surface before WP7 is
+merged and producing data; WP20's edit-distance buckets must exist before
+anyone reports north-star numbers anywhere.
+
+## 3. Product guardrails — non-negotiable
+
+These come from `PRD.md`/`AGENTS.md` and apply to every WP. A PR that
+violates any of them gets closed, regardless of how good the code is.
+
+1. **No auto-publish path, ever.** A human clicks send on every post.
+   Scheduling counts as approval of that exact text at that time. No agent
+   tool, cron, or API endpoint may reach a publish mutation without an
+   authenticated user click on that specific draft.
+2. **3 generated options per request** with a "generate more" button.
+   Never 10.
+3. **Reasons, not scores.** No fake-precision numbers in the UI. Internal
+   ranking weights and heuristic scores are never surfaced as ML
+   percentages or engagement predictions. Numbers shown to users must be
+   backed by real, observed data.
+4. **Every Convex query/mutation/action authorizes** via
+   `requireUser(ctx, sessionToken)` (`convex/helpers.ts`) unless it is an
+   internal function or on the explicit public allow-list (OAuth helpers).
+5. **Demo mode never breaks.** Missing `X_CLIENT_ID`/`ANTHROPIC_API_KEY`
+   must never break a flow. Every new integration ships with a
+   deterministic fallback (`shared/demoData.ts` or demo branches in
+   `src/lib/ai.ts` / `src/lib/x.ts`) in the same PR.
+6. **Respect the X API reply restriction** (Feb 2026): parse publish
+   failures via `shared/xErrors.ts`; always offer the standalone fallback.
+7. **External content is untrusted input.** Tweet text, bios, and replies
+   go into prompts as delimited data, never as instructions; LLM outputs
+   are zod-validated; never render fetched content as HTML.
+
+## 4. Scope discipline
+
+- Build your WP. Nothing else. If you find an adjacent bug or improvement,
+  write it in the PR description under "Found, not fixed" — do not fix it
+  unless it blocks your DoD.
+- No schema changes beyond what your WP requires. Schema changes must be
+  additive/optional-first (see the Convex migration guidance) — never
+  break existing rows.
+- No new dependencies without stating why in the PR description. Prefer
+  what's already in `package.json`.
+- No refactors of code you aren't otherwise touching.
+- If your WP's description is ambiguous, or you'd need to make a product
+  decision the strategy doc doesn't settle: **stop and ask the user.** Do
+  not guess product behavior. Technical implementation choices within the
+  DoD are yours to make.
+
+## 5. Definition of done — every PR
+
+1. Your WP row's "Definition of done" from §14 is satisfied, item by item.
+2. `npm run typecheck && npm run lint && npm test && npm run build` all
+   pass locally.
+3. New logic in `shared/` has unit tests in `tests/` (this repo's
+   convention: scoring, voice, filters, and error parsing are all tested —
+   match that bar).
+4. Demo mode exercised end-to-end for any flow you touched (the app runs
+   with zero external keys; that must still be true).
+5. Anything touching auth, tokens, publishing, or prompts: run
+   `/security-review` and address findings before requesting review.
+6. Run `/code-review` on your diff and address correctness findings.
+7. Commits are clean and descriptive. Do not include model identifiers in
+   commits, code comments, or PR text.
+
+## 6. Working agreement
+
+- **Small and merged beats big and perfect.** Bias toward the smallest PR
+  that satisfies the DoD.
+- **Report honestly.** If tests fail, say so with the output. If a DoD
+  item is unmet, say which and why. Never claim verification you didn't
+  perform.
+- **When blocked, surface it** — in the PR or to the user — rather than
+  going quiet or working around it silently.
+- Update `docs/PRODUCT_STRATEGY.md` only if your WP *changes* the plan
+  (e.g. a DoD item proves infeasible); note the change in your PR. Product
+  truth changes go to `PRD.md` only via the user.

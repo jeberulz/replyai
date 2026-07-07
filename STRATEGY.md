@@ -5,6 +5,10 @@ last_updated: 2026-07-04
 
 # ReplyPilot AI Strategy
 
+> Detailed execution version — phased roadmap, agentic workflows, security
+> architecture, responsive strategy, and agent-ready work packages — lives in
+> [`docs/PRODUCT_STRATEGY.md`](docs/PRODUCT_STRATEGY.md).
+
 ## Target problem
 
 Founders and indie builders know replies drive X growth, but finding the *right* conversation before the ~2-hour reply window closes requires hours of manual scrolling across a noisy algorithmic feed. The crux: relevance and timing are coupled — a viral tweet in the wrong niche is worthless, and a perfect niche tweet discovered six hours late is too.
