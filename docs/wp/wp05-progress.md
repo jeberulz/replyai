@@ -27,3 +27,22 @@
     fixtures fall below threshold and CI fails.
 - Verified: `typecheck` clean, `eslint shared/evals.ts` clean. Tests come in
   S4/S5.
+
+## S3 + S4 — fixtures + deterministic gate
+- Captured each profile's `expectedStyle` as the real `buildVoiceStyleFromTweets`
+  output via a throwaway probe (deleted), so the regression lock is exact.
+- Two synthetic personas: `terse-builder` (short, no emoji) and
+  `hype-storyteller` (emoji, exclamation-heavy). No real user data.
+- 10 generation cases: 2 healthy, 1 off-voice-but-guardrail-clean (the voice
+  regression demonstrator), and 7 bad cases each tripping exactly one guardrail.
+- The gate asserts fail cases trip EXACTLY their named rule (`failedRules === [trips]`),
+  so each check is proven independently.
+- Verified the gate is not a no-op: temporarily setting `MAX_WEIGHTED_LENGTH`
+  to 99999 flipped `bad-weighted-length` red; restoring returned green.
+- Fidelity margins: good/on-voice options ≥ 0.8, off-voice = 0.4, threshold 0.5.
+
+## S5 — unit tests for eval logic
+- Per-rule isolation tests, `weightedLength` (ASCII/URL=23/emoji=2), and
+  `voiceFidelity` bounds/threshold. Loops over `BANNED_PHRASES` so adding a
+  phrase is automatically covered.
+- Full suite after S5: 129 → (unit adds) tests green; typecheck + eslint clean.

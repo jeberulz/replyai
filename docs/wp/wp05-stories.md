@@ -34,7 +34,7 @@ Each story is atomic, verifiable in one sitting, and committed only when
   - **Acceptance:** matching text scores high, mismatched text scores low, with
     margin around the threshold; typecheck green.
 
-- [ ] **S3 — Fixtures + provenance (`evals/fixtures/`)**
+- [x] **S3 — Fixtures + provenance (`evals/fixtures/`)**
   Checked-in, readable, synthetic (no real user data).
   - Voice-profile fixtures (tweets + expected measured `VoiceStyle`).
   - Generation fixtures: known-good and known-bad option sets, each bad case
@@ -43,7 +43,7 @@ Each story is atomic, verifiable in one sitting, and committed only when
     treated (delimited data, never instructions).
   - **Acceptance:** fixtures load and validate against the S1 zod schema.
 
-- [ ] **S4 — Fixture-driven deterministic gate (`tests/evals.fixtures.test.ts`)**
+- [x] **S4 — Fixture-driven deterministic gate (`tests/evals.fixtures.test.ts`)**
   The CI-blocking regression layer, run by `npm test`, zero keys.
   - Every good case passes all guardrails; every bad case trips exactly its
     intended guardrail and fails the aggregate.
@@ -54,7 +54,7 @@ Each story is atomic, verifiable in one sitting, and committed only when
   - **Acceptance:** `npm test` green; deliberately breaking a checker/threshold
     turns it red (verified locally).
 
-- [ ] **S5 — Unit tests for eval logic (`tests/evals.test.ts`)**
+- [x] **S5 — Unit tests for eval logic (`tests/evals.test.ts`)**
   Repo convention: new `shared/` logic gets unit tests in `tests/`.
   - Cover each checker, `weightedLength`, and `voiceFidelity` edge cases.
   - **Acceptance:** `npm test` green.
