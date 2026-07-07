@@ -73,6 +73,18 @@ Dependencies that override wave order: nothing that consumes outcome data
 merged and producing data; WP20's edit-distance buckets must exist before
 anyone reports north-star numbers anywhere.
 
+Two sequencing principles on top of the table:
+
+- **Risk order beats convenience order.** Within any wave, do reversible
+  work first and irreversible work last. Anything touching production
+  data, schema, or live user tokens goes at the end of its wave, behind
+  its own gate (§7).
+- **Explicit file boundaries.** Your assignment's file scope (the "key
+  files" column plus what your stories require) is a boundary, not a
+  hint. If your WP turns out to need edits outside it, that's an
+  escalation (§7), not a judgment call — another agent may own those
+  files right now.
+
 ## 3. Product guardrails — non-negotiable
 
 These come from `PRD.md`/`AGENTS.md` and apply to every WP. A PR that
@@ -113,9 +125,15 @@ violates any of them gets closed, regardless of how good the code is.
   what's already in `package.json`.
 - No refactors of code you aren't otherwise touching.
 - If your WP's description is ambiguous, or you'd need to make a product
-  decision the strategy doc doesn't settle: **stop and ask the user.** Do
-  not guess product behavior. Technical implementation choices within the
-  DoD are yours to make.
+  decision the strategy doc doesn't settle: **stop and ask.** Do not guess
+  product behavior. Technical implementation choices within the DoD are
+  yours to make.
+- **UNKNOWN means stop; rulings get recorded.** When you hit something the
+  strategy doc and PRD are silent on, treat it as UNKNOWN: escalate per
+  §7, and when the owner rules, **append the ruling to
+  `docs/wp/RULINGS.md`** (append-only: date, WP, question, ruling). Check
+  that file before escalating — the question may already be answered.
+  Rulings are inherited: no later agent re-litigates a recorded ruling.
 
 ## 5. The story loop — how to work inside your WP
 
@@ -172,7 +190,63 @@ be graded on.
 7. Commits are clean and descriptive. Do not include model identifiers in
    commits, code comments, or PR text.
 
-## 7. Working agreement
+## 7. Orchestration protocol — parent, workers, gates
+
+(Adapted from the orchestrator/worker program-management pattern: one
+session plans and sequences, workers execute, gates run between waves,
+humans decide only what requires an owner.)
+
+**The orchestrator.** When multiple WPs run in parallel, one session is
+the designated orchestrator. It **writes zero code.** Its job: assign WPs
+with explicit file boundaries, track wave state, review worker PRs against
+their stories files, run the escalation ledger (`docs/wp/RULINGS.md`),
+enforce gates, and surface to the owner only what genuinely needs an owner
+— scope rulings and go/no-go on irreversible steps. Keeping the
+orchestrator out of implementation keeps its context clean; that is the
+point. If you are a worker, you are not the orchestrator: don't reassign
+scope, don't merge, don't rule on UNKNOWNs.
+
+**Escalation path (defined now, before the surprises).** When reality
+disagrees with your assignment — a file you need is outside your boundary,
+the strategy doc's assumption is wrong, a "safe" change turns out to have
+live dependents — **stop, report to the orchestrator (or the owner if
+there is no orchestrator session), and do not improvise.** The outcome
+will be one of: a recorded ruling, your WP re-scoped, or the conflicting
+work re-sequenced. Workers never make scope decisions unilaterally.
+
+**Wave gates.** A wave is not done when its PRs merge; it is done when the
+gate passes. The gate is its own session (or a dedicated fresh-context
+run) that, on post-merge `main`: runs the full check suite, runs the eval
+fixtures (once WP5 exists), and walks the three critical flows in demo
+mode end to end (analyze→generate→save, feed→opportunity→draft,
+draft→publish). A gate failure produces a scoped fix assignment — that is
+the system working, not a crisis. The next wave starts only after the
+gate is green.
+
+**Irreversible steps: propose the inventory, approve the list.** For
+anything destructive or hard to reverse — schema migrations beyond
+additive-optional, backfills, data deletion/rewrites, changes to live user
+tokens, anything touching production data:
+
+1. Tag a restore point (`git tag` before the change lands; for data,
+   confirm what backup/restore path exists and state it).
+2. Produce a **dry-run inventory first**: exactly what will change — which
+   tables, which fields, how many rows, which code paths. 
+3. The owner approves that specific inventory, not the general intention.
+4. Execute exactly the approved inventory; re-verify counts after.
+5. Follow the widen-migrate-narrow pattern for schema changes (see the
+   convex-migration-helper skill) — irreversible narrowing goes last,
+   behind its own approval.
+
+**Docs are load-bearing infrastructure.** In an agent-built repo, stale
+instructions produce confidently wrong future agents. Any WP that changes
+architecture, conventions, schema shape, or workflows must update the
+affected docs (`AGENTS.md`, `README.md`, `design.md`, skills, this file)
+**in the same PR** — not as a follow-up. The orchestrator checks this at
+the gate. At the end of each phase, one cleanup session re-reads the docs
+against the actual codebase and fixes drift.
+
+## 8. Working agreement
 
 - **Small and merged beats big and perfect.** Bias toward the smallest PR
   that satisfies the DoD.
