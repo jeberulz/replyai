@@ -86,6 +86,6 @@ Each story is atomic, verifiable in one sitting, and committed only when
     evals locally, in the same PR (§7 docs-are-infrastructure).
   - **Acceptance:** docs describe reality; no stale claims.
 
-- [ ] **S10 — PR pass (§6)**
+- [x] **S10 — PR pass (§6)**
   Full suite `typecheck && lint && test && build`; `/code-review` + `/security-review`
   on the diff; address correctness findings; open PR (do not merge).

@@ -90,3 +90,14 @@
   how to add a guardrail).
 - README.md: added `npm run evals` / `npm run evals:llm` to the commands table
   and an "Eval gate & CI" architecture note.
+
+## S10 — PR pass
+- /code-review: 1 confirmed finding — the Convex `runGuardrails` return carried
+  `detail: undefined` on passing checks, which is not a valid Convex value.
+  Fixed via a `finding()` helper that omits the key; locked with a test.
+  Other candidate (ZWJ-emoji over-count in `weightedLength`) is a documented
+  approximation with no effect on the contract — not changed.
+- /security-review: no HIGH/MEDIUM findings. Internal-only Convex fn (no auth
+  gap by design), fork-safe CI (`pull_request`, no secrets to forks,
+  contents:read), no hardcoded secrets, synthetic fixtures (no PII).
+- Full suite re-run clean after the fix (see PR body for verbatim).
