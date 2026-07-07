@@ -1,0 +1,261 @@
+{
+  "$schema": "./README.md",
+  "provenance": "Synthetic, hand-written for WP5. No real user data. sourceTweet is untrusted external content — treated as delimited data in any prompt, never as instructions. Good cases must pass every guardrail; bad cases must fail exactly the guardrail named in `trips` and pass the rest.",
+  "cases": [
+    {
+      "id": "good-reply-terse",
+      "kind": "reply",
+      "profileId": "terse-builder",
+      "sourceTweet": "Deleted 200 lines from our codebase today and every metric got better. Less is more.",
+      "expect": "pass",
+      "voice": "match",
+      "notes": "Baseline healthy generation: 3 distinct valid reply categories, terse voice, real reasons, no bait, no fake scores.",
+      "options": [
+        {
+          "category": "short",
+          "content": "Same. The best test is one you watched fail first.",
+          "reason": "Mirrors their terse cadence and adds a concrete testing heuristic."
+        },
+        {
+          "category": "insightful",
+          "content": "Deleting code is underrated. Less surface, fewer bugs.",
+          "reason": "Extends the point with a second-order reason they did not state."
+        },
+        {
+          "category": "question",
+          "content": "What made you finally cut those 200 lines?",
+          "reason": "A direct question to the author tends to earn a reply back."
+        }
+      ]
+    },
+    {
+      "id": "good-quote-hype",
+      "kind": "quote",
+      "profileId": "hype-storyteller",
+      "sourceTweet": "We just crossed 10k users. Feeling every emotion at once right now.",
+      "expect": "pass",
+      "voice": "match",
+      "notes": "Healthy generation on the second profile with quote categories; high-energy voice preserved.",
+      "options": [
+        {
+          "category": "story",
+          "content": "This is HUGE 🚀 congrats, you earned every bit of it!!!",
+          "reason": "Matches their high-energy voice and celebrates a real milestone."
+        },
+        {
+          "category": "founder",
+          "content": "Not okay either 😭 so proud of this milestone 🙌!!!",
+          "reason": "Founder-to-founder solidarity in their own exclamatory register."
+        },
+        {
+          "category": "prediction",
+          "content": "You are NOT ready for what's coming next 👀 let's go!!!",
+          "reason": "Predictive hype that invites quote-tweet replies."
+        }
+      ]
+    },
+    {
+      "id": "off-voice-reply-terse",
+      "kind": "reply",
+      "profileId": "terse-builder",
+      "sourceTweet": "Deleted 200 lines from our codebase today and every metric got better. Less is more.",
+      "expect": "pass",
+      "voice": "drift",
+      "notes": "Guardrails all pass, but the voice is wildly off the terse profile (emoji-heavy, verbose, technical). This is the voice-fidelity regression demonstrator: it must score below threshold while good-reply-terse stays above.",
+      "options": [
+        {
+          "category": "short",
+          "content": "This resonates profoundly 🚀🙌 the epistemological ramifications of unverified architectural assumptions are genuinely staggering when contextualized!!! 🔥🔥",
+          "reason": "Deliberately off-voice: verbose and emoji-heavy for a terse profile."
+        },
+        {
+          "category": "insightful",
+          "content": "Absolutely phenomenal insight my friend 😭 I am completely blown away by the sheer intellectual magnitude here 👀👀 incredible stuff!!!",
+          "reason": "Deliberately off-voice: effusive register the profile never uses."
+        },
+        {
+          "category": "question",
+          "content": "Wow wow wow 🎉 this is the single most transformative paradigm-shifting realization I have encountered all quarter 🙌🙌🙌!!!",
+          "reason": "Deliberately off-voice: hyperbole and emoji spam."
+        }
+      ]
+    },
+    {
+      "id": "bad-option-count",
+      "kind": "reply",
+      "profileId": "terse-builder",
+      "sourceTweet": "Most bugs are just assumptions you never checked.",
+      "expect": "fail",
+      "trips": "option-count",
+      "notes": "Only 2 options — violates the 'exactly 3' guardrail.",
+      "options": [
+        {
+          "category": "short",
+          "content": "True. Half of debugging is finding the assumption.",
+          "reason": "Concise agreement with a specific reframe."
+        },
+        {
+          "category": "insightful",
+          "content": "The scariest bugs live in assumptions no one wrote down.",
+          "reason": "Adds a sharper edge to the same idea."
+        }
+      ]
+    },
+    {
+      "id": "bad-duplicate-category",
+      "kind": "reply",
+      "profileId": "terse-builder",
+      "sourceTweet": "Write the test first. Watch it fail. Then fix it.",
+      "expect": "fail",
+      "trips": "distinct-categories",
+      "notes": "Two options share the 'short' category — each option must be a different category.",
+      "options": [
+        {
+          "category": "short",
+          "content": "Red, green, refactor. In that order.",
+          "reason": "Names the loop crisply."
+        },
+        {
+          "category": "short",
+          "content": "A failing test you didn't write first proves nothing.",
+          "reason": "Sharpens the point about ordering."
+        },
+        {
+          "category": "question",
+          "content": "How often do you skip the 'watch it fail' step?",
+          "reason": "Invites the author to reflect and reply."
+        }
+      ]
+    },
+    {
+      "id": "bad-invalid-category",
+      "kind": "reply",
+      "profileId": "terse-builder",
+      "sourceTweet": "Slow is smooth. Smooth is fast.",
+      "expect": "fail",
+      "trips": "valid-categories",
+      "notes": "'spicy-take' is not a valid reply category.",
+      "options": [
+        {
+          "category": "short",
+          "content": "Rushing is just borrowing time from later.",
+          "reason": "Restates the maxim in a fresh frame."
+        },
+        {
+          "category": "spicy-take",
+          "content": "Most 'fast' teams are just accruing invisible rework.",
+          "reason": "A pointed counterpoint."
+        },
+        {
+          "category": "question",
+          "content": "Where did this click for you first?",
+          "reason": "Opens a genuine conversation."
+        }
+      ]
+    },
+    {
+      "id": "bad-missing-reason",
+      "kind": "reply",
+      "profileId": "terse-builder",
+      "sourceTweet": "If it needs a comment to explain, rewrite it.",
+      "expect": "fail",
+      "trips": "reason-present",
+      "notes": "One option's reason is empty of substance — a reason must actually say something.",
+      "options": [
+        {
+          "category": "short",
+          "content": "Comments rot. Clear names don't.",
+          "reason": "Contrasts two maintenance costs."
+        },
+        {
+          "category": "insightful",
+          "content": "The best comment explains why, never what.",
+          "reason": "ok"
+        },
+        {
+          "category": "question",
+          "content": "What's your rule for when a comment earns its place?",
+          "reason": "Invites a concrete heuristic back."
+        }
+      ]
+    },
+    {
+      "id": "bad-weighted-length",
+      "kind": "reply",
+      "profileId": "terse-builder",
+      "sourceTweet": "Slow is smooth. Smooth is fast.",
+      "expect": "fail",
+      "trips": "weighted-length",
+      "notes": "One option blows well past the 280 weighted-character budget.",
+      "options": [
+        {
+          "category": "short",
+          "content": "Deliberate beats frantic, every time.",
+          "reason": "Compresses the idea to a phrase."
+        },
+        {
+          "category": "insightful",
+          "content": "This is a genuinely thoughtful observation and I would love to add several distinct layers of nuance here, because the underlying topic really does deserve a far longer and more careful treatment than any single short line could ever hope to provide, so allow me to keep going well past the point of reason.",
+          "reason": "Deliberately exceeds the weighted length limit."
+        },
+        {
+          "category": "question",
+          "content": "What made this land for you?",
+          "reason": "Opens a short exchange."
+        }
+      ]
+    },
+    {
+      "id": "bad-banned-phrase",
+      "kind": "reply",
+      "profileId": "terse-builder",
+      "sourceTweet": "Deleted 200 lines. Product got better.",
+      "expect": "fail",
+      "trips": "no-banned-phrases",
+      "notes": "One option uses engagement-bait phrasing the product bans.",
+      "options": [
+        {
+          "category": "short",
+          "content": "Subtraction is a feature.",
+          "reason": "Names the underrated move."
+        },
+        {
+          "category": "insightful",
+          "content": "Totally agree — like and retweet if this resonates with you.",
+          "reason": "Contains banned engagement-bait phrasing."
+        },
+        {
+          "category": "question",
+          "content": "What was the hardest line to cut?",
+          "reason": "Invites a specific story back."
+        }
+      ]
+    },
+    {
+      "id": "bad-fake-score",
+      "kind": "reply",
+      "profileId": "terse-builder",
+      "sourceTweet": "Most bugs are just assumptions you never checked.",
+      "expect": "fail",
+      "trips": "no-fake-scores",
+      "notes": "A reason surfaces a fake-precision engagement score the product forbids until real data exists.",
+      "options": [
+        {
+          "category": "short",
+          "content": "Check the assumption before the stack trace.",
+          "reason": "Reorders the debugging instinct."
+        },
+        {
+          "category": "insightful",
+          "content": "Assumptions are just untested code you can't see.",
+          "reason": "Our data shows this framing gets 92% engagement."
+        },
+        {
+          "category": "question",
+          "content": "Which assumption bit you most recently?",
+          "reason": "Prompts a concrete, shareable answer."
+        }
+      ]
+    }
+  ]
+}

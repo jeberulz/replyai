@@ -48,6 +48,18 @@ This version has breaking changes — APIs, conventions, and file structure may 
   funnel/dashboard definitions and the full env var list (mirror
   `POSTHOG_KEY`/`SENTRY_DSN` into Convex via `npx convex env set`, same
   pattern as the X OAuth keys above).
+- **Eval gate & CI**: `.github/workflows/ci.yml` is the repo's CI. The required
+  `checks` job runs typecheck/lint/test/build with **zero external keys**. The
+  regression eval gate lives in `shared/evals.ts` (deterministic guardrail +
+  voice-fidelity checks) with fixtures in `evals/fixtures/`; it runs inside
+  `npm test` and via `npm run evals`. A regression in the generation guardrails
+  (3 options, distinct/valid categories, real reason, weighted ≤280, no bait, no
+  fake scores) or in measured voice fidelity fails a fixture and so fails CI.
+  The deeper LLM-judged pass (`npm run evals:llm`) is **optional** — key-gated,
+  skipped without `ANTHROPIC_API_KEY`, and never blocks the merge gate. The
+  Convex-side `internal.evals.runGuardrails` exposes the same deterministic
+  checks. When you add a guardrail, add a fixture case that trips it (see
+  `evals/fixtures/README.md`).
 - **Checks**: `npm run typecheck && npm run lint && npm test && npm run build`.
 - `convex/_generated` is checked in; `npx convex dev` regenerates it.
 

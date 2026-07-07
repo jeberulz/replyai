@@ -1,0 +1,78 @@
+name: CI
+
+# This repo's safety net (WP5). The required `checks` job runs the full suite
+# — typecheck, lint, tests (which include the deterministic eval gate), and a
+# production build — with ZERO external keys, consistent with the project's
+# demo-mode principle. A regression in the generation guardrails or in measured
+# voice fidelity fails a fixture test and therefore fails this job.
+#
+# The `llm-evals` job is the optional, deeper LLM-judged pass. It is gated on an
+# ANTHROPIC_API_KEY secret and is non-blocking (continue-on-error). The required
+# job never receives that secret, so the merge gate never depends on a paid API
+# call.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Checks (typecheck · lint · test · build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test suite
+        run: npm test
+
+      - name: Regression eval gate (voice fidelity + guardrails)
+        run: npm run evals
+
+      - name: Production build
+        run: npm run build
+
+  llm-evals:
+    name: LLM-judged evals (optional, non-blocking)
+    runs-on: ubuntu-latest
+    # Never blocks a merge: it is informational and only meaningful when a key
+    # is configured. Without the secret the eval test skips itself.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run LLM-judged eval pass (skips cleanly when no key)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run evals:llm

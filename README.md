@@ -87,9 +87,11 @@ data and Claude-generated analysis with no code changes.
 | `npm run dev` | Next.js dev server |
 | `npx convex dev` | Convex dev deployment (functions, crons, data) |
 | `npm run build` | Production build |
-| `npm test` | Unit tests (scoring, voice analysis, demo data) |
+| `npm test` | Unit tests (scoring, voice analysis, demo data, eval gate) |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript, app + convex |
+| `npm run evals` | Deterministic eval gate — guardrails + voice fidelity vs `evals/fixtures/`, no keys |
+| `npm run evals:llm` | Optional LLM-judged eval pass — needs `ANTHROPIC_API_KEY`, skips without it |
 
 ## Architecture notes
 
@@ -103,6 +105,16 @@ data and Claude-generated analysis with no code changes.
 - **Shared logic** — `shared/scoring.ts` (worth-replying heuristic, URL
   parsing) and `shared/voice.ts` (voice measurement) are imported by both the
   Next.js app and Convex functions, and unit-tested in `tests/`.
+- **Eval gate & CI** — `.github/workflows/ci.yml` is CI. Its required job runs
+  typecheck/lint/test/build with **no external keys**. `shared/evals.ts` holds
+  the deterministic regression checks — generation guardrails (3 options,
+  distinct/valid categories, a real reason, weighted ≤280 chars, no
+  engagement-bait, no fake-precision scores) and a voice-fidelity metric built
+  on `shared/voice.ts` — run against readable fixtures in `evals/fixtures/`
+  (synthetic, no real user data). A regression fails a fixture and fails CI. The
+  deeper LLM-judged pass is optional and key-gated (`npm run evals:llm`); it
+  never blocks the merge gate. Run `npm run evals` locally for the deterministic
+  gate.
 - **`convex/_generated`** — checked in (standard Convex practice); regenerated
   automatically by `npx convex dev`.
 

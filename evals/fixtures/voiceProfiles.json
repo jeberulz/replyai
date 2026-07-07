@@ -1,0 +1,46 @@
+{
+  "$schema": "./README.md",
+  "provenance": "Synthetic, hand-written for WP5. No real user data. Each expectedStyle is the exact output of shared/voice.ts buildVoiceStyleFromTweets(profileTweets) at fixture-authoring time; the fixtures test re-derives and asserts equality, so drift in voice measurement fails CI.",
+  "profiles": [
+    {
+      "id": "terse-builder",
+      "description": "Indie hacker who posts short, declarative, no-emoji build notes.",
+      "profileTweets": [
+        "Shipped the eval gate today. Small diff, big safety net.",
+        "Most bugs are just assumptions you never checked.",
+        "Write the test first. Watch it fail. Then fix it.",
+        "Slow is smooth. Smooth is fast.",
+        "Deleted 200 lines. Product got better.",
+        "If it needs a comment to explain, rewrite it."
+      ],
+      "expectedStyle": {
+        "tone": "conversational and direct",
+        "sentenceLength": "short and punchy",
+        "formatting": "plain sentences",
+        "emojiUse": "none",
+        "punctuation": "no exclamation marks",
+        "readingLevel": "accessible",
+        "commonPhrases": []
+      }
+    },
+    {
+      "id": "hype-storyteller",
+      "description": "High-energy founder who posts milestone celebrations with emoji and exclamation marks.",
+      "profileTweets": [
+        "Okay this is HUGE 🚀🚀 we just crossed 10k users and I'm not okay!!!",
+        "Three years ago I was broke, coding at 2am. Today we hit a milestone I never imagined 🙌 keep going, it compounds!!!",
+        "I can't believe this actually worked 😭 the demo went perfectly!!!",
+        "Big things coming this week 👀 you are NOT ready for what we built 🔥"
+      ],
+      "expectedStyle": {
+        "tone": "enthusiastic and direct",
+        "sentenceLength": "medium",
+        "formatting": "plain sentences",
+        "emojiUse": "frequent",
+        "punctuation": "exclamation-heavy",
+        "readingLevel": "accessible",
+        "commonPhrases": []
+      }
+    }
+  ]
+}
