@@ -64,6 +64,7 @@ const footerLinks = [
   { label: "voice", href: "#voice" },
   { label: "trust", href: "#trust" },
   { label: "demo", href: "/api/auth/demo" },
+  { label: "changelog", href: "/changelog" },
   { label: "privacy", href: "/privacy" },
   { label: "terms", href: "/terms" },
 ];
