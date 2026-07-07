@@ -38,6 +38,16 @@ This version has breaking changes — APIs, conventions, and file structure may 
   parsed in `shared/xErrors.ts`; the UI offers a standalone fallback. Token
   refresh for scheduled posts runs in Convex and needs `X_CLIENT_ID`/
   `X_CLIENT_SECRET` set via `npx convex env set` (separate from `.env.local`).
+- **Observability**: one typed event catalog (`src/lib/analytics/events.ts`)
+  is the only place product-event names/properties are defined — no ad-hoc
+  event strings elsewhere. Server adapter (PostHog + Sentry) in
+  `src/lib/analytics/server.ts`, browser adapter in
+  `src/lib/analytics/client.ts`, Convex-side equivalents in
+  `convex/lib/analytics.ts`/`convex/lib/sentry.ts` (both no-op cleanly with
+  no keys — demo mode never breaks). See `docs/observability.md` for the
+  funnel/dashboard definitions and the full env var list (mirror
+  `POSTHOG_KEY`/`SENTRY_DSN` into Convex via `npx convex env set`, same
+  pattern as the X OAuth keys above).
 - **Checks**: `npm run typecheck && npm run lint && npm test && npm run build`.
 - `convex/_generated` is checked in; `npx convex dev` regenerates it.
 

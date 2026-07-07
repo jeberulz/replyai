@@ -87,9 +87,12 @@ export const publish = mutation({
       createdAt: Date.now(),
     });
     if (scheduledFor && scheduledFor > Date.now()) {
-      await ctx.scheduler.runAt(scheduledFor, internal.publish.run, { draftId });
+      await ctx.scheduler.runAt(scheduledFor, internal.publish.run, {
+        draftId,
+        scheduled: true,
+      });
     } else {
-      await ctx.scheduler.runAfter(0, internal.publish.run, { draftId });
+      await ctx.scheduler.runAfter(0, internal.publish.run, { draftId, scheduled: false });
     }
     return draftId;
   },
@@ -113,7 +116,7 @@ export const retryAsStandalone = mutation({
       publishMode: "standalone",
       scheduledFor: Date.now(),
     });
-    await ctx.scheduler.runAfter(0, internal.publish.run, { draftId });
+    await ctx.scheduler.runAfter(0, internal.publish.run, { draftId, scheduled: false });
   },
 });
 
@@ -155,6 +158,11 @@ export const getForPublish = internalQuery({
       .query("xTokens")
       .withIndex("by_user", (q) => q.eq("userId", draft.userId))
       .unique();
+    // Best-effort edit-extent metadata for the `published` funnel event
+    // (docs/observability.md) — whether the option this draft came from was
+    // ever manually edited. Not available for drafts with no linked reply
+    // (e.g. a URL-quote composed outside the option workflow).
+    const reply = draft.replyId ? await ctx.db.get(draft.replyId) : null;
     return {
       draft,
       isDemo: user.isDemo,
@@ -163,6 +171,12 @@ export const getForPublish = internalQuery({
       refreshToken: tokenRow?.refreshToken ?? null,
       expiresAt: tokenRow?.expiresAt ?? 0,
       scope: tokenRow?.scope ?? "",
+      // Coerce: a reply that's never been edited stores this field as
+      // `undefined`, not `false` — reporting `undefined` on the `published`
+      // event would make PostHog's `editedBeforeSend = false` filter miss
+      // the common (never-edited) case, undercounting the no-edit rate.
+      // Stays `undefined` only when there's no linked reply to check at all.
+      editedBeforeSend: reply ? Boolean(reply.editedBeforeSend) : undefined,
     };
   },
 });

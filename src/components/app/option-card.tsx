@@ -20,6 +20,7 @@ import {
   saveDraftAction,
   saveEditAction,
 } from "@/app/actions";
+import { trackClient } from "@/lib/analytics/client";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -198,6 +199,17 @@ export function OptionCard({
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
     toast.success("Copied to clipboard");
+    trackClient("option_selected", {
+      analysisId,
+      replyId: option._id,
+      kind: option.kind,
+      category: option.category,
+      action: "copied",
+      // Coerce: an option that's never been edited stores this as
+      // `undefined`, not `false` — leaving it as-is would undercount the
+      // no-edit rate this event exists to make visible.
+      editedBeforeSend: Boolean(option.editedBeforeSend),
+    });
   };
 
   const rewrite = (direction: string) => {
@@ -239,6 +251,8 @@ export function OptionCard({
             publishMode === "standalone" ? undefined : targetTweetUrl,
           scheduledFor,
           publishMode,
+          category: option.category,
+          editedBeforeSend: option.editedBeforeSend,
         });
         setScheduleOpen(false);
         if (scheduledFor) {
@@ -265,6 +279,8 @@ export function OptionCard({
         replyId: option._id,
         targetTweetId,
         targetTweetUrl,
+        category: option.category,
+        editedBeforeSend: option.editedBeforeSend,
       });
       toast.success("Saved to drafts");
     });

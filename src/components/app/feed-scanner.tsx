@@ -28,6 +28,7 @@ import {
 } from "@/app/actions";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { FeedScanProgress } from "@/components/app/feed-scan-progress";
+import { trackClient } from "@/lib/analytics/client";
 import { type Opportunity } from "@/components/app/opportunity-card";
 import { OpportunityRow } from "@/components/app/feed/opportunity-row";
 import { OpportunityDetail } from "@/components/app/feed/opportunity-detail";
@@ -137,6 +138,15 @@ export function FeedScanner() {
     _id: String(opp._id),
   }));
   const selected = rows.find((o) => o._id === selectedId) ?? null;
+
+  const selectOpportunity = (opp: Opportunity) => {
+    setSelectedId(opp._id);
+    trackClient("opportunity_opened", {
+      opportunityId: opp._id,
+      source: opp.source,
+      score: opp.score,
+    });
+  };
 
   const beginScanTracking = () => {
     scanBaselineRef.current = settings?.lastScanAt ?? 0;
@@ -398,7 +408,7 @@ export function FeedScanner() {
                 key={opp._id}
                 opportunity={opp}
                 selected={opp._id === selectedId}
-                onSelect={() => setSelectedId(opp._id)}
+                onSelect={() => selectOpportunity(opp)}
               />
             ))}
           </div>

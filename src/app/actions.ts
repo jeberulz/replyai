@@ -13,6 +13,10 @@ import {
   type RewriteDirection,
 } from "@/lib/ai";
 import { estimateCostUsd, isKnownModel, MODELS } from "../../shared/models";
+import {
+  captureServerException,
+  trackServer,
+} from "@/lib/analytics/server";
 import { convexServer } from "@/lib/convex";
 import { getSessionUser } from "@/lib/session";
 import {
@@ -237,7 +241,7 @@ export async function startAnalysisAction(input: {
 export async function continueAnalysisAction(
   analysisId: string
 ): Promise<{ ok: true } | { error: string }> {
-  const { sessionToken } = await requireSession();
+  const { sessionToken, user } = await requireSession();
   const convex = convexServer();
   const id = analysisId as Id<"tweetAnalyses">;
 
@@ -292,6 +296,15 @@ export async function continueAnalysisAction(
 
     const generateKind = async (kind: "reply" | "quote") => {
       if (existing.some((r) => r.kind === kind)) return;
+      // Fired per kind, only when a generation call is actually about to
+      // run — a retry where both kinds already exist (e.g. re-entering this
+      // try block after analyses.complete failed) must not report a
+      // generation that didn't happen.
+      await trackServer("generation_requested", user._id, {
+        analysisId: id,
+        trigger: "initial",
+        kind,
+      });
       const result = await generateOptions({
         kind,
         bundle,
@@ -325,6 +338,7 @@ export async function continueAnalysisAction(
     return { ok: true };
   } catch (error) {
     console.error("Continue analysis failed:", error);
+    captureServerException(error, { action: "continueAnalysis", analysisId: id });
     const message =
       "Analysis failed partway through. Nothing was lost — you can retry.";
     try {
@@ -350,7 +364,7 @@ export async function generateMoreAction(args: {
   voiceProfileId?: string;
   model?: string;
 }) {
-  const { sessionToken } = await requireSession();
+  const { sessionToken, user } = await requireSession();
   const convex = convexServer();
   const analysisId = args.analysisId as Id<"tweetAnalyses">;
 
@@ -367,6 +381,11 @@ export async function generateMoreAction(args: {
   const { profile } = await defaultVoice(sessionToken, args.voiceProfileId);
   const { model, goal } = await resolveGenerationPrefs(sessionToken, args.model);
 
+  await trackServer("generation_requested", user._id, {
+    analysisId,
+    trigger: "more",
+    kind: args.kind,
+  });
   const bundle = bundleFromAnalysis(analysis);
   const result = await generateOptions({
     kind: args.kind,
@@ -585,8 +604,10 @@ export async function publishAction(args: {
   targetTweetUrl?: string;
   scheduledFor?: number;
   publishMode?: "threaded" | "standalone" | "url_quote";
+  category?: string;
+  editedBeforeSend?: boolean;
 }): Promise<string> {
-  const { sessionToken } = await requireSession();
+  const { sessionToken, user } = await requireSession();
   const draftId = await convexServer().mutation(api.drafts.publish, {
     sessionToken,
     text: args.text,
@@ -598,6 +619,16 @@ export async function publishAction(args: {
     scheduledFor: args.scheduledFor,
     publishMode: args.publishMode,
   });
+  if (args.replyId) {
+    await trackServer("option_selected", user._id, {
+      analysisId: args.analysisId,
+      replyId: args.replyId,
+      kind: args.kind,
+      category: args.category ?? "unknown",
+      action: "published",
+      editedBeforeSend: Boolean(args.editedBeforeSend),
+    });
+  }
   revalidatePath("/dashboard");
   if (args.analysisId) revalidatePath(`/analysis/${args.analysisId}`);
   return draftId;
@@ -619,8 +650,10 @@ export async function saveDraftAction(args: {
   replyId?: string;
   targetTweetId?: string;
   targetTweetUrl?: string;
+  category?: string;
+  editedBeforeSend?: boolean;
 }) {
-  const { sessionToken } = await requireSession();
+  const { sessionToken, user } = await requireSession();
   await convexServer().mutation(api.drafts.save, {
     sessionToken,
     text: args.text,
@@ -629,6 +662,21 @@ export async function saveDraftAction(args: {
     replyId: args.replyId as Id<"generatedReplies"> | undefined,
     targetTweetId: args.targetTweetId,
     targetTweetUrl: args.targetTweetUrl,
+  });
+  if (args.replyId) {
+    await trackServer("option_selected", user._id, {
+      analysisId: args.analysisId,
+      replyId: args.replyId,
+      kind: args.kind,
+      category: args.category ?? "unknown",
+      action: "saved",
+      editedBeforeSend: Boolean(args.editedBeforeSend),
+    });
+  }
+  await trackServer("draft_saved", user._id, {
+    analysisId: args.analysisId,
+    replyId: args.replyId,
+    kind: args.kind,
   });
   revalidatePath("/dashboard");
 }

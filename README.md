@@ -132,3 +132,15 @@ month (`usage` table) so any of the three options can be wired up quickly.
 - Time from URL to copy/send (client flows are single-screen).
 - Published count and reply-back ratio (publish results stored per draft;
   reply-back tracking is a natural next step once real X reads are enabled).
+
+## Observability
+
+Error tracking (Sentry) and product analytics (PostHog) for the north-star
+funnel — see `docs/observability.md` for the full event catalog, PostHog
+funnel/insight definitions, and setup steps. Both are optional: with no keys
+configured (Next.js `.env.local` and Convex env, mirroring the X OAuth
+pattern above), every event/error call is a no-op and the app runs exactly
+as before. The typed event helper lives in `src/lib/analytics/` (one source
+of truth for event names — `events.ts` — with separate server/client
+adapters); the Convex-side equivalent is `convex/lib/analytics.ts` and
+`convex/lib/sentry.ts`.
