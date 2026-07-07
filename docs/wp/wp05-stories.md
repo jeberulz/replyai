@@ -13,7 +13,7 @@ Each story is atomic, verifiable in one sitting, and committed only when
 
 ---
 
-- [ ] **S1 — Deterministic eval core (`shared/evals.ts`)**
+- [x] **S1 — Deterministic eval core (`shared/evals.ts`)**
   Pure, dependency-light eval logic importable by both tests and Convex.
   - Zod contract schema for generated-option output shape (`GeneratedOptionsSchema`).
   - `weightedLength(text)` (X weighting: URL = 23, emoji = 2, else 1 codepoint).
@@ -24,7 +24,7 @@ Each story is atomic, verifiable in one sitting, and committed only when
   - No `any`, no `console.log`, no runtime key dependency.
   - **Acceptance:** functions exported and typed; `npm run typecheck` green.
 
-- [ ] **S2 — Voice-fidelity metric (`shared/evals.ts`)**
+- [x] **S2 — Voice-fidelity metric (`shared/evals.ts`)**
   Build on the deterministic `buildVoiceStyleFromTweets` in `shared/voice.ts`
   (no edits to voice.ts).
   - `voiceFidelity(text, target: VoiceStyle)` → 0..1 over comparable style
