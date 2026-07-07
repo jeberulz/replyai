@@ -155,6 +155,11 @@ export const getForPublish = internalQuery({
       .query("xTokens")
       .withIndex("by_user", (q) => q.eq("userId", draft.userId))
       .unique();
+    // Best-effort edit-extent metadata for the `published` funnel event
+    // (docs/observability.md) — whether the option this draft came from was
+    // ever manually edited. Not available for drafts with no linked reply
+    // (e.g. a URL-quote composed outside the option workflow).
+    const reply = draft.replyId ? await ctx.db.get(draft.replyId) : null;
     return {
       draft,
       isDemo: user.isDemo,
@@ -163,6 +168,7 @@ export const getForPublish = internalQuery({
       refreshToken: tokenRow?.refreshToken ?? null,
       expiresAt: tokenRow?.expiresAt ?? 0,
       scope: tokenRow?.scope ?? "",
+      editedBeforeSend: reply?.editedBeforeSend,
     };
   },
 });

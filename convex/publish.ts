@@ -3,9 +3,18 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
+import { trackConvexEvent } from "./lib/analytics";
+import { captureConvexException } from "./lib/sentry";
 import { parseXPublishError } from "../shared/xErrors";
 import { refreshAccessToken } from "../shared/xOAuth";
 import { composeQuotePostText } from "../shared/xPublish";
+
+// A publish more than a minute after the draft was created is treated as a
+// user-scheduled send for the `published` event's `scheduled` property.
+// savedDrafts.scheduledFor is always set (drafts.publish defaults it to
+// Date.now() for an immediate send), so presence alone can't distinguish
+// "scheduled" from "now" — see docs/wp/wp04-progress.md.
+const SCHEDULED_THRESHOLD_MS = 60_000;
 
 const X_API_BASE = "https://api.x.com/2";
 const USE_NATIVE_QUOTES = process.env.X_PUBLISH_NATIVE_QUOTES === "true";
@@ -42,13 +51,25 @@ export const run = internalAction({
   handler: async (ctx, { draftId }) => {
     const bundle = await ctx.runQuery(internal.drafts.getForPublish, { draftId });
     if (!bundle) return;
-    const { draft, isDemo, userId, refreshToken, expiresAt, scope } = bundle;
+    const { draft, isDemo, userId, refreshToken, expiresAt, scope, editedBeforeSend } = bundle;
     if (draft.status === "published") return;
+
+    const scheduled = Boolean(
+      draft.scheduledFor && draft.scheduledFor > draft.createdAt + SCHEDULED_THRESHOLD_MS
+    );
+    const resolvedMode = draft.publishMode ?? (draft.kind === "quote" ? "url_quote" : "threaded");
 
     if (isDemo) {
       await ctx.runMutation(internal.drafts.markResult, {
         draftId,
         publishedTweetId: `demo-${Date.now()}`,
+      });
+      await trackConvexEvent("published", userId, {
+        draftId,
+        kind: draft.kind,
+        publishMode: resolvedMode,
+        scheduled,
+        editedBeforeSend,
       });
       return;
     }
@@ -101,7 +122,7 @@ export const run = internalAction({
       }
     }
 
-    const publishMode = draft.publishMode ?? (draft.kind === "quote" ? "url_quote" : "threaded");
+    const publishMode = resolvedMode;
 
     try {
       let result: PostResult;
@@ -151,7 +172,15 @@ export const run = internalAction({
         publishedTweetId: result.tweetId,
         publishMode: successMode,
       });
+      await trackConvexEvent("published", userId, {
+        draftId,
+        kind: draft.kind,
+        publishMode: successMode,
+        scheduled,
+        editedBeforeSend,
+      });
     } catch (error) {
+      await captureConvexException(error, { action: "publishRun", userId, draftId });
       await ctx.runMutation(internal.drafts.markResult, {
         draftId,
         error: error instanceof Error ? error.message : String(error),
