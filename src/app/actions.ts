@@ -296,6 +296,15 @@ export async function continueAnalysisAction(
 
     const generateKind = async (kind: "reply" | "quote") => {
       if (existing.some((r) => r.kind === kind)) return;
+      // Fired per kind, only when a generation call is actually about to
+      // run — a retry where both kinds already exist (e.g. re-entering this
+      // try block after analyses.complete failed) must not report a
+      // generation that didn't happen.
+      await trackServer("generation_requested", user._id, {
+        analysisId: id,
+        trigger: "initial",
+        kind,
+      });
       const result = await generateOptions({
         kind,
         bundle,
@@ -320,10 +329,6 @@ export async function continueAnalysisAction(
         generations: result.options.length,
       });
     };
-    trackServer("generation_requested", user._id, {
-      analysisId: id,
-      trigger: "initial",
-    });
     await Promise.all([generateKind("reply"), generateKind("quote")]);
 
     await convex.mutation(api.analyses.complete, {
@@ -376,7 +381,7 @@ export async function generateMoreAction(args: {
   const { profile } = await defaultVoice(sessionToken, args.voiceProfileId);
   const { model, goal } = await resolveGenerationPrefs(sessionToken, args.model);
 
-  trackServer("generation_requested", user._id, {
+  await trackServer("generation_requested", user._id, {
     analysisId,
     trigger: "more",
     kind: args.kind,
@@ -615,13 +620,13 @@ export async function publishAction(args: {
     publishMode: args.publishMode,
   });
   if (args.replyId) {
-    trackServer("option_selected", user._id, {
+    await trackServer("option_selected", user._id, {
       analysisId: args.analysisId,
       replyId: args.replyId,
       kind: args.kind,
       category: args.category ?? "unknown",
       action: "published",
-      editedBeforeSend: args.editedBeforeSend,
+      editedBeforeSend: Boolean(args.editedBeforeSend),
     });
   }
   revalidatePath("/dashboard");
@@ -659,16 +664,16 @@ export async function saveDraftAction(args: {
     targetTweetUrl: args.targetTweetUrl,
   });
   if (args.replyId) {
-    trackServer("option_selected", user._id, {
+    await trackServer("option_selected", user._id, {
       analysisId: args.analysisId,
       replyId: args.replyId,
       kind: args.kind,
       category: args.category ?? "unknown",
       action: "saved",
-      editedBeforeSend: args.editedBeforeSend,
+      editedBeforeSend: Boolean(args.editedBeforeSend),
     });
   }
-  trackServer("draft_saved", user._id, {
+  await trackServer("draft_saved", user._id, {
     analysisId: args.analysisId,
     replyId: args.replyId,
     kind: args.kind,

@@ -171,7 +171,12 @@ export const getForPublish = internalQuery({
       refreshToken: tokenRow?.refreshToken ?? null,
       expiresAt: tokenRow?.expiresAt ?? 0,
       scope: tokenRow?.scope ?? "",
-      editedBeforeSend: reply?.editedBeforeSend,
+      // Coerce: a reply that's never been edited stores this field as
+      // `undefined`, not `false` — reporting `undefined` on the `published`
+      // event would make PostHog's `editedBeforeSend = false` filter miss
+      // the common (never-edited) case, undercounting the no-edit rate.
+      // Stays `undefined` only when there's no linked reply to check at all.
+      editedBeforeSend: reply ? Boolean(reply.editedBeforeSend) : undefined,
     };
   },
 });

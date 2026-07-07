@@ -156,3 +156,52 @@ call itself instead of inferring it after the fact: `drafts.publish` passes
 `scheduled` as a required argument instead of computing it. This is an
 additive argument on an internal Convex action, not a schema change — still
 within the WP4 boundary ("schema changes: none should be needed").
+
+## Code-review pass findings (fixed before the PR)
+
+Ran the §6 `/code-review` pass (two independent finder agents over the full
+diff vs main). Correctness findings, all fixed:
+
+1. **Spurious `generation_requested` on retry** — the event fired in
+   `continueAnalysisAction` before `generateKind()` decided whether any
+   generation would actually run; a retry after `analyses.complete` failed
+   (both kinds already generated) would report a generation that never
+   happened, inflating funnel step 3. Fixed: the event now fires inside
+   `generateKind`, once per kind, only when a generation call is actually
+   about to run (`trigger: "initial"` now also carries `kind`, matching the
+   "more" path).
+2. **`editedBeforeSend: undefined` on never-edited options** — the schema
+   stores the field as optional; an option that was never edited has it
+   `undefined`, not `false`. Passing that straight through would make a
+   PostHog `editedBeforeSend = false` filter miss the *common* case and
+   undercount the exact no-edit rate this WP exists to surface. Fixed:
+   coerced with `Boolean(...)` at every emit site where a linked reply
+   exists (`option-card.tsx` copy, `actions.ts` save/publish,
+   `drafts.getForPublish` for the `published` event); stays `undefined`
+   only when there is genuinely no linked reply to inspect.
+3. **`trackServer` events could be silently dropped** — `posthog-node`'s
+   `capture()` only enqueues; in a request-scoped Server Action nothing
+   guarantees the background flush completes before the request is done.
+   `flushAt: 1` triggers the flush *promise* but nothing awaited it.
+   Fixed: `trackServer` is now `async`, calls `capture()` then
+   `await client.flush()`, and every server call site awaits it (still
+   try/catch-wrapped — a PostHog outage can't break a product flow).
+4. *(cleanup)* `upsertMany`'s `updated` counter was returned but never
+   consumed — dropped; it now returns `{ inserted }` only. The PostHog
+   default-host string was triplicated across the three adapters —
+   centralized as `DEFAULT_POSTHOG_HOST` in `src/lib/analytics/events.ts`.
+
+Findings reviewed and *not* acted on (with reasons):
+- "`user._id` typed as `string` in `SessionUser` weakens event typing" —
+  true but pre-existing (`src/lib/session.ts` predates this WP); changing
+  the session type is outside the WP4 file boundary. Noted under "Found,
+  not fixed" in the PR.
+- "Convex `fetch`-based Sentry client sends unparsed stacks" — known and
+  documented in `docs/observability.md`; parsing stacks into Sentry's frame
+  format is deliberate scope restraint, not an oversight.
+
+Security review (`/security-review`, required by §6 since publish/token
+paths were touched): no new vulnerabilities introduced — event payloads
+contain ids and booleans, never tokens or tweet text; the Sentry/PostHog
+env keys stay server/Convex-side; no publish-path logic changed beyond the
+additive `scheduled` argument.

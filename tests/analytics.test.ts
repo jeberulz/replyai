@@ -38,20 +38,20 @@ describe("trackServer", () => {
     delete process.env.POSTHOG_KEY;
   });
 
-  it("no-ops without throwing when POSTHOG_KEY is unset (demo mode)", () => {
+  it("no-ops without throwing when POSTHOG_KEY is unset (demo mode)", async () => {
     delete process.env.POSTHOG_KEY;
-    expect(() =>
+    await expect(
       trackServer("draft_saved", "user_1", { kind: "reply" })
-    ).not.toThrow();
+    ).resolves.toBeUndefined();
   });
 
-  it("routes the exact event name, distinct id, and properties through an injected debug sink", () => {
+  it("routes the exact event name, distinct id, and properties through an injected debug sink", async () => {
     const seen: Array<{ event: string; distinctId: string; properties: unknown }> = [];
     __setAnalyticsDebugSink((event, distinctId, properties) => {
       seen.push({ event, distinctId, properties });
     });
 
-    trackServer("published", "user_42", {
+    await trackServer("published", "user_42", {
       draftId: "draft_1",
       kind: "quote",
       publishMode: "url_quote",
@@ -73,12 +73,12 @@ describe("trackServer", () => {
     });
   });
 
-  it("still calls the debug sink when POSTHOG_KEY is unset — the sink is how this is verified without a live key", () => {
+  it("still calls the debug sink when POSTHOG_KEY is unset — the sink is how this is verified without a live key", async () => {
     delete process.env.POSTHOG_KEY;
     const seen: string[] = [];
     __setAnalyticsDebugSink((event) => seen.push(event));
 
-    trackServer("opportunity_surfaced", "user_1", { count: 3 });
+    await trackServer("opportunity_surfaced", "user_1", { count: 3 });
 
     expect(seen).toEqual(["opportunity_surfaced"]);
   });

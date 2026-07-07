@@ -204,7 +204,6 @@ export const upsertMany = internalMutation({
   handler: async (ctx, { userId, items }) => {
     const now = Date.now();
     let inserted = 0;
-    let updated = 0;
     for (const item of items) {
       const existing = await ctx.db
         .query("opportunities")
@@ -231,7 +230,6 @@ export const upsertMany = internalMutation({
           semanticClassifiedAt: item.semanticClassifiedAt,
           textFingerprint: item.textFingerprint,
         });
-        updated += 1;
       } else {
         await ctx.db.insert("opportunities", {
           userId,
@@ -245,7 +243,7 @@ export const upsertMany = internalMutation({
     // Reported by the calling action as the opportunity_surfaced funnel
     // event (docs/observability.md) — this mutation itself can't call
     // fetch to capture it directly (Convex mutations have no network I/O).
-    return { inserted, updated };
+    return { inserted };
   },
 });
 

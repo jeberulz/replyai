@@ -205,7 +205,10 @@ export function OptionCard({
       kind: option.kind,
       category: option.category,
       action: "copied",
-      editedBeforeSend: option.editedBeforeSend,
+      // Coerce: an option that's never been edited stores this as
+      // `undefined`, not `false` — leaving it as-is would undercount the
+      // no-edit rate this event exists to make visible.
+      editedBeforeSend: Boolean(option.editedBeforeSend),
     });
   };
 

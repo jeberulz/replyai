@@ -1,7 +1,11 @@
 import "server-only";
 import { PostHog } from "posthog-node";
 import * as Sentry from "@sentry/nextjs";
-import type { AnalyticsEvent, AnalyticsEventProperties } from "./events";
+import {
+  DEFAULT_POSTHOG_HOST,
+  type AnalyticsEvent,
+  type AnalyticsEventProperties,
+} from "./events";
 
 /**
  * Server-side (Next.js Server Actions / route handlers) typed event + error
@@ -27,7 +31,7 @@ function getClient(): PostHog | null {
     return posthogClient;
   }
   posthogClient = new PostHog(key, {
-    host: process.env.POSTHOG_HOST || "https://us.i.posthog.com",
+    host: process.env.POSTHOG_HOST || DEFAULT_POSTHOG_HOST,
     // Server actions run request-scoped; flush immediately rather than
     // relying on a background batch timer that may never fire again.
     flushAt: 1,
@@ -46,16 +50,24 @@ export function __setAnalyticsDebugSink(sink: DebugSink | null): void {
   debugSink = sink;
 }
 
-export function trackServer<E extends AnalyticsEvent>(
+/**
+ * Awaited by every call site. `capture()` itself only enqueues the event —
+ * with a request-scoped Server Action, nothing keeps the process alive to
+ * let a background flush timer fire after the action returns, so this
+ * explicitly awaits `flush()` to make sure the event actually goes out
+ * before the caller (and the request) completes.
+ */
+export async function trackServer<E extends AnalyticsEvent>(
   event: E,
   distinctId: string,
   properties: AnalyticsEventProperties[E]
-): void {
+): Promise<void> {
   debugSink?.(event, distinctId, properties);
   const client = getClient();
   if (!client) return;
   try {
     client.capture({ distinctId, event, properties });
+    await client.flush();
   } catch {
     // Analytics must never break a product flow.
   }

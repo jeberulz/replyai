@@ -1,6 +1,7 @@
-import type {
-  AnalyticsEvent,
-  AnalyticsEventProperties,
+import {
+  DEFAULT_POSTHOG_HOST,
+  type AnalyticsEvent,
+  type AnalyticsEventProperties,
 } from "../../src/lib/analytics/events";
 
 /**
@@ -23,7 +24,7 @@ export async function trackConvexEvent<E extends AnalyticsEvent>(
 ): Promise<void> {
   const key = process.env.POSTHOG_KEY;
   if (!key) return;
-  const host = process.env.POSTHOG_HOST || "https://us.i.posthog.com";
+  const host = process.env.POSTHOG_HOST || DEFAULT_POSTHOG_HOST;
   try {
     await fetch(`${host}/i/v0/e/`, {
       method: "POST",

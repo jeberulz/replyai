@@ -85,3 +85,11 @@ export const FUNNEL_STEPS: readonly AnalyticsEvent[] = [
   "draft_saved",
   "published",
 ];
+
+/**
+ * Single source of truth for the PostHog default ingestion host — used by
+ * the server (src/lib/analytics/server.ts), client
+ * (src/lib/analytics/client.ts), and Convex (convex/lib/analytics.ts)
+ * adapters so the fallback can't drift between the three.
+ */
+export const DEFAULT_POSTHOG_HOST = "https://us.i.posthog.com";

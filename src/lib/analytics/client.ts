@@ -1,5 +1,9 @@
 import posthog from "posthog-js";
-import type { AnalyticsEvent, AnalyticsEventProperties } from "./events";
+import {
+  DEFAULT_POSTHOG_HOST,
+  type AnalyticsEvent,
+  type AnalyticsEventProperties,
+} from "./events";
 
 /**
  * Browser-side typed event capture. No-ops cleanly when
@@ -16,7 +20,7 @@ export function initAnalyticsClient(): void {
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   if (!key) return;
   posthog.init(key, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || DEFAULT_POSTHOG_HOST,
     // Funnel events are captured explicitly at each product step; avoid
     // implicit autocapture/pageview noise diluting the north-star funnel.
     autocapture: false,
