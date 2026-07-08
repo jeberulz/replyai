@@ -66,7 +66,7 @@ async function ensureFeedHasOpportunity(page: Page) {
 
   await page.getByRole("button", { name: /Sources/i }).click();
 
-  const searchSwitch = page.locator("#source-search");
+  const searchSwitch = page.getByTestId("source-switch-search");
   if ((await searchSwitch.getAttribute("data-state")) !== "checked") {
     await searchSwitch.click();
   }

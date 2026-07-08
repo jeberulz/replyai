@@ -537,6 +537,7 @@ export function FeedScanner() {
                   ) : (
                     <Switch
                       id={`source-${row.source}`}
+                      data-testid={`source-switch-${row.source}`}
                       checked={enabledSources.includes(row.source)}
                       onCheckedChange={(checked) =>
                         toggleSource(row.source, checked)
