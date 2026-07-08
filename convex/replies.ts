@@ -77,6 +77,7 @@ export const updateContent = mutation({
       await ctx.db.patch(replyId, {
         content,
         baselineContent: content,
+        editedBeforeSend: false,
         editDistanceNormalized: 0,
         editBucket: "no_edit",
       });

@@ -1,8 +1,16 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import {
+  type MutationCtx,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
 import { requireUser } from "./helpers";
 import { learnFromSentText } from "./voiceProfiles";
+import { measureObservedEdit } from "../shared/editDistance";
 
 const publishModeValidator = v.optional(
   v.union(
@@ -47,9 +55,16 @@ export const save = mutation({
   },
   handler: async (ctx, { sessionToken, ...args }) => {
     const user = await requireUser(ctx, sessionToken);
+    const observedEdit = await getObservedEditForDraft(
+      ctx,
+      user._id,
+      args.replyId,
+      args.text
+    );
     return await ctx.db.insert("savedDrafts", {
       userId: user._id,
       ...args,
+      ...observedEdit.draftPatch,
       status: "draft",
       createdAt: Date.now(),
     });
@@ -77,10 +92,17 @@ export const publish = mutation({
     const user = await requireUser(ctx, sessionToken);
     const resolvedMode =
       publishMode ?? (kind === "quote" ? "url_quote" : "threaded");
+    const observedEdit = await getObservedEditForDraft(
+      ctx,
+      user._id,
+      args.replyId,
+      args.text
+    );
     const draftId = await ctx.db.insert("savedDrafts", {
       userId: user._id,
       kind,
       ...args,
+      ...observedEdit.draftPatch,
       publishMode: resolvedMode,
       status: "scheduled",
       scheduledFor: scheduledFor ?? Date.now(),
@@ -132,7 +154,13 @@ export const updateContent = mutation({
     const draft = await ctx.db.get(draftId);
     if (!draft || draft.userId !== user._id) throw new Error("Not found");
     if (draft.status === "published") throw new Error("Already published");
-    await ctx.db.patch(draftId, { text });
+    const observedEdit = await getObservedEditForDraft(
+      ctx,
+      user._id,
+      draft.replyId,
+      text
+    );
+    await ctx.db.patch(draftId, { text, ...observedEdit.draftPatch });
   },
 });
 
@@ -176,7 +204,12 @@ export const getForPublish = internalQuery({
       // event would make PostHog's `editedBeforeSend = false` filter miss
       // the common (never-edited) case, undercounting the no-edit rate.
       // Stays `undefined` only when there's no linked reply to check at all.
-      editedBeforeSend: reply ? Boolean(reply.editedBeforeSend) : undefined,
+      editedBeforeSend:
+        draft.editDistanceNormalized !== undefined
+          ? draft.editDistanceNormalized > 0
+          : reply
+            ? Boolean(reply.editedBeforeSend)
+            : undefined,
     };
   },
 });
@@ -211,3 +244,40 @@ export const markResult = internalMutation({
     }
   },
 });
+
+async function getObservedEditForDraft(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  replyId: Id<"generatedReplies"> | undefined,
+  text: string
+) {
+  if (!replyId) {
+    return {
+      draftPatch: {},
+    };
+  }
+
+  const reply = await ctx.db.get(replyId);
+  if (!reply || reply.userId !== userId) {
+    return {
+      draftPatch: {},
+    };
+  }
+
+  const baseline = reply.baselineContent ?? reply.content;
+  const observedEdit = measureObservedEdit(baseline, text);
+  const editedBeforeSend = observedEdit.normalizedEditDistance > 0;
+
+  await ctx.db.patch(reply._id, {
+    editedBeforeSend,
+    editDistanceNormalized: observedEdit.normalizedEditDistance,
+    editBucket: observedEdit.bucket,
+  });
+
+  return {
+    draftPatch: {
+      editDistanceNormalized: observedEdit.normalizedEditDistance,
+      editBucket: observedEdit.bucket,
+    },
+  };
+}

@@ -5,7 +5,7 @@
   - Extend the stored reply/publish data model so a sent generated reply can retain observed edit-distance data without breaking existing rows or demo mode.
   - Add focused unit tests in `tests/` covering normalization and bucket thresholds, including exact-match, typo-level, and rewrite-level cases.
 
-- [ ] `WP20-S2` Draft/publish flow records observed edit distance per sent reply
+- [x] `WP20-S2` Draft/publish flow records observed edit distance per sent reply
   - Publishing or saving a generated option through the existing drafts flow stores normalized edit distance and bucket data derived from the generated option text and the sent draft text.
   - Manual edits update the stored observation so later publish actions use the final sent text, while AI rewrites that opt out of manual-edit marking do not count as manual edits by themselves.
   - Existing non-generated drafts and demo-mode publishes continue to work without errors and without inventing fake edit-distance data.
