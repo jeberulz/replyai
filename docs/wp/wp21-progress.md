@@ -6,3 +6,10 @@
   `npm test -- tests/research.test.ts` and `npm run typecheck` both passed.
 - Kept the scoring change band-relative and the cadence fallback explicitly uncertain
   (`Recent sample only`) so the UI does not overstate activity when timestamps are missing.
+- Added shared watch helpers so watched-handle dedupe and topic-tag keyword seeding
+  are testable without Convex-specific harness code.
+- The research save/list paths now suppress already-watched handles using live
+  scanner settings instead of relying only on stored research profile status.
+- Verified `WP21-S2` with `npm test -- tests/research.test.ts`,
+  `npm run typecheck`, and `npm run lint` (lint only reported pre-existing
+  warnings in `convex/_generated/*`).

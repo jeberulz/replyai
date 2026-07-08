@@ -5,7 +5,7 @@
   - Compute research `postFrequency` from tweet timestamps when timestamp data exists; any fallback text must stay explicitly approximate rather than presenting inferred sample-count activity as fact.
   - Add focused unit tests in `tests/` for band-normalized engagement and timestamp-based post-frequency labeling, including at least one case that previously over-favored a large account.
 
-- [ ] `WP21-S2` Watched-handle dedupe and keyword seeding
+- [x] `WP21-S2` Watched-handle dedupe and keyword seeding
   - Research results should not re-suggest handles the user is already watching; saved results and live runs both dedupe against the watched-handle list without breaking demo mode.
   - One-click watch from research must keep watched handles deduped and also seed scanner keywords from the selected profile's topic tags without duplicating or exceeding existing scanner limits.
   - Add focused tests for watched-handle dedupe and keyword seeding behavior.

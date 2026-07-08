@@ -4,12 +4,14 @@ import type { QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { requireUser } from "./helpers";
+import {
+  isWatchedHandle,
+  mergeSeedKeywords,
+  mergeWatchedHandles,
+  normalizeResearchHandle,
+} from "../shared/researchWatch";
 
 const MAX_RUNS_PER_DAY = 3;
-
-function normalizeHandle(handle: string): string {
-  return handle.trim().replace(/^@/, "").toLowerCase();
-}
 
 function startOfUtcDay(now = Date.now()): number {
   const d = new Date(now);
@@ -35,6 +37,12 @@ export const listProfiles = query({
   },
   handler: async (ctx, { sessionToken, runId, status }) => {
     const user = await requireUser(ctx, sessionToken);
+    const settings = await ctx.db
+      .query("scannerSettings")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    const watchedHandles = settings?.watchedHandles ?? [];
+
     if (runId) {
       const run = await ctx.db.get(runId);
       if (!run || run.userId !== user._id) return [];
@@ -44,6 +52,11 @@ export const listProfiles = query({
         .collect()
         .then((rows) =>
           rows
+            .map((row) =>
+              isWatchedHandle(watchedHandles, row.handle)
+                ? { ...row, status: "watching" as const }
+                : row
+            )
             .filter((r) => (status ? r.status === status : true))
             .sort((a, b) => b.score - a.score)
         );
@@ -56,7 +69,16 @@ export const listProfiles = query({
         q.eq("userId", user._id).eq("status", targetStatus)
       )
       .collect()
-      .then((rows) => rows.sort((a, b) => b.score - a.score));
+      .then((rows) =>
+        rows
+          .map((row) =>
+            isWatchedHandle(watchedHandles, row.handle)
+              ? { ...row, status: "watching" as const }
+              : row
+          )
+          .filter((r) => r.status === targetStatus)
+          .sort((a, b) => b.score - a.score)
+      );
   },
 });
 
@@ -119,7 +141,7 @@ export const startRun = mutation({
     }
 
     const seedHandles = seedHandle
-      ? [normalizeHandle(seedHandle)]
+      ? [normalizeResearchHandle(seedHandle)]
       : [];
 
     const runId = await ctx.db.insert("researchRuns", {
@@ -151,16 +173,18 @@ export const watchProfile = mutation({
       throw new Error("Profile not found");
     }
 
-    const handle = normalizeHandle(profile.handle);
+    const handle = normalizeResearchHandle(profile.handle);
     const settings = await ctx.db
       .query("scannerSettings")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
 
     const watched = settings?.watchedHandles ?? [];
-    const nextHandles = watched.some((h) => h.toLowerCase() === handle)
-      ? watched
-      : [...watched, handle].slice(0, 50);
+    const nextHandles = mergeWatchedHandles(watched, handle);
+    const { keywords: nextKeywords, seeded } = mergeSeedKeywords(
+      settings?.keywords ?? [],
+      profile.topicTags
+    );
 
     const enabledSources = settings?.enabledSources?.length
       ? settings.enabledSources.includes("watched")
@@ -170,6 +194,7 @@ export const watchProfile = mutation({
 
     if (settings) {
       await ctx.db.patch(settings._id, {
+        keywords: nextKeywords,
         watchedHandles: nextHandles,
         enabledSources: [...enabledSources],
       });
@@ -177,13 +202,14 @@ export const watchProfile = mutation({
       await ctx.db.insert("scannerSettings", {
         userId: user._id,
         enabled: false,
-        keywords: [],
+        keywords: nextKeywords,
         watchedHandles: nextHandles,
         enabledSources: ["following", "watched"],
       });
     }
 
     await ctx.db.patch(profileId, { status: "watching" });
+    return { seededKeywords: seeded };
   },
 });
 
@@ -227,14 +253,28 @@ export const saveRunResults = internalMutation({
   },
   handler: async (ctx, { runId, userId, profiles }) => {
     const now = Date.now();
+    const settings = await ctx.db
+      .query("scannerSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    const watchedHandles = settings?.watchedHandles ?? [];
+    let savedCount = 0;
+
     for (const p of profiles) {
-      const handle = normalizeHandle(p.handle);
+      const handle = normalizeResearchHandle(p.handle);
       const existing = await ctx.db
         .query("researchProfiles")
         .withIndex("by_user_handle", (q) =>
           q.eq("userId", userId).eq("handle", handle)
         )
         .unique();
+
+      if (isWatchedHandle(watchedHandles, handle)) {
+        if (existing && existing.status !== "watching") {
+          await ctx.db.patch(existing._id, { status: "watching" });
+        }
+        continue;
+      }
 
       if (existing && existing.status === "watching") {
         continue;
@@ -256,6 +296,7 @@ export const saveRunResults = internalMutation({
           status: existing.status === "passed" ? "passed" : "suggested",
           discoveredAt: now,
         });
+        savedCount += 1;
       } else {
         await ctx.db.insert("researchProfiles", {
           userId,
@@ -274,12 +315,13 @@ export const saveRunResults = internalMutation({
           status: "suggested",
           discoveredAt: now,
         });
+        savedCount += 1;
       }
     }
 
     await ctx.db.patch(runId, {
       status: "complete",
-      resultCount: profiles.length,
+      resultCount: savedCount,
     });
   },
 });

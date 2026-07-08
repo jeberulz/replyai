@@ -1099,12 +1099,13 @@ export async function runResearchAction(args: {
 
 export async function watchResearchProfileAction(profileId: string) {
   const { sessionToken } = await requireSession();
-  await convexServer().mutation(api.research.watchProfile, {
+  const result = await convexServer().mutation(api.research.watchProfile, {
     sessionToken,
     profileId: profileId as Id<"researchProfiles">,
   });
   revalidatePath("/research");
   revalidatePath("/feed");
+  return result;
 }
 
 export async function passResearchProfileAction(profileId: string) {

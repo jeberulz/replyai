@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { demoResearchProfiles } from "../shared/demoData";
 import {
+  isWatchedHandle,
+  mergeSeedKeywords,
+  mergeWatchedHandles,
+} from "../shared/researchWatch";
+import {
   bandNormalizedEngagementScore,
   followersBandScore,
   postFrequencyLabel,
@@ -176,5 +181,21 @@ describe("postFrequencyLabel", () => {
 describe("demoResearchProfiles", () => {
   it("returns five demo profiles", () => {
     expect(demoResearchProfiles("ai founders").length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("research watch helpers", () => {
+  it("dedupes watched handles case-insensitively", () => {
+    expect(mergeWatchedHandles(["SarahBuilds"], "@sarahbuilds")).toEqual([
+      "sarahbuilds",
+    ]);
+    expect(isWatchedHandle(["SarahBuilds"], "sarahbuilds")).toBe(true);
+  });
+
+  it("seeds scanner keywords from topic tags without duplicates", () => {
+    expect(mergeSeedKeywords(["ai", "founder"], ["AI", "startup", "founder"])).toEqual({
+      keywords: ["ai", "founder", "startup"],
+      seeded: ["startup"],
+    });
   });
 });
