@@ -39,8 +39,13 @@ export function ProfileSuggestionCard({
 
   const watch = () => {
     startTransition(async () => {
-      await watchResearchProfileAction(profile._id);
-      toast.success(`@${profile.handle} added to watched accounts`);
+      const result = await watchResearchProfileAction(profile._id);
+      const seededKeywords = result?.seededKeywords ?? [];
+      toast.success(
+        seededKeywords.length > 0
+          ? `@${profile.handle} added to watched accounts and seeded ${seededKeywords.join(", ")}`
+          : `@${profile.handle} added to watched accounts`
+      );
     });
   };
 
@@ -87,13 +92,26 @@ export function ProfileSuggestionCard({
         <p className="text-sm leading-relaxed">{profile.reason}</p>
 
         {profile.topicTags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {profile.topicTags.map((tag) => (
-              <Badge key={tag} variant="outline" className="font-mono text-[0.65rem]">
-                {tag}
-              </Badge>
-            ))}
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-1.5">
+              {profile.topicTags.map((tag) => (
+                <Badge key={tag} variant="outline" className="font-mono text-[0.65rem]">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+            {profile.status === "suggested" && (
+              <p className="text-xs text-muted-foreground">
+                Watching also adds these tags to your scanner topics.
+              </p>
+            )}
           </div>
+        )}
+
+        {profile.status === "watching" && (
+          <p className="text-xs text-muted-foreground">
+            Already in your watched accounts, so future scans can pull this author directly.
+          </p>
         )}
 
         {topTweet && (
@@ -110,7 +128,7 @@ export function ProfileSuggestionCard({
             <>
               <Button size="sm" onClick={watch} disabled={busy}>
                 <Eye />
-                Watch
+                Watch + seed topics
               </Button>
               <Button size="sm" variant="outline" onClick={pass} disabled={busy}>
                 <X />

@@ -13,3 +13,10 @@
 - Verified `WP21-S2` with `npm test -- tests/research.test.ts`,
   `npm run typecheck`, and `npm run lint` (lint only reported pre-existing
   warnings in `convex/_generated/*`).
+- Updated the research card CTA/copy so watch actions explicitly mention topic
+  seeding, and aligned demo research profile cadence labels with the new honest
+  wording.
+- Final verification on the completed WP21 tree:
+  `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all
+  completed successfully; lint still reports only the existing generated-file
+  warnings in `convex/_generated/*`.

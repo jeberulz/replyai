@@ -10,7 +10,7 @@
   - One-click watch from research must keep watched handles deduped and also seed scanner keywords from the selected profile's topic tags without duplicating or exceeding existing scanner limits.
   - Add focused tests for watched-handle dedupe and keyword seeding behavior.
 
-- [ ] `WP21-S3` Research UI reflects the tightened watch flow
+- [x] `WP21-S3` Research UI reflects the tightened watch flow
   - Research cards and run results should show the timestamp-derived cadence copy without overstating certainty.
   - Already-watched profiles should not present a misleading "Watch" action, and the watch affordance should make the keyword-seeding behavior legible in honest copy.
   - The updated research flow compiles and preserves the existing demo-mode behavior and route structure.

@@ -231,7 +231,7 @@ export function demoResearchProfiles(query: string): DemoResearchProfile[] {
       bio: pick("sarahbuilds")?.authorBio ?? "",
       followers: pick("sarahbuilds")?.authorFollowers ?? 184000,
       avgLikes: 2100,
-      postFrequency: "Active this week",
+      postFrequency: "Posts every few days",
       topicTags: ["ai", "startup"],
       score: 88,
       reason:
@@ -246,7 +246,7 @@ export function demoResearchProfiles(query: string): DemoResearchProfile[] {
       bio: pick("priyaml")?.authorBio ?? "",
       followers: pick("priyaml")?.authorFollowers ?? 310000,
       avgLikes: 3200,
-      postFrequency: "Active this week",
+      postFrequency: "Posts every few days",
       topicTags: ["ai", "ml"],
       score: 85,
       reason:
@@ -261,7 +261,7 @@ export function demoResearchProfiles(query: string): DemoResearchProfile[] {
       bio: pick("marcusship")?.authorBio ?? "",
       followers: pick("marcusship")?.authorFollowers ?? 52000,
       avgLikes: 900,
-      postFrequency: "Active this week",
+      postFrequency: "Posts about daily",
       topicTags: ["startup", "build"],
       score: 79,
       reason:
@@ -276,7 +276,7 @@ export function demoResearchProfiles(query: string): DemoResearchProfile[] {
       bio: pick("lenacodes")?.authorBio ?? "",
       followers: pick("lenacodes")?.authorFollowers ?? 27000,
       avgLikes: 1800,
-      postFrequency: "Occasional poster",
+      postFrequency: "Posts occasionally",
       topicTags: ["engineering", "product"],
       score: 74,
       reason:
@@ -291,7 +291,7 @@ export function demoResearchProfiles(query: string): DemoResearchProfile[] {
       bio: pick("alexvc")?.authorBio ?? "",
       followers: pick("alexvc")?.authorFollowers ?? 145000,
       avgLikes: 1400,
-      postFrequency: "Active this week",
+      postFrequency: "Posts every few days",
       topicTags: ["ai", "saas"],
       score: 72,
       reason:
