@@ -1,0 +1,43 @@
+# WP03 Progress
+
+## 2026-07-08
+
+- Read required docs in order: `PRD.md`, `AGENTS.md`, `docs/AGENT_PLAYBOOK.md`, `docs/PRODUCT_STRATEGY.md` (§4, §8.5, §10, §14 WP3), `convex/_generated/ai/guidelines.md`, relevant Next App Router docs from `node_modules/next/dist/docs/`, and `design.md`.
+- Confirmed the WP3 branch starts clean at `aa7ddf0` and tracks `origin/main` at the same commit.
+- Ran `npm ci` because `node_modules` was absent and the required local Next docs were unavailable before install; this also enables local checks later.
+- Checked `docs/wp/RULINGS.md`; no existing WP3 ruling is recorded.
+- Initial implementation plan: inventory/export first, destructive cascade second, settings UI last. Deletion must expose a dry-run inventory and use bounded Convex batches before deleting the `users` row.
+- Completed `WP03-S1`.
+  - Added `shared/accountData.ts` as the account-data contract and `docs/wp/wp03-data-inventory.md` documenting user-owned tables, owner fields, relationship fields, and deletion order.
+  - Added `convex/account.ts` with authenticated `inventory` query using `requireUser(ctx, sessionToken)` and dry-run counts only.
+  - Added additive `by_user` indexes on `sessions` and `researchProfiles` so inventory/deletion do not require user-owned table scans.
+  - `cachedResponses` is intentionally excluded because it has no `userId` owner field and is an expiring keyed cache.
+  - Added `tests/accountData.test.ts` for table contract, authenticated-owner scoping, unrelated-user exclusion, and deterministic dry-run totals.
+  - Checks: `npm run typecheck` passed; `npm test -- tests/accountData.test.ts` passed; `npm test` passed (26 files, 204 tests; 1 skipped).
+  - Attempted `npx convex codegen`; blocked locally because `CONVEX_DEPLOYMENT` is unset in this worktree. Revisit generated API metadata before any `api.account.*` TypeScript references land.
+- Completed `WP03-S2`.
+  - Added authenticated `account.exportData` query that returns schema-versioned, JSON-safe account export data for the current session user.
+  - Export includes `users` plus every child table in `docs/wp/wp03-data-inventory.md`, scoped by the same owner contract as inventory.
+  - Redaction decision: `sessions` export omits `token`/`tokenHash` and reports only presence booleans; `xTokens` export omits plaintext and encrypted token material and reports connection metadata (`expiresAt`, `scope`, token presence, storage mode).
+  - Added tests for payload shape, unrelated-user exclusion, undefined stripping, and redaction of credential material.
+  - Checks: `npm run typecheck` passed; `npm test -- tests/accountData.test.ts` passed; `npm test` passed (26 files, 206 tests; 1 skipped).
+- Completed `WP03-S3`.
+  - Added authenticated `account.deleteAccount` mutation with backend username confirmation, pre-delete dry-run inventory, and fixed cascade order from `shared/accountData.ts`.
+  - Deletion batch size is `50` rows. Each mutation deletes at most one child-table batch, schedules `internal.account.continueDelete`, and deletes `users` only after every child table returns no rows for the account.
+  - Added shared cascade planner tests proving batch bounds, child-before-root behavior, and unrelated-user exclusion.
+  - Because `npx convex codegen` is blocked without `CONVEX_DEPLOYMENT`, manually added the new `account` module to checked-in `convex/_generated/api.d.ts` so `internal.account.continueDelete` typechecks. This should be replaced by normal codegen when a deployment is configured.
+  - Checks: `npm run typecheck` passed; `npm test -- tests/accountData.test.ts` passed; `npm test` passed (26 files, 208 tests; 1 skipped).
+- Completed `WP03-S4`.
+  - Added `AccountDataControls` to Settings with JSON download and destructive deletion controls.
+  - Settings now fetches `account.inventory` server-side and displays the dry-run row counts before deletion.
+  - Added `exportAccountDataAction` and `deleteAccountAction`; both derive identity from the httpOnly session via `requireSession()`. Delete validates typed username server-side, calls `account.deleteAccount`, clears the session cookie, and redirects home.
+  - UI follows the existing settings card/border/button conventions and keeps deletion behind a Radix dialog plus disabled submit until the username matches.
+  - Checks: `npm run typecheck` passed; `npm run lint` passed with the repo's existing generated-file warnings only; `npm test` passed (26 files, 208 tests; 1 skipped); `npm run build` passed.
+  - Interactive browser-flow verification was not run because this worktree has no `CONVEX_DEPLOYMENT`/Convex app configured; `npx convex codegen` is blocked for the same reason.
+- Completed `WP03-S5`.
+  - Final check chain passed: `npm run typecheck && npm run lint && npm test && npm run build`.
+  - `npm run lint` still reports only existing warnings in checked-in generated Convex files (`api.js`, `dataModel.d.ts`, `server.d.ts`, `server.js`) and exits 0.
+  - `npm test` passed: 26 test files passed, 1 skipped; 208 tests passed, 1 skipped.
+  - `npm run build` passed with `/settings` as a dynamic route.
+  - `npm run security:audit` passed: 63 public Convex functions checked, 3 allow-listed.
+  - No product-behavior escalation needed. Operational caveat remains: this local worktree lacks `CONVEX_DEPLOYMENT`, so normal `npx convex codegen` and interactive Convex-backed browser verification could not run here.

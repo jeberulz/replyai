@@ -72,24 +72,24 @@ describe("scoreConversation", () => {
     expect(score.reason.length).toBeGreaterThan(10);
   });
 
-  it("boosts the score for curated 'list' sources over no source", () => {
+  it("keeps the displayed score the same for curated 'list' sources", () => {
     const plain = scoreConversation({ ...base, ageMinutes: 60 * 24 });
     const listed = scoreConversation({
       ...base,
       ageMinutes: 60 * 24,
       source: "list",
     });
-    expect(listed.value).toBeGreaterThan(plain.value);
+    expect(listed.value).toBe(plain.value);
   });
 
-  it("boosts the score for 'watched' sources over no source", () => {
+  it("keeps the displayed score the same for 'watched' sources", () => {
     const plain = scoreConversation({ ...base, ageMinutes: 60 * 24 });
     const watched = scoreConversation({
       ...base,
       ageMinutes: 60 * 24,
       source: "watched",
     });
-    expect(watched.value).toBeGreaterThan(plain.value);
+    expect(watched.value).toBe(plain.value);
   });
 
   it("treats 'following' as the baseline, same as no source", () => {
@@ -102,9 +102,74 @@ describe("scoreConversation", () => {
     expect(following.value).toBe(plain.value);
   });
 
-  it("clamps at 100 even when a near-max score gets the source boost", () => {
+  it("clamps at 100 for near-max base scores", () => {
     const score = scoreConversation({ ...base, ageMinutes: 30, source: "list" });
     expect(score.value).toBeLessThanOrEqual(100);
+  });
+
+  it("calls out off-topic conversations in the displayed reason", () => {
+    const score = scoreConversation({
+      followers: 12_000,
+      likes: 40,
+      retweets: 4,
+      replies: 3,
+      quotes: 1,
+      ageMinutes: 35,
+      topicRelevance: 0.05,
+    });
+    expect(score.reason).toContain("off-niche");
+  });
+
+  it("calls out brand-safety risk when the classifier flags it", () => {
+    const score = scoreConversation({
+      followers: 12_000,
+      likes: 40,
+      retweets: 4,
+      replies: 3,
+      quotes: 1,
+      ageMinutes: 35,
+      topicRelevance: 0,
+      brandSafety: "unsafe",
+    });
+    expect(score.reason).toContain("risky for your brand");
+  });
+
+  it("normalizes velocity by follower band so smaller accounts can earn momentum credit", () => {
+    const sameRawEngagement = {
+      likes: 24,
+      retweets: 3,
+      replies: 5,
+      quotes: 1,
+      ageMinutes: 30,
+      topicRelevance: 0.8,
+    };
+
+    const micro = scoreConversation({
+      ...sameRawEngagement,
+      followers: 700,
+    });
+    const large = scoreConversation({
+      ...sameRawEngagement,
+      followers: 400_000,
+    });
+
+    expect(micro.factors.growthVelocity).toBeGreaterThan(large.factors.growthVelocity);
+    expect(micro.value).toBeGreaterThan(large.value - 15);
+  });
+
+  it("still bounds normalized velocity at 1 for very fast large-account tweets", () => {
+    const score = scoreConversation({
+      followers: 800_000,
+      likes: 4_000,
+      retweets: 600,
+      replies: 500,
+      quotes: 200,
+      ageMinutes: 20,
+      topicRelevance: 0.8,
+    });
+
+    expect(score.factors.growthVelocity).toBeLessThanOrEqual(1);
+    expect(score.reason).toContain("audience size");
   });
 });
 
@@ -135,6 +200,15 @@ describe("topicRelevanceForKeywords", () => {
     expect(isPoliticalContent(text)).toBe(true);
     expect(topicRelevanceForKeywords(text, ["ai", "build", "startup"])).toBe(0);
     expect(passesFeedScannerFilter(text, ["ai", "build", "startup"])).toBe(false);
+  });
+
+  it("does not hard-zero niche policy discussions that match specific keywords", () => {
+    const text =
+      "Congress is debating how the EU AI Act compliance burden will change how AI startups ship in Europe.";
+    expect(isPoliticalContent(text)).toBe(true);
+    expect(
+      topicRelevanceForKeywords(text, ["ai", "startup", "compliance"])
+    ).toBeGreaterThanOrEqual(0.8);
   });
 
   it("rejects a lone generic keyword hit", () => {

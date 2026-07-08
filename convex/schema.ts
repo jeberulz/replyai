@@ -76,6 +76,7 @@ export default defineSchema({
     expiresAt: v.number(),
     absoluteExpiresAt: v.optional(v.number()),
   })
+    .index("by_user", ["userId"])
     .index("by_token", ["token"])
     .index("by_token_hash", ["tokenHash"]),
 
@@ -98,6 +99,8 @@ export default defineSchema({
     name: v.string(),
     style: voiceStyle,
     examples: v.array(v.string()),
+    bannedPhrases: v.optional(v.array(v.string())),
+    antiPatterns: v.optional(v.array(v.string())),
     source: v.union(v.literal("manual"), v.literal("trained")),
     isDefault: v.boolean(),
     createdAt: v.number(),
@@ -225,6 +228,54 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"]),
+
+  replyOutcomeTrackers: defineTable({
+    userId: v.id("users"),
+    draftId: v.id("savedDrafts"),
+    opportunityId: v.optional(v.id("opportunities")),
+    analysisId: v.optional(v.id("tweetAnalyses")),
+    kind: v.union(v.literal("reply"), v.literal("quote")),
+    publishMode: v.optional(
+      v.union(
+        v.literal("threaded"),
+        v.literal("standalone"),
+        v.literal("url_quote")
+      )
+    ),
+    targetTweetId: v.optional(v.string()),
+    targetTweetUrl: v.optional(v.string()),
+    targetAuthorHandle: v.optional(v.string()),
+    publishedTweetId: v.string(),
+    publishedAt: v.number(),
+    windowEndsAt: v.number(),
+    nextPollAt: v.number(),
+    pollCount: v.number(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("responded"),
+      v.literal("expired"),
+      v.literal("failed")
+    ),
+    responseLabel: v.optional(
+      v.union(
+        v.literal("author_replied"),
+        v.literal("conversation_continued"),
+        v.literal("got_ratioed")
+      )
+    ),
+    lastResponseTweetId: v.optional(v.string()),
+    responseAuthorHandle: v.optional(v.string()),
+    respondedAt: v.optional(v.number()),
+    lastPolledAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_publishedAt", ["userId", "publishedAt"])
+    .index("by_draft", ["draftId"])
+    .index("by_published_tweet", ["publishedTweetId"])
+    .index("by_status_and_nextPollAt", ["status", "nextPollAt"]),
 
   usage: defineTable({
     userId: v.id("users"),
@@ -426,6 +477,7 @@ export default defineSchema({
     ),
     discoveredAt: v.number(),
   })
+    .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
     .index("by_run", ["runId"])
     .index("by_user_handle", ["userId", "handle"]),

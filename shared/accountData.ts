@@ -1,0 +1,359 @@
+export const ACCOUNT_USER_TABLES = [
+  {
+    table: "sessions",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId"],
+    deletionOrder: 10,
+  },
+  {
+    table: "xTokens",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId"],
+    deletionOrder: 20,
+  },
+  {
+    table: "scannerSettings",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId"],
+    deletionOrder: 30,
+  },
+  {
+    table: "usage",
+    ownershipField: "userId",
+    indexName: "by_user_month",
+    relationshipFields: ["userId", "month"],
+    deletionOrder: 40,
+  },
+  {
+    table: "opportunities",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "tweetId"],
+    deletionOrder: 50,
+  },
+  {
+    table: "savedDrafts",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "analysisId", "replyId"],
+    deletionOrder: 60,
+  },
+  {
+    table: "generatedReplies",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "analysisId", "voiceProfileId"],
+    deletionOrder: 70,
+  },
+  {
+    table: "modelEvals",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "analysisId"],
+    deletionOrder: 80,
+  },
+  {
+    table: "tweetAnalyses",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "projectId", "tweetId"],
+    deletionOrder: 90,
+  },
+  {
+    table: "voiceProfiles",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId"],
+    deletionOrder: 100,
+  },
+  {
+    table: "researchProfiles",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "runId", "handle"],
+    deletionOrder: 110,
+  },
+  {
+    table: "researchRuns",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId"],
+    deletionOrder: 120,
+  },
+  {
+    table: "projects",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId"],
+    deletionOrder: 130,
+  },
+] as const;
+
+export const ACCOUNT_ROOT_TABLE = {
+  table: "users",
+  ownershipField: "_id",
+  relationshipFields: ["_id", "xUserId", "username"],
+  deletionOrder: 140,
+} as const;
+
+export const ACCOUNT_DELETION_BATCH_SIZE = 50;
+
+export type AccountUserTable = (typeof ACCOUNT_USER_TABLES)[number]["table"];
+export type AccountTable = AccountUserTable | typeof ACCOUNT_ROOT_TABLE.table;
+
+export type AccountTableInventory = {
+  table: AccountTable;
+  count: number;
+  ownershipField: string;
+  relationshipFields: readonly string[];
+  deletionOrder: number;
+};
+
+export type AccountInventory = {
+  generatedAt: string;
+  dryRun: true;
+  userId: string;
+  tables: AccountTableInventory[];
+  totalRows: number;
+};
+
+export type AccountRowsByTable = Partial<
+  Record<AccountTable, Array<Record<string, unknown>>>
+>;
+
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+export type JsonObject = { [key: string]: JsonValue };
+
+export type AccountExportPayload = {
+  schemaVersion: 1;
+  exportedAt: string;
+  userId: string;
+  inventory: AccountInventory;
+  tables: Record<AccountTable, JsonObject[]>;
+};
+
+export type AccountDeletionBatch = {
+  table: AccountTable | null;
+  ids: string[];
+  deletesUser: boolean;
+  done: boolean;
+};
+
+export function tableBelongsToAccount(
+  table: AccountTable,
+  row: Record<string, unknown>,
+  userId: string
+): boolean {
+  if (table === ACCOUNT_ROOT_TABLE.table) {
+    return row._id === userId;
+  }
+
+  const descriptor = ACCOUNT_USER_TABLES.find((entry) => entry.table === table);
+  if (!descriptor) return false;
+  return row[descriptor.ownershipField] === userId;
+}
+
+export function inventoryCountsFromRows(
+  rowsByTable: AccountRowsByTable,
+  userId: string
+): Record<AccountTable, number> {
+  const counts = {} as Record<AccountTable, number>;
+  for (const descriptor of ACCOUNT_USER_TABLES) {
+    counts[descriptor.table] = (rowsByTable[descriptor.table] ?? []).filter(
+      (row) => tableBelongsToAccount(descriptor.table, row, userId)
+    ).length;
+  }
+  counts.users = (rowsByTable.users ?? []).filter((row) =>
+    tableBelongsToAccount("users", row, userId)
+  ).length;
+  return counts;
+}
+
+export function buildAccountInventory(args: {
+  userId: string;
+  generatedAt: string;
+  counts: Record<AccountTable, number>;
+}): AccountInventory {
+  const tables: AccountTableInventory[] = [
+    ...ACCOUNT_USER_TABLES.map((descriptor) => ({
+      table: descriptor.table,
+      count: args.counts[descriptor.table] ?? 0,
+      ownershipField: descriptor.ownershipField,
+      relationshipFields: descriptor.relationshipFields,
+      deletionOrder: descriptor.deletionOrder,
+    })),
+    {
+      table: ACCOUNT_ROOT_TABLE.table,
+      count: args.counts.users ?? 0,
+      ownershipField: ACCOUNT_ROOT_TABLE.ownershipField,
+      relationshipFields: ACCOUNT_ROOT_TABLE.relationshipFields,
+      deletionOrder: ACCOUNT_ROOT_TABLE.deletionOrder,
+    },
+  ].sort((a, b) => a.deletionOrder - b.deletionOrder);
+
+  return {
+    generatedAt: args.generatedAt,
+    dryRun: true,
+    userId: args.userId,
+    tables,
+    totalRows: tables.reduce((sum, table) => sum + table.count, 0),
+  };
+}
+
+function jsonSafeValue(value: unknown): JsonValue {
+  if (value === null) return null;
+  if (value === undefined) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : String(value);
+  }
+  if (typeof value === "bigint") return value.toString();
+  if (Array.isArray(value)) return value.map((entry) => jsonSafeValue(entry));
+  if (typeof value === "object") {
+    const output: JsonObject = {};
+    for (const [key, entry] of Object.entries(value)) {
+      if (entry !== undefined) output[key] = jsonSafeValue(entry);
+    }
+    return output;
+  }
+  return String(value);
+}
+
+export function jsonSafeObject(row: Record<string, unknown>): JsonObject {
+  const output: JsonObject = {};
+  for (const [key, value] of Object.entries(row)) {
+    if (value !== undefined) output[key] = jsonSafeValue(value);
+  }
+  return output;
+}
+
+export function sanitizeAccountExportRow(
+  table: AccountTable,
+  row: Record<string, unknown>
+): JsonObject {
+  if (table === "sessions") {
+    const { token, tokenHash, ...safeRow } = row;
+    return jsonSafeObject({
+      ...safeRow,
+      hasLegacyToken: Boolean(token),
+      hasTokenHash: Boolean(tokenHash),
+    });
+  }
+
+  if (table === "xTokens") {
+    const {
+      accessToken,
+      refreshToken,
+      encryptedAccessToken,
+      encryptedRefreshToken,
+      ...safeRow
+    } = row;
+    const hasEncryptedToken = Boolean(
+      encryptedAccessToken || encryptedRefreshToken
+    );
+    const hasLegacyPlaintextToken = Boolean(accessToken || refreshToken);
+    return jsonSafeObject({
+      ...safeRow,
+      hasAccessToken: Boolean(accessToken || encryptedAccessToken),
+      hasRefreshToken: Boolean(refreshToken || encryptedRefreshToken),
+      tokenStorage: hasEncryptedToken
+        ? "encrypted"
+        : hasLegacyPlaintextToken
+          ? "legacy_plaintext"
+          : "none",
+    });
+  }
+
+  return jsonSafeObject(row);
+}
+
+export function buildAccountExportPayload(args: {
+  userId: string;
+  exportedAt: string;
+  rowsByTable: AccountRowsByTable;
+}): AccountExportPayload {
+  const counts = inventoryCountsFromRows(args.rowsByTable, args.userId);
+  const tables = {} as Record<AccountTable, JsonObject[]>;
+
+  for (const descriptor of ACCOUNT_USER_TABLES) {
+    tables[descriptor.table] = (args.rowsByTable[descriptor.table] ?? [])
+      .filter((row) =>
+        tableBelongsToAccount(descriptor.table, row, args.userId)
+      )
+      .map((row) => sanitizeAccountExportRow(descriptor.table, row));
+  }
+
+  tables.users = (args.rowsByTable.users ?? [])
+    .filter((row) => tableBelongsToAccount("users", row, args.userId))
+    .map((row) => sanitizeAccountExportRow("users", row));
+
+  return {
+    schemaVersion: 1,
+    exportedAt: args.exportedAt,
+    userId: args.userId,
+    inventory: buildAccountInventory({
+      userId: args.userId,
+      generatedAt: args.exportedAt,
+      counts,
+    }),
+    tables,
+  };
+}
+
+export function selectAccountDeletionBatch(args: {
+  rowsByTable: AccountRowsByTable;
+  userId: string;
+  batchSize?: number;
+}): AccountDeletionBatch {
+  const batchSize = args.batchSize ?? ACCOUNT_DELETION_BATCH_SIZE;
+  for (const descriptor of ACCOUNT_USER_TABLES) {
+    const ids = (args.rowsByTable[descriptor.table] ?? [])
+      .filter((row) =>
+        tableBelongsToAccount(descriptor.table, row, args.userId)
+      )
+      .map((row) => row._id)
+      .filter((id): id is string => typeof id === "string")
+      .slice(0, batchSize);
+    if (ids.length > 0) {
+      return {
+        table: descriptor.table,
+        ids,
+        deletesUser: false,
+        done: false,
+      };
+    }
+  }
+
+  const userIds = (args.rowsByTable.users ?? [])
+    .filter((row) => tableBelongsToAccount("users", row, args.userId))
+    .map((row) => row._id)
+    .filter((id): id is string => typeof id === "string")
+    .slice(0, 1);
+
+  if (userIds.length > 0) {
+    return {
+      table: "users",
+      ids: userIds,
+      deletesUser: true,
+      done: false,
+    };
+  }
+
+  return {
+    table: null,
+    ids: [],
+    deletesUser: false,
+    done: true,
+  };
+}

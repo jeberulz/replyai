@@ -1,13 +1,18 @@
 "use server";
 
+import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
+import type { AccountExportPayload } from "../../shared/accountData";
 import {
   analyzeTweet,
   generateOptions,
   judgeModelEval,
+  refineVoiceStyleLabels,
   rewriteText,
   REWRITE_DIRECTIONS,
   type RewriteDirection,
@@ -19,8 +24,8 @@ import {
   trackServer,
 } from "@/lib/analytics/server";
 import { convexServer } from "@/lib/convex";
-import { env } from "@/lib/env";
-import { getSessionUser } from "@/lib/session";
+import { env, hasAnthropicKey } from "@/lib/env";
+import { clearSessionCookie, getSessionUser } from "@/lib/session";
 import {
   fetchOwnedLists,
   fetchTweetBundle,
@@ -36,8 +41,22 @@ import {
   scoreConversation,
   topicRelevanceForKeywords,
 } from "../../shared/scoring";
+import {
+  demoSemanticRelevance,
+  resolveManualTopicRelevance,
+  SEMANTIC_HAIKU_MODEL,
+  type NicheContext,
+  type SemanticScore,
+} from "../../shared/semanticRelevance";
 import { refreshAccessToken } from "../../shared/xOAuth";
-import { buildVoiceStyleFromTweets, type VoiceStyle } from "../../shared/voice";
+import {
+  buildVoiceNegativeConstraints,
+  buildVoiceStyleFromTweets,
+  normalizeNegativeConstraints,
+  VOICE_PROMPT_EXAMPLES_MAX,
+  type VoiceNegativeConstraints,
+  type VoiceStyle,
+} from "../../shared/voice";
 
 async function requireSession() {
   const session = await getSessionUser();
@@ -121,6 +140,130 @@ async function defaultVoice(
   return { profile };
 }
 
+function negativeConstraintsForProfile(
+  profile: Doc<"voiceProfiles"> | null
+): VoiceNegativeConstraints | undefined {
+  if (!profile) return undefined;
+  if (profile.bannedPhrases === undefined && profile.antiPatterns === undefined) {
+    return undefined;
+  }
+  return normalizeNegativeConstraints({
+    bannedPhrases: profile.bannedPhrases,
+    antiPatterns: profile.antiPatterns,
+  });
+}
+
+const ManualSemanticSchema = z.object({
+  relevance: z.number().min(0).max(1),
+  brandSafety: z.enum(["safe", "unsafe"]),
+  reason: z.string(),
+});
+
+function buildManualSemanticPrompt(
+  niche: NicheContext,
+  text: string
+): string {
+  const nicheBlock = [
+    niche.keywords.length > 0
+      ? `Focus keywords: ${niche.keywords.join(", ")}`
+      : null,
+    niche.recentTopics.length > 0
+      ? `Recent analysis topics: ${niche.recentTopics.join("; ")}`
+      : null,
+    niche.voiceTopics.length > 0
+      ? `Voice / interest signals: ${niche.voiceTopics.slice(0, 12).join("; ")}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return `Score this X post for niche relevance to the user's interests (0 = off-topic, 1 = perfect fit) and decide whether replying is brand-safe. Catch paraphrases — exact keyword overlap is NOT required.
+
+USER NICHE:
+${nicheBlock || "(general tech/builder audience)"}
+
+POST:
+"""${text}"""
+
+Return a single JSON object.
+
+Brand-safety rules:
+- Mark "unsafe" for partisan politics, tragedy/disaster threads, outrage-bait, dogpiles, harassment, or culture-war fights.
+- A niche policy/regulation discussion can still be "safe" when it is clearly professional and squarely inside the user's focus.
+- Unsafe posts should have relevance 0.`;
+}
+
+async function buildManualNicheContext(sessionToken: string): Promise<NicheContext> {
+  const convex = convexServer();
+  const [scannerSettings, profiles, recentAnalyses] = await Promise.all([
+    convex.query(api.scanner.settings, { sessionToken }),
+    convex.query(api.voiceProfiles.list, { sessionToken }),
+    convex.query(api.analyses.listRecent, { sessionToken, limit: 10 }),
+  ]);
+
+  const defaultProfile =
+    profiles.find((profile) => profile.isDefault) ?? profiles[0] ?? null;
+
+  const voiceTopics: string[] = [];
+  if (defaultProfile) {
+    voiceTopics.push(defaultProfile.name);
+    voiceTopics.push(...defaultProfile.style.commonPhrases.slice(0, 8));
+    for (const example of defaultProfile.examples.slice(0, 3)) {
+      voiceTopics.push(example.slice(0, 80));
+    }
+  }
+
+  const recentTopics = recentAnalyses
+    .map((analysis) => analysis.topic.trim())
+    .filter((topic) => topic.length > 0)
+    .slice(0, 10);
+
+  const keywords = [
+    ...new Set([
+      ...(scannerSettings?.keywords ?? []),
+      ...(scannerSettings?.searchKeywords ?? []),
+    ]),
+  ];
+
+  return { keywords, voiceTopics, recentTopics };
+}
+
+async function classifyManualSemanticRelevance(
+  text: string,
+  niche: NicheContext
+): Promise<SemanticScore> {
+  if (!hasAnthropicKey()) {
+    return demoSemanticRelevance(text, niche);
+  }
+
+  try {
+    const anthropic = new Anthropic({ apiKey: env.anthropicApiKey });
+    const model = process.env.ANTHROPIC_SEMANTIC_MODEL ?? SEMANTIC_HAIKU_MODEL;
+    const response = await anthropic.messages.create({
+      model,
+      max_tokens: 256,
+      system:
+        "You classify X posts for niche relevance. Output structured JSON only.",
+      messages: [
+        {
+          role: "user",
+          content: buildManualSemanticPrompt(niche, text),
+        },
+      ],
+      output_config: { format: zodOutputFormat(ManualSemanticSchema) },
+    });
+
+    const block = response.content.find((item) => item.type === "text");
+    if (!block || block.type !== "text") {
+      throw new Error("Empty semantic classifier response");
+    }
+    return ManualSemanticSchema.parse(JSON.parse(block.text));
+  } catch (error) {
+    console.error("Manual semantic classification failed, falling back to demo", error);
+    return demoSemanticRelevance(text, niche);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Analyze
 // ---------------------------------------------------------------------------
@@ -177,19 +320,26 @@ export async function startAnalysisAction(input: {
       replySettings = bundle.replySettings;
     }
 
-    // Score manual analyzes with the same signals the scanner uses: niche
-    // keywords drive topicRelevance and the onboarding goal picks the factor
-    // weights. A keyword miss counts as "no signal" (0.5 default), not
-    // irrelevance — the user chose this tweet deliberately, and their
-    // keyword list is narrower than their actual interests.
+    // Score manual analyzes with the same signals the scanner uses: keyword
+    // overlap plus semantic niche-fit, with a deterministic demo fallback
+    // when the semantic classifier key is missing.
     const convex = convexServer();
-    const [me, scannerSettings] = await Promise.all([
+    const [me, nicheContext] = await Promise.all([
       convex.query(api.users.me, { sessionToken }),
-      convex.query(api.scanner.settings, { sessionToken }),
+      buildManualNicheContext(sessionToken),
     ]);
-    const keywords = scannerSettings?.keywords ?? [];
     const keywordRelevance =
-      keywords.length > 0 ? topicRelevanceForKeywords(bundle.text, keywords) : 0;
+      nicheContext.keywords.length > 0
+        ? topicRelevanceForKeywords(bundle.text, nicheContext.keywords)
+        : 0;
+    const semantic = await classifyManualSemanticRelevance(
+      bundle.text,
+      nicheContext
+    );
+    const topicRelevance = resolveManualTopicRelevance(
+      keywordRelevance,
+      semantic
+    );
 
     const score = scoreConversation({
       followers: bundle.authorFollowers,
@@ -198,7 +348,8 @@ export async function startAnalysisAction(input: {
       replies: bundle.replies,
       quotes: bundle.quotes,
       ageMinutes: (Date.now() - bundle.postedAt) / 60_000,
-      topicRelevance: keywordRelevance > 0 ? keywordRelevance : undefined,
+      topicRelevance,
+      brandSafety: semantic.brandSafety,
       goal: me?.goal,
     });
 
@@ -301,6 +452,7 @@ export async function continueAnalysisAction(
     const { profile } = await defaultVoice(sessionToken);
     const voice = (profile?.style as VoiceStyle | undefined) ?? null;
     const examples = profile?.examples ?? [];
+    const negativeConstraints = negativeConstraintsForProfile(profile);
     const { model, goal } = await resolveGenerationPrefs(sessionToken);
 
     const generateKind = async (kind: "reply" | "quote") => {
@@ -320,6 +472,7 @@ export async function continueAnalysisAction(
         analysis,
         voice,
         voiceExamples: examples,
+        voiceNegativeConstraints: negativeConstraints,
         goal,
         model,
       });
@@ -389,6 +542,7 @@ export async function generateMoreAction(args: {
   });
   const { profile } = await defaultVoice(sessionToken, args.voiceProfileId);
   const { model, goal } = await resolveGenerationPrefs(sessionToken, args.model);
+  const negativeConstraints = negativeConstraintsForProfile(profile);
 
   await trackServer("generation_requested", user._id, {
     analysisId,
@@ -408,6 +562,7 @@ export async function generateMoreAction(args: {
     },
     voice: (profile?.style as VoiceStyle | undefined) ?? null,
     voiceExamples: profile?.examples ?? [],
+    voiceNegativeConstraints: negativeConstraints,
     goal,
     avoidContents: existing
       .filter((r) => r.kind === args.kind)
@@ -465,6 +620,8 @@ export async function rewriteAction(args: {
     direction: direction as RewriteDirection,
     bundle: bundleFromAnalysis(analysis),
     voice: (profile?.style as VoiceStyle | undefined) ?? null,
+    voiceExamples: profile?.examples ?? [],
+    voiceNegativeConstraints: negativeConstraintsForProfile(profile),
     model,
   });
 
@@ -532,6 +689,7 @@ export async function runModelEvalAction(analysisId: string) {
   const { profile } = await defaultVoice(sessionToken);
   const voice = (profile?.style as VoiceStyle | undefined) ?? null;
   const examples = profile?.examples ?? [];
+  const negativeConstraints = negativeConstraintsForProfile(profile);
   const bundle = bundleFromAnalysis(analysis);
   const analysisInput = {
     summary: analysis.summary,
@@ -551,6 +709,7 @@ export async function runModelEvalAction(analysisId: string) {
         analysis: analysisInput,
         voice,
         voiceExamples: examples,
+        voiceNegativeConstraints: negativeConstraints,
         model: m.id,
       });
       return { model: m.id, ...result };
@@ -562,6 +721,7 @@ export async function runModelEvalAction(analysisId: string) {
     analysis: analysisInput,
     voice,
     voiceExamples: examples,
+    voiceNegativeConstraints: negativeConstraints,
     candidates: runs.map((r) => ({ model: r.model, options: r.options })),
   });
 
@@ -719,12 +879,18 @@ export async function trainVoiceAction(name: string) {
   const auth = await convex.query(api.users.xAuthForSession, { sessionToken });
   const accessToken = await resolveXAccessToken(sessionToken);
   const tweets = await fetchUserTweets(auth?.xUserId ?? "", accessToken);
-  const style = buildVoiceStyleFromTweets(tweets);
+  const measuredStyle = buildVoiceStyleFromTweets(tweets);
+  const { style } = await refineVoiceStyleLabels({
+    style: measuredStyle,
+    examples: tweets,
+  });
+  const constraints = buildVoiceNegativeConstraints(tweets, style);
   await convex.mutation(api.voiceProfiles.create, {
     sessionToken,
     name: name || "Trained voice",
     style,
-    examples: tweets.slice(0, 8),
+    examples: tweets.slice(0, VOICE_PROMPT_EXAMPLES_MAX),
+    ...constraints,
     source: "trained",
   });
   revalidatePath("/voice");
@@ -734,13 +900,17 @@ export async function createVoiceProfileAction(args: {
   name: string;
   style: VoiceStyle;
   examples: string[];
+  negativeConstraints?: VoiceNegativeConstraints;
 }) {
   const { sessionToken } = await requireSession();
+  const constraints =
+    args.negativeConstraints ?? buildVoiceNegativeConstraints(args.examples, args.style);
   await convexServer().mutation(api.voiceProfiles.create, {
     sessionToken,
     name: args.name,
     style: args.style,
     examples: args.examples,
+    ...normalizeNegativeConstraints(constraints),
     source: "manual",
   });
   revalidatePath("/voice");
@@ -751,6 +921,7 @@ export async function updateVoiceProfileAction(args: {
   name: string;
   style: VoiceStyle;
   examples: string[];
+  negativeConstraints: VoiceNegativeConstraints;
 }) {
   const { sessionToken } = await requireSession();
   await convexServer().mutation(api.voiceProfiles.update, {
@@ -759,6 +930,7 @@ export async function updateVoiceProfileAction(args: {
     name: args.name,
     style: args.style,
     examples: args.examples,
+    ...normalizeNegativeConstraints(args.negativeConstraints),
   });
   revalidatePath("/voice");
 }
@@ -1008,13 +1180,19 @@ export async function buildWritingModelAction(args: {
     tweets.length === DEMO_TWEETS.length &&
     tweets[0] === DEMO_TWEETS[0].text;
 
-  const style = buildVoiceStyleFromTweets(tweets);
+  const measuredStyle = buildVoiceStyleFromTweets(tweets);
+  const { style } = await refineVoiceStyleLabels({
+    style: measuredStyle,
+    examples: tweets,
+  });
+  const constraints = buildVoiceNegativeConstraints(tweets, style);
   const profileName = `${user.displayName.split(" ")[0]}'s voice`;
   const profileId = await convex.mutation(api.voiceProfiles.create, {
     sessionToken,
     name: profileName,
     style,
-    examples: tweets.slice(0, 8),
+    examples: tweets.slice(0, VOICE_PROMPT_EXAMPLES_MAX),
+    ...constraints,
     source: "trained",
   });
   await convex.mutation(api.voiceProfiles.setDefault, {
@@ -1043,4 +1221,62 @@ export async function dismissSetupChecklistAction() {
     sessionToken,
   });
   revalidatePath("/dashboard");
+}
+
+export async function exportAccountDataAction(): Promise<
+  | { ok: true; filename: string; payload: AccountExportPayload }
+  | { ok: false; error: string }
+> {
+  const { sessionToken, user } = await requireSession();
+  try {
+    const payload = await convexServer().query(api.account.exportData, {
+      sessionToken,
+    });
+    const exportedAt = payload.exportedAt.slice(0, 10);
+    return {
+      ok: true,
+      filename: `replypilot-${user.username}-account-export-${exportedAt}.json`,
+      payload,
+    };
+  } catch (error) {
+    captureServerException(error, {
+      action: "account_export",
+      userId: user._id,
+    });
+    return { ok: false, error: "Couldn't prepare your account export." };
+  }
+}
+
+export type DeleteAccountActionState = {
+  error: string | null;
+};
+
+export async function deleteAccountAction(
+  _previousState: DeleteAccountActionState,
+  formData: FormData
+): Promise<DeleteAccountActionState> {
+  const { sessionToken, user } = await requireSession();
+  const confirmationUsername = String(
+    formData.get("confirmationUsername") ?? ""
+  ).trim();
+
+  if (confirmationUsername !== user.username) {
+    return { error: "Type your username exactly to confirm deletion." };
+  }
+
+  try {
+    await convexServer().mutation(api.account.deleteAccount, {
+      sessionToken,
+      confirmationUsername,
+    });
+  } catch (error) {
+    captureServerException(error, {
+      action: "account_delete",
+      userId: user._id,
+    });
+    return { error: "Couldn't start account deletion. Try again." };
+  }
+
+  await clearSessionCookie();
+  redirect("/");
 }

@@ -122,4 +122,18 @@ describe("shouldExcludeCandidate", () => {
       )
     ).toBe(true);
   });
+
+  it("does not exclude tweets only because they look political", () => {
+    expect(
+      shouldExcludeCandidate(
+        {
+          tweetId: "3",
+          authorHandle: "a",
+          text: "Congress is debating the AI Act again",
+          replies: 0,
+        },
+        baseCtx
+      )
+    ).toBe(false);
+  });
 });
