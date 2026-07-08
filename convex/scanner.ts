@@ -7,6 +7,7 @@ import {
   query,
 } from "./_generated/server";
 import { requireUser } from "./helpers";
+import { hasProAccess, paidFeatureGateMessage } from "../shared/billing";
 import { readStoredXTokens } from "./tokenSecurity";
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
@@ -44,7 +45,7 @@ export const settings = query({
       needsListScope = !!tokenRow && !tokenRow.scope.includes("list.read");
     }
 
-    return { ...row, needsListScope };
+    return { ...row, needsListScope, scannerLocked: !hasProAccess(user) };
   },
 });
 
@@ -73,6 +74,9 @@ export const updateSettings = mutation({
     }
   ) => {
     const user = await requireUser(ctx, sessionToken);
+    if (enabled && !hasProAccess(user)) {
+      throw new Error(paidFeatureGateMessage("scanner"));
+    }
 
     if (engageListIds && engageListIds.length > 5) {
       throw new Error("You can engage with at most 5 lists.");
@@ -187,6 +191,9 @@ export const scanNow = mutation({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
     const user = await requireUser(ctx, sessionToken);
+    if (!hasProAccess(user)) {
+      throw new Error(paidFeatureGateMessage("scanner"));
+    }
     await ctx.scheduler.runAfter(0, internal.scannerActions.scanUser, {
       userId: user._id,
     });
@@ -201,7 +208,7 @@ export const enabledSettings = internalQuery({
     const users = await Promise.all(enabled.map((s) => ctx.db.get(s.userId)));
     return enabled.flatMap((settings, index) => {
       const user = users[index];
-      if (!user) return [];
+      if (!user || !hasProAccess(user)) return [];
       return [{
         userId: settings.userId,
         plan: user.plan,

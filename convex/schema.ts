@@ -43,6 +43,12 @@ export default defineSchema({
     displayName: v.string(),
     avatar: v.optional(v.string()),
     plan: v.string(), // "free" — monetization decision deferred until after launch testing
+    stripeCustomerId: v.optional(v.string()),
+    stripeSubscriptionId: v.optional(v.string()),
+    stripeSubscriptionStatus: v.optional(v.string()),
+    stripePriceId: v.optional(v.string()),
+    stripeCurrentPeriodEnd: v.optional(v.number()),
+    stripeTrialEndsAt: v.optional(v.number()),
     // Preferred Claude model for generation; unset = app default (see shared/models.ts).
     defaultModel: v.optional(v.string()),
     // Primary goal chosen during onboarding — tunes scanner keywords and copy.
@@ -55,7 +61,9 @@ export default defineSchema({
     setupDismissedAt: v.optional(v.number()),
     isDemo: v.boolean(),
     createdAt: v.number(),
-  }).index("by_x_user_id", ["xUserId"]),
+  })
+    .index("by_x_user_id", ["xUserId"])
+    .index("by_stripe_customer_id", ["stripeCustomerId"]),
 
   sessions: defineTable({
     userId: v.id("users"),

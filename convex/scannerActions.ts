@@ -35,7 +35,6 @@ import { refreshAccessToken } from "../shared/xOAuth";
 
 const MIN_OPPORTUNITY_SCORE = 30;
 const SCAN_FAN_OUT_STAGGER_MS = 250;
-
 /** Max watched handles fetched per scan; see selectWatchedHandlesForScan. */
 const MAX_WATCHED_HANDLES_PER_SCAN = 15;
 /** Cap on merged/deduped candidates before scoring, to bound per-scan cost. */
