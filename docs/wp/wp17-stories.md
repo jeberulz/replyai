@@ -9,7 +9,7 @@ Definition of done from `docs/PRODUCT_STRATEGY.md` §14:
 
 ## Stories
 
-- [ ] VFU-1 - Shared voice fidelity primitives
+- [x] VFU-1 - Shared voice fidelity primitives
   - Acceptance criteria:
     - `shared/voice.ts` selects the 8-10 examples most relevant to a target tweet using deterministic similarity, not newest-first order.
     - Sentence length measurement counts tweets that end without punctuation correctly.
