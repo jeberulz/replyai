@@ -29,3 +29,11 @@
     - free/default plans back off to 30 / 60 / 120 minute lanes based on recent yield
   - Added focused cadence coverage in `tests/scannerActions.test.ts`.
   - Story checks passed: `npm run typecheck`, `npm test -- tests/scannerActions.test.ts`.
+- WP19-S4 complete:
+  - Discovery search is now budgeted by plan:
+    - free/default: 2 keywords x 10 results
+    - pro: 4 keywords x 15 results
+    - priority/founder: 6 keywords x 25 results
+  - The plan-aware budget applies to both live X recent-search fetches and deterministic demo-mode candidate collection.
+  - Added focused search-budget coverage in `tests/scannerActions.test.ts`.
+  - Story checks passed: `npm run typecheck`, `npm test -- tests/scannerActions.test.ts`.

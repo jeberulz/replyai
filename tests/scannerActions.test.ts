@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cadenceMinutesForScan,
   dedupeCandidates,
+  getSearchBudgetForPlan,
   normalizeScannerPlan,
   shouldEnqueueScan,
   type TimelineTweet,
@@ -102,5 +103,22 @@ describe("shouldEnqueueScan", () => {
         lastScanAt: now - 30 * 60_000,
       })
     ).toBe(true);
+  });
+});
+
+describe("getSearchBudgetForPlan", () => {
+  it("scales keyword and result budgets by plan tier", () => {
+    expect(getSearchBudgetForPlan("free")).toEqual({
+      keywordLimit: 2,
+      resultsPerKeyword: 10,
+    });
+    expect(getSearchBudgetForPlan("pro")).toEqual({
+      keywordLimit: 4,
+      resultsPerKeyword: 15,
+    });
+    expect(getSearchBudgetForPlan("founder")).toEqual({
+      keywordLimit: 6,
+      resultsPerKeyword: 25,
+    });
   });
 });

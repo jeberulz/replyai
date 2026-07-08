@@ -13,7 +13,7 @@
   - Priority users can receive the 15-minute lane described in `docs/PRODUCT_STRATEGY.md`; lower tiers stay on the cheaper cadence.
   - Cadence decisions do not require schema, UI, billing-surface, or generated API changes.
 
-- [ ] WP19-S4: Make search budgets plan-aware
+- [x] WP19-S4: Make search budgets plan-aware
   - Discovery search keyword count and/or per-query result budget vary by plan tier instead of the current hardcoded `3 x 10`.
   - Demo mode remains deterministic and continues to work with zero external keys.
   - Any budget change stays inside `convex/scannerActions.ts` and does not alter UI contracts.

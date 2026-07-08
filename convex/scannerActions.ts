@@ -38,8 +38,6 @@ const SCAN_FAN_OUT_STAGGER_MS = 250;
 
 /** Max watched handles fetched per scan; see selectWatchedHandlesForScan. */
 const MAX_WATCHED_HANDLES_PER_SCAN = 15;
-/** Max discovery search queries per scan (1 X API call each). */
-const MAX_SEARCH_KEYWORDS_PER_SCAN = 3;
 /** Cap on merged/deduped candidates before scoring, to bound per-scan cost. */
 const MAX_CANDIDATES = 150;
 
@@ -82,6 +80,10 @@ type ScanContext = {
 };
 
 type ScanDispatchContext = Pick<ScanContext, "plan" | "lastScanAt" | "lastScanCount">;
+type SearchBudget = {
+  keywordLimit: number;
+  resultsPerKeyword: number;
+};
 
 const PRIORITY_PLAN_NAMES = new Set([
   "pro+",
@@ -119,6 +121,17 @@ export function shouldEnqueueScan(now: number, context: ScanDispatchContext): bo
   if (!context.lastScanAt) return true;
   const cadenceMs = cadenceMinutesForScan(context) * 60_000;
   return now - context.lastScanAt >= cadenceMs;
+}
+
+export function getSearchBudgetForPlan(plan: string | null | undefined): SearchBudget {
+  const normalizedPlan = normalizeScannerPlan(plan);
+  if (normalizedPlan === "priority") {
+    return { keywordLimit: 6, resultsPerKeyword: 25 };
+  }
+  if (normalizedPlan === "pro") {
+    return { keywordLimit: 4, resultsPerKeyword: 15 };
+  }
+  return { keywordLimit: 2, resultsPerKeyword: 10 };
 }
 
 function resolveEnabledSources(sources: EnabledSource[]): EnabledSource[] {
@@ -494,6 +507,7 @@ async function collectCandidates(
   context: ScanContext
 ): Promise<{ tweets: TimelineTweet[]; error?: string }> {
   const enabledSources = resolveEnabledSources(context.enabledSources);
+  const searchBudget = getSearchBudgetForPlan(context.plan);
 
   const resolved = await resolveAccessToken(ctx, userId, context);
   if (!resolved.accessToken) {
@@ -555,10 +569,14 @@ async function collectCandidates(
 
   const search: TimelineTweet[] = [];
   if (enabledSources.includes("search") && context.searchKeywords.length > 0) {
-    const terms = context.searchKeywords.slice(0, MAX_SEARCH_KEYWORDS_PER_SCAN);
+    const terms = context.searchKeywords.slice(0, searchBudget.keywordLimit);
     for (const term of terms) {
       attempted = true;
-      const fetched = await fetchSearchTweets(term, accessToken);
+      const fetched = await fetchSearchTweets(
+        term,
+        accessToken,
+        searchBudget.resultsPerKeyword
+      );
       if (fetched.error) {
         firstError = firstError ?? fetched.error;
       } else {
@@ -580,6 +598,7 @@ async function collectCandidates(
 
 /** Demo-mode mirror of collectCandidates — deterministic, no network calls. */
 function collectDemoCandidates(context: {
+  plan: string;
   engageListIds: string[];
   engageListNames: string[];
   watchedHandles: string[];
@@ -587,6 +606,7 @@ function collectDemoCandidates(context: {
   enabledSources: EnabledSource[];
 }): TimelineTweet[] {
   const enabledSources = resolveEnabledSources(context.enabledSources);
+  const searchBudget = getSearchBudgetForPlan(context.plan);
   const now = Date.now();
   const toTimelineTweet = (t: (typeof DEMO_TWEETS)[number]) => ({
     tweetId: t.id,
@@ -632,14 +652,16 @@ function collectDemoCandidates(context: {
   if (enabledSources.includes("search")) {
     const terms =
       context.searchKeywords.length > 0
-        ? context.searchKeywords.slice(0, MAX_SEARCH_KEYWORDS_PER_SCAN)
+        ? context.searchKeywords.slice(0, searchBudget.keywordLimit)
         : ["ai"];
     for (const term of terms) {
       search.push(
-        ...demoSearchTweets(term).map((t) => ({
-          ...toTimelineTweet(t),
-          source: "search" as const,
-        }))
+        ...demoSearchTweets(term)
+          .slice(0, searchBudget.resultsPerKeyword)
+          .map((t) => ({
+            ...toTimelineTweet(t),
+            source: "search" as const,
+          }))
       );
     }
   }
@@ -824,11 +846,12 @@ async function fetchHandleTweets(
 /** Recent tweets matching a discovery keyword (original posts only). */
 async function fetchSearchTweets(
   keyword: string,
-  accessToken: string
+  accessToken: string,
+  maxResults: number
 ): Promise<{ tweets: TimelineTweet[]; error?: string }> {
   const url = new URL("https://api.x.com/2/tweets/search/recent");
   url.searchParams.set("query", `${keyword} -is:retweet -is:reply lang:en`);
-  url.searchParams.set("max_results", "10");
+  url.searchParams.set("max_results", String(Math.min(100, Math.max(10, maxResults))));
   setSharedTweetParams(url);
 
   const res = await fetch(url, {
