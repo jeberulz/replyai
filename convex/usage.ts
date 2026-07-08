@@ -8,6 +8,14 @@ import {
 import { countObservedEditBuckets } from "../shared/editDistance";
 import { summarizeReplyPacing } from "../shared/replyPacing";
 import { replyResponseStats } from "../shared/outcomes";
+import {
+  buildPersonalAnalytics,
+  chooseObservedAngle,
+  type ObservedAnalyticsRow,
+} from "../shared/personalAnalytics";
+
+const PERSONAL_ANALYTICS_SCAN_LIMIT = 400;
+const PERSONAL_ANALYTICS_COMPLETED_LIMIT = 250;
 
 export const record = mutation({
   args: {
@@ -181,6 +189,76 @@ export const pacingCoach = query({
         status: opportunity.status,
       })),
     });
+  },
+});
+
+export const personalAnalytics = query({
+  args: {
+    sessionToken: v.string(),
+    timezoneOffsetMinutes: v.number(),
+  },
+  handler: async (ctx, { sessionToken, timezoneOffsetMinutes }) => {
+    const user = await requireUser(ctx, sessionToken);
+
+    const recentTrackers = await ctx.db
+      .query("replyOutcomeTrackers")
+      .withIndex("by_user_and_publishedAt", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(PERSONAL_ANALYTICS_SCAN_LIMIT);
+
+    const completedReplyTrackers = recentTrackers
+      .filter(
+        (tracker) =>
+          tracker.kind === "reply" &&
+          (tracker.status === "responded" || tracker.status === "expired")
+      )
+      .slice(0, PERSONAL_ANALYTICS_COMPLETED_LIMIT);
+
+    const rows: ObservedAnalyticsRow[] = [];
+
+    for (const tracker of completedReplyTrackers) {
+      const draft = await ctx.db.get(tracker.draftId);
+      if (!draft) continue;
+
+      const reply = draft.replyId ? await ctx.db.get(draft.replyId) : null;
+      const analysisId = tracker.analysisId ?? draft.analysisId;
+      const analysis = analysisId ? await ctx.db.get(analysisId) : null;
+
+      let suggestedAngle: string | undefined;
+      if (tracker.opportunityId) {
+        suggestedAngle = (await ctx.db.get(tracker.opportunityId))?.suggestedAngle;
+      } else if (draft.targetTweetId) {
+        suggestedAngle = (
+          await ctx.db
+            .query("opportunities")
+            .withIndex("by_user_tweet", (q) =>
+              q.eq("userId", user._id).eq("tweetId", draft.targetTweetId!)
+            )
+            .unique()
+        )?.suggestedAngle;
+      }
+
+      rows.push({
+        category: reply?.category,
+        angle: chooseObservedAngle({
+          suggestedAngle,
+          missingAngles: analysis?.missingAngles,
+          replyText: draft.text,
+        }),
+        publishedAt: tracker.publishedAt,
+        responded: tracker.status === "responded",
+        editBucket: draft.editBucket ?? reply?.editBucket,
+      });
+    }
+
+    return {
+      historyLimit: PERSONAL_ANALYTICS_COMPLETED_LIMIT,
+      scanLimit: PERSONAL_ANALYTICS_SCAN_LIMIT,
+      ...buildPersonalAnalytics({
+        rows,
+        timezoneOffsetMinutes,
+      }),
+    };
   },
 });
 

@@ -5,7 +5,7 @@
   - Keep the analytics grounded in observed data already in the repo: WP7 reply outcomes, generated reply categories, analysis missing angles / scanner suggested angles, and WP20 edit-bucket metadata where useful for supporting context.
   - Add focused tests for category, angle, and time-of-day aggregation, including sparse-data behavior and honest null-rate handling.
 
-- [ ] `WP11-S2` Authorized analytics query on bounded real outcome history
+- [x] `WP11-S2` Authorized analytics query on bounded real outcome history
   - Extend the Convex dashboard/query surface with a user-authorized personal analytics query that returns category, angle, and time-of-day insights from observed outcomes, without introducing fake predictions or breaking demo mode.
   - Bound the query to a clear recent-history window / item cap so it remains safe under Convex query guidance, and expose enough sample-size metadata for the UI to label thin data honestly.
   - Stay inside WP11 ownership boundaries: analytics modules/query wiring only, no generation, scanner, extension, or publish-behavior changes.
