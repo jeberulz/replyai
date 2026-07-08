@@ -1,0 +1,4 @@
+# WP20 Progress
+
+- 2026-07-08: Read `PRD.md`, `AGENTS.md`, `docs/AGENT_PLAYBOOK.md`, `docs/PRODUCT_STRATEGY.md` (north-star instrumentation context and §14 WP20), `convex/_generated/ai/guidelines.md`, `design.md`, and the relevant Next.js App Router docs in `node_modules/next/dist/docs/01-app/` before editing. Confirmed the WP20 rerun worktree is clean, and inspected prior commit `0430eae` as a scoped reference rather than cherry-picking it blindly.
+- 2026-07-08: Completed `WP20-S1`. Added `shared/editDistance.ts` with normalized Levenshtein measurement, bucket helpers, and focused tests. Extended `generatedReplies` / `savedDrafts` additively for edit-distance persistence, and updated `convex/replies.ts` so AI rewrites reset the baseline while manual edits measure against the latest AI-generated baseline.

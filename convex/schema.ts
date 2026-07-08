@@ -137,12 +137,23 @@ export default defineSchema({
     kind: v.union(v.literal("reply"), v.literal("quote")),
     category: v.string(),
     content: v.string(),
+    // Latest AI-generated baseline for edit-distance measurement. Manual
+    // edits compare against this; AI rewrites refresh it.
+    baselineContent: v.optional(v.string()),
     // A short reason this option is worth sending — no fake precision scores.
     reason: v.string(),
     // Which Claude model generated this option (unset for pre-feature rows).
     model: v.optional(v.string()),
     voiceProfileId: v.optional(v.id("voiceProfiles")),
     editedBeforeSend: v.optional(v.boolean()),
+    editDistanceNormalized: v.optional(v.number()),
+    editBucket: v.optional(
+      v.union(
+        v.literal("no_edit"),
+        v.literal("minor_edit"),
+        v.literal("major_edit")
+      )
+    ),
     createdAt: v.number(),
   })
     .index("by_analysis", ["analysisId"])
@@ -172,6 +183,14 @@ export default defineSchema({
     scheduledFor: v.optional(v.number()),
     publishedTweetId: v.optional(v.string()),
     publishedAt: v.optional(v.number()),
+    editDistanceNormalized: v.optional(v.number()),
+    editBucket: v.optional(
+      v.union(
+        v.literal("no_edit"),
+        v.literal("minor_edit"),
+        v.literal("major_edit")
+      )
+    ),
     error: v.optional(v.string()),
     createdAt: v.number(),
   })
