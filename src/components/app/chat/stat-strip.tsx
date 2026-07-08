@@ -10,7 +10,7 @@ function formatDuration(seconds: number): string {
   return `${Math.round(seconds / 3600)}h`;
 }
 
-/** The dashboard's five stats as one quiet mono row for the chat empty state. */
+/** The dashboard stats as one quiet mono row for the chat empty state. */
 export function StatStrip() {
   const sessionToken = useSessionToken();
   const stats = useQuery(
@@ -30,6 +30,10 @@ export function StatStrip() {
     [
       "No/minor",
       stats.noOrMinorEditRate === null ? "—" : `${stats.noOrMinorEditRate}%`,
+    ],
+    [
+      "Reply-back",
+      stats.replyBackRate === null ? "—" : `${stats.replyBackRate}%`,
     ],
     [
       "To publish",

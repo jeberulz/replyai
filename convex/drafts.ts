@@ -240,6 +240,11 @@ export const markResult = internalMutation({
           tweetId: draft.targetTweetId,
         });
       }
+      await ctx.runMutation(internal.outcomes.seedPublishedDraft, {
+        draftId,
+        publishedTweetId,
+        publishMode,
+      });
     } else {
       await ctx.db.patch(draftId, { status: "failed", error });
     }

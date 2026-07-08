@@ -7,6 +7,7 @@ import {
 } from "../shared/rankingWeights";
 import { countObservedEditBuckets } from "../shared/editDistance";
 import { summarizeReplyPacing } from "../shared/replyPacing";
+import { replyResponseStats } from "../shared/outcomes";
 
 export const record = mutation({
   args: {
@@ -89,6 +90,8 @@ export const stats = query({
     const medianMs = median(publishDurationsMs);
 
     const monthPrefix = month;
+    const monthStart = Date.parse(`${month}-01T00:00:00.000Z`);
+    const nextMonthStart = nextMonthStartMs(monthStart);
     const opportunities = await ctx.db
       .query("opportunities")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -105,6 +108,16 @@ export const stats = query({
         status: o.status,
         outcome: o.outcome,
       }));
+    const replyOutcomeRows = await ctx.db
+      .query("replyOutcomeTrackers")
+      .withIndex("by_user_and_publishedAt", (q) =>
+        q
+          .eq("userId", user._id)
+          .gte("publishedAt", monthStart)
+          .lt("publishedAt", nextMonthStart)
+      )
+      .collect();
+    const replyBack = replyResponseStats(replyOutcomeRows);
 
     return {
       month,
@@ -122,6 +135,9 @@ export const stats = query({
         medianMs === null ? null : Math.round(medianMs / 1000),
       opportunityToAnalyzeRate: opportunityToAnalyzeRate(monthOpportunities),
       opportunitiesSurfaced: monthOpportunities.length,
+      replyBackRate: replyBack.rate,
+      replyBackResponded: replyBack.responded,
+      replyBackSent: replyBack.sent,
     };
   },
 });
@@ -175,4 +191,9 @@ function median(values: number[]): number | null {
   return sorted.length % 2 === 0
     ? (sorted[mid - 1] + sorted[mid]) / 2
     : sorted[mid];
+}
+
+function nextMonthStartMs(monthStart: number): number {
+  const date = new Date(monthStart);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
 }
