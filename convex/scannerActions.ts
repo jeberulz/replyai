@@ -34,16 +34,15 @@ import {
 import { refreshAccessToken } from "../shared/xOAuth";
 
 const MIN_OPPORTUNITY_SCORE = 30;
+const SCAN_FAN_OUT_STAGGER_MS = 250;
 /** Max watched handles fetched per scan; see selectWatchedHandlesForScan. */
 const MAX_WATCHED_HANDLES_PER_SCAN = 15;
-/** Max discovery search queries per scan (1 X API call each). */
-const MAX_SEARCH_KEYWORDS_PER_SCAN = 3;
 /** Cap on merged/deduped candidates before scoring, to bound per-scan cost. */
 const MAX_CANDIDATES = 150;
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
 
-type TimelineTweet = {
+export type TimelineTweet = {
   tweetId: string;
   authorHandle: string;
   authorName: string;
@@ -64,6 +63,7 @@ type TimelineTweet = {
 type ScanContext = {
   xUserId: string;
   isDemo: boolean;
+  plan: string;
   keywords: string[];
   searchKeywords: string[];
   accessToken: string | null;
@@ -73,8 +73,65 @@ type ScanContext = {
   engageListIds: string[];
   engageListNames: string[];
   watchedHandles: string[];
+  lastScanAt?: number;
+  lastScanCount?: number;
   enabledSources: EnabledSource[];
 };
+
+type ScanDispatchContext = Pick<ScanContext, "plan" | "lastScanAt" | "lastScanCount">;
+type SearchBudget = {
+  keywordLimit: number;
+  resultsPerKeyword: number;
+};
+
+const PRIORITY_PLAN_NAMES = new Set([
+  "pro+",
+  "pro plus",
+  "pro_plus",
+  "proplus",
+  "founder",
+  "priority",
+  "empire",
+]);
+
+export function normalizeScannerPlan(plan: string | null | undefined): "free" | "pro" | "priority" {
+  const normalized = plan?.trim().toLowerCase() ?? "free";
+  if (PRIORITY_PLAN_NAMES.has(normalized)) return "priority";
+  if (normalized === "pro") return "pro";
+  return "free";
+}
+
+export function cadenceMinutesForScan(context: ScanDispatchContext): number {
+  const plan = normalizeScannerPlan(context.plan);
+  const lastScanCount = context.lastScanCount ?? 0;
+  const highYield = lastScanCount >= 6;
+  const anyYield = lastScanCount > 0;
+
+  if (plan === "priority") {
+    return highYield || anyYield ? 15 : 30;
+  }
+  if (plan === "pro") {
+    return highYield ? 15 : anyYield ? 30 : 60;
+  }
+  return highYield ? 30 : anyYield ? 60 : 120;
+}
+
+export function shouldEnqueueScan(now: number, context: ScanDispatchContext): boolean {
+  if (!context.lastScanAt) return true;
+  const cadenceMs = cadenceMinutesForScan(context) * 60_000;
+  return now - context.lastScanAt >= cadenceMs;
+}
+
+export function getSearchBudgetForPlan(plan: string | null | undefined): SearchBudget {
+  const normalizedPlan = normalizeScannerPlan(plan);
+  if (normalizedPlan === "priority") {
+    return { keywordLimit: 6, resultsPerKeyword: 25 };
+  }
+  if (normalizedPlan === "pro") {
+    return { keywordLimit: 4, resultsPerKeyword: 15 };
+  }
+  return { keywordLimit: 2, resultsPerKeyword: 10 };
+}
 
 function resolveEnabledSources(sources: EnabledSource[]): EnabledSource[] {
   return sources.length > 0 ? sources : ["following"];
@@ -106,17 +163,31 @@ function selectWatchedHandlesForScan(handles: string[]): string[] {
 
 /**
  * Merge candidate lists giving priority to the highest-intent source when the
- * same tweet appears in more than one (watched > list > search > following),
- * then cap at MAX_CANDIDATES total.
+ * same tweet or same text fingerprint appears in more than one source
+ * (watched > list > search > following), then cap at MAX_CANDIDATES total.
  */
-function dedupeCandidates(bySourcePriority: TimelineTweet[][]): TimelineTweet[] {
-  const merged = new Map<string, TimelineTweet>();
+export function dedupeCandidates(bySourcePriority: TimelineTweet[][]): TimelineTweet[] {
+  const merged: TimelineTweet[] = [];
+  const seenTweetIds = new Set<string>();
+  const seenFingerprints = new Set<string>();
   for (const tweets of bySourcePriority) {
     for (const t of tweets) {
-      if (!merged.has(t.tweetId)) merged.set(t.tweetId, t);
+      const textFingerprint = fingerprintText(t.text);
+      if (
+        seenTweetIds.has(t.tweetId) ||
+        seenFingerprints.has(textFingerprint)
+      ) {
+        continue;
+      }
+      seenTweetIds.add(t.tweetId);
+      seenFingerprints.add(textFingerprint);
+      merged.push(t);
+      if (merged.length >= MAX_CANDIDATES) {
+        return merged;
+      }
     }
   }
-  return Array.from(merged.values()).slice(0, MAX_CANDIDATES);
+  return merged;
 }
 
 /** Cron entry point: scan every user who has the feed scanner enabled. */
@@ -124,8 +195,18 @@ export const scanAll = internalAction({
   args: {},
   handler: async (ctx) => {
     const users = await ctx.runQuery(internal.scanner.enabledSettings, {});
-    for (const { userId } of users) {
-      await ctx.runAction(internal.scannerActions.scanUser, { userId });
+    const now = Date.now();
+    let fanOutIndex = 0;
+    for (const user of users) {
+      if (!shouldEnqueueScan(now, user)) continue;
+      await ctx.scheduler.runAfter(
+        fanOutIndex * SCAN_FAN_OUT_STAGGER_MS,
+        internal.scannerActions.scanUser,
+        {
+          userId: user.userId,
+        }
+      );
+      fanOutIndex += 1;
     }
   },
 });
@@ -425,6 +506,7 @@ async function collectCandidates(
   context: ScanContext
 ): Promise<{ tweets: TimelineTweet[]; error?: string }> {
   const enabledSources = resolveEnabledSources(context.enabledSources);
+  const searchBudget = getSearchBudgetForPlan(context.plan);
 
   const resolved = await resolveAccessToken(ctx, userId, context);
   if (!resolved.accessToken) {
@@ -486,10 +568,14 @@ async function collectCandidates(
 
   const search: TimelineTweet[] = [];
   if (enabledSources.includes("search") && context.searchKeywords.length > 0) {
-    const terms = context.searchKeywords.slice(0, MAX_SEARCH_KEYWORDS_PER_SCAN);
+    const terms = context.searchKeywords.slice(0, searchBudget.keywordLimit);
     for (const term of terms) {
       attempted = true;
-      const fetched = await fetchSearchTweets(term, accessToken);
+      const fetched = await fetchSearchTweets(
+        term,
+        accessToken,
+        searchBudget.resultsPerKeyword
+      );
       if (fetched.error) {
         firstError = firstError ?? fetched.error;
       } else {
@@ -511,6 +597,7 @@ async function collectCandidates(
 
 /** Demo-mode mirror of collectCandidates — deterministic, no network calls. */
 function collectDemoCandidates(context: {
+  plan: string;
   engageListIds: string[];
   engageListNames: string[];
   watchedHandles: string[];
@@ -518,6 +605,7 @@ function collectDemoCandidates(context: {
   enabledSources: EnabledSource[];
 }): TimelineTweet[] {
   const enabledSources = resolveEnabledSources(context.enabledSources);
+  const searchBudget = getSearchBudgetForPlan(context.plan);
   const now = Date.now();
   const toTimelineTweet = (t: (typeof DEMO_TWEETS)[number]) => ({
     tweetId: t.id,
@@ -563,14 +651,16 @@ function collectDemoCandidates(context: {
   if (enabledSources.includes("search")) {
     const terms =
       context.searchKeywords.length > 0
-        ? context.searchKeywords.slice(0, MAX_SEARCH_KEYWORDS_PER_SCAN)
+        ? context.searchKeywords.slice(0, searchBudget.keywordLimit)
         : ["ai"];
     for (const term of terms) {
       search.push(
-        ...demoSearchTweets(term).map((t) => ({
-          ...toTimelineTweet(t),
-          source: "search" as const,
-        }))
+        ...demoSearchTweets(term)
+          .slice(0, searchBudget.resultsPerKeyword)
+          .map((t) => ({
+            ...toTimelineTweet(t),
+            source: "search" as const,
+          }))
       );
     }
   }
@@ -755,11 +845,12 @@ async function fetchHandleTweets(
 /** Recent tweets matching a discovery keyword (original posts only). */
 async function fetchSearchTweets(
   keyword: string,
-  accessToken: string
+  accessToken: string,
+  maxResults: number
 ): Promise<{ tweets: TimelineTweet[]; error?: string }> {
   const url = new URL("https://api.x.com/2/tweets/search/recent");
   url.searchParams.set("query", `${keyword} -is:retweet -is:reply lang:en`);
-  url.searchParams.set("max_results", "10");
+  url.searchParams.set("max_results", String(Math.min(100, Math.max(10, maxResults))));
   setSharedTweetParams(url);
 
   const res = await fetch(url, {

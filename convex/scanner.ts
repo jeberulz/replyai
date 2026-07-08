@@ -204,14 +204,18 @@ export const enabledSettings = internalQuery({
   args: {},
   handler: async (ctx) => {
     const all = await ctx.db.query("scannerSettings").collect();
-    const enabled: { userId: typeof all[number]["userId"] }[] = [];
-    for (const settings of all) {
-      const user = await ctx.db.get(settings.userId);
-      if (user && settings.enabled && hasProAccess(user)) {
-        enabled.push({ userId: settings.userId });
-      }
-    }
-    return enabled;
+    const enabled = all.filter((s) => s.enabled);
+    const users = await Promise.all(enabled.map((s) => ctx.db.get(s.userId)));
+    return enabled.flatMap((settings, index) => {
+      const user = users[index];
+      if (!user || !hasProAccess(user)) return [];
+      return [{
+        userId: settings.userId,
+        plan: user.plan,
+        lastScanAt: settings.lastScanAt,
+        lastScanCount: settings.lastScanCount,
+      }];
+    });
   },
 });
 
@@ -243,6 +247,8 @@ export const scanContext = internalQuery({
       engageListIds: settingsRow?.engageListIds ?? [],
       engageListNames: settingsRow?.engageListNames ?? [],
       watchedHandles: settingsRow?.watchedHandles ?? [],
+      lastScanAt: settingsRow?.lastScanAt,
+      lastScanCount: settingsRow?.lastScanCount,
       // Untouched users have no enabledSources row yet — default to
       // ["following"] so today's single-source behavior is unchanged.
       enabledSources: (settingsRow?.enabledSources && settingsRow.enabledSources.length > 0
