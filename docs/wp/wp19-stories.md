@@ -8,7 +8,7 @@
   - Deduping preserves source-priority ordering so watched/list/search/following precedence still holds.
   - Demo-mode candidate collection follows the same dedupe behavior.
 
-- [ ] WP19-S3: Apply adaptive scan cadence
+- [x] WP19-S3: Apply adaptive scan cadence
   - Scanner dispatch chooses whether a user should be scanned on the current cron tick based on plan tier and user activity signals.
   - Priority users can receive the 15-minute lane described in `docs/PRODUCT_STRATEGY.md`; lower tiers stay on the cheaper cadence.
   - Cadence decisions do not require schema, UI, billing-surface, or generated API changes.

@@ -196,7 +196,18 @@ export const enabledSettings = internalQuery({
   args: {},
   handler: async (ctx) => {
     const all = await ctx.db.query("scannerSettings").collect();
-    return all.filter((s) => s.enabled).map((s) => ({ userId: s.userId }));
+    const enabled = all.filter((s) => s.enabled);
+    const users = await Promise.all(enabled.map((s) => ctx.db.get(s.userId)));
+    return enabled.flatMap((settings, index) => {
+      const user = users[index];
+      if (!user) return [];
+      return [{
+        userId: settings.userId,
+        plan: user.plan,
+        lastScanAt: settings.lastScanAt,
+        lastScanCount: settings.lastScanCount,
+      }];
+    });
   },
 });
 
@@ -216,16 +227,19 @@ export const scanContext = internalQuery({
     return {
       xUserId: user.xUserId,
       isDemo: user.isDemo,
+      plan: user.plan,
       goal: user.goal,
-    keywords: settingsRow?.keywords ?? [],
-    searchKeywords: settingsRow?.searchKeywords ?? [],
-    accessToken: tokenRow?.accessToken ?? null,
+      keywords: settingsRow?.keywords ?? [],
+      searchKeywords: settingsRow?.searchKeywords ?? [],
+      accessToken: tokenRow?.accessToken ?? null,
       refreshToken: tokenRow?.refreshToken ?? null,
       expiresAt: tokenRow?.expiresAt ?? 0,
       scope: tokenRow?.scope ?? "",
       engageListIds: settingsRow?.engageListIds ?? [],
       engageListNames: settingsRow?.engageListNames ?? [],
       watchedHandles: settingsRow?.watchedHandles ?? [],
+      lastScanAt: settingsRow?.lastScanAt,
+      lastScanCount: settingsRow?.lastScanCount,
       // Untouched users have no enabledSources row yet — default to
       // ["following"] so today's single-source behavior is unchanged.
       enabledSources: (settingsRow?.enabledSources && settingsRow.enabledSources.length > 0

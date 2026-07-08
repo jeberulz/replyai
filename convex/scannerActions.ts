@@ -66,6 +66,7 @@ export type TimelineTweet = {
 type ScanContext = {
   xUserId: string;
   isDemo: boolean;
+  plan: string;
   keywords: string[];
   searchKeywords: string[];
   accessToken: string | null;
@@ -75,8 +76,50 @@ type ScanContext = {
   engageListIds: string[];
   engageListNames: string[];
   watchedHandles: string[];
+  lastScanAt?: number;
+  lastScanCount?: number;
   enabledSources: EnabledSource[];
 };
+
+type ScanDispatchContext = Pick<ScanContext, "plan" | "lastScanAt" | "lastScanCount">;
+
+const PRIORITY_PLAN_NAMES = new Set([
+  "pro+",
+  "pro plus",
+  "pro_plus",
+  "proplus",
+  "founder",
+  "priority",
+  "empire",
+]);
+
+export function normalizeScannerPlan(plan: string | null | undefined): "free" | "pro" | "priority" {
+  const normalized = plan?.trim().toLowerCase() ?? "free";
+  if (PRIORITY_PLAN_NAMES.has(normalized)) return "priority";
+  if (normalized === "pro") return "pro";
+  return "free";
+}
+
+export function cadenceMinutesForScan(context: ScanDispatchContext): number {
+  const plan = normalizeScannerPlan(context.plan);
+  const lastScanCount = context.lastScanCount ?? 0;
+  const highYield = lastScanCount >= 6;
+  const anyYield = lastScanCount > 0;
+
+  if (plan === "priority") {
+    return highYield || anyYield ? 15 : 30;
+  }
+  if (plan === "pro") {
+    return highYield ? 15 : anyYield ? 30 : 60;
+  }
+  return highYield ? 30 : anyYield ? 60 : 120;
+}
+
+export function shouldEnqueueScan(now: number, context: ScanDispatchContext): boolean {
+  if (!context.lastScanAt) return true;
+  const cadenceMs = cadenceMinutesForScan(context) * 60_000;
+  return now - context.lastScanAt >= cadenceMs;
+}
 
 function resolveEnabledSources(sources: EnabledSource[]): EnabledSource[] {
   return sources.length > 0 ? sources : ["following"];
@@ -140,10 +183,18 @@ export const scanAll = internalAction({
   args: {},
   handler: async (ctx) => {
     const users = await ctx.runQuery(internal.scanner.enabledSettings, {});
-    for (let i = 0; i < users.length; i++) {
-      await ctx.scheduler.runAfter(i * SCAN_FAN_OUT_STAGGER_MS, internal.scannerActions.scanUser, {
-        userId: users[i].userId,
-      });
+    const now = Date.now();
+    let fanOutIndex = 0;
+    for (const user of users) {
+      if (!shouldEnqueueScan(now, user)) continue;
+      await ctx.scheduler.runAfter(
+        fanOutIndex * SCAN_FAN_OUT_STAGGER_MS,
+        internal.scannerActions.scanUser,
+        {
+          userId: user.userId,
+        }
+      );
+      fanOutIndex += 1;
     }
   },
 });

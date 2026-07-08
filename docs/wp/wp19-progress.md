@@ -20,3 +20,12 @@
   - Source priority is preserved because the merge still processes candidates in watched -> list -> search -> following order.
   - Added focused regression coverage in `tests/scannerActions.test.ts`.
   - Story checks passed: `npm run typecheck`, `npm test -- tests/scannerActions.test.ts`.
+- WP19-S3 complete:
+  - `convex/scanner.ts` now exposes the minimum internal dispatch context needed by WP19: `plan`, `lastScanAt`, and `lastScanCount`.
+  - `scanAll` now runs as a 15-minute dispatcher and only enqueues users whose cadence window has elapsed.
+  - Cadence is tier- and activity-aware:
+    - priority/founder plans stay in the 15-minute lane when scans are yielding opportunities, otherwise 30 minutes
+    - pro plans run every 15 minutes when yield is high, 30 minutes when productive, 60 minutes when cold
+    - free/default plans back off to 30 / 60 / 120 minute lanes based on recent yield
+  - Added focused cadence coverage in `tests/scannerActions.test.ts`.
+  - Story checks passed: `npm run typecheck`, `npm test -- tests/scannerActions.test.ts`.

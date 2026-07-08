@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { dedupeCandidates, type TimelineTweet } from "../convex/scannerActions";
+import {
+  cadenceMinutesForScan,
+  dedupeCandidates,
+  normalizeScannerPlan,
+  shouldEnqueueScan,
+  type TimelineTweet,
+} from "../convex/scannerActions";
 
 function makeTweet(
   overrides: Partial<TimelineTweet> & Pick<TimelineTweet, "tweetId" | "text">
@@ -50,5 +56,51 @@ describe("dedupeCandidates", () => {
     });
 
     expect(dedupeCandidates([[first], [second]])).toEqual([first]);
+  });
+});
+
+describe("normalizeScannerPlan", () => {
+  it("maps plan aliases into scanner tiers", () => {
+    expect(normalizeScannerPlan("free")).toBe("free");
+    expect(normalizeScannerPlan("pro")).toBe("pro");
+    expect(normalizeScannerPlan("founder")).toBe("priority");
+    expect(normalizeScannerPlan("Pro+")).toBe("priority");
+  });
+});
+
+describe("cadenceMinutesForScan", () => {
+  it("gives priority plans the 15 minute lane when scans are productive", () => {
+    expect(cadenceMinutesForScan({ plan: "founder", lastScanCount: 8 })).toBe(15);
+    expect(cadenceMinutesForScan({ plan: "pro", lastScanCount: 8 })).toBe(15);
+  });
+
+  it("backs off low-yield plans to cheaper cadences", () => {
+    expect(cadenceMinutesForScan({ plan: "founder", lastScanCount: 0 })).toBe(30);
+    expect(cadenceMinutesForScan({ plan: "pro", lastScanCount: 0 })).toBe(60);
+    expect(cadenceMinutesForScan({ plan: "free", lastScanCount: 0 })).toBe(120);
+  });
+});
+
+describe("shouldEnqueueScan", () => {
+  it("enqueues first-run users immediately", () => {
+    expect(shouldEnqueueScan(Date.now(), { plan: "pro" })).toBe(true);
+  });
+
+  it("waits until the cadence window has elapsed", () => {
+    const now = Date.now();
+    expect(
+      shouldEnqueueScan(now, {
+        plan: "pro",
+        lastScanCount: 4,
+        lastScanAt: now - 29 * 60_000,
+      })
+    ).toBe(false);
+    expect(
+      shouldEnqueueScan(now, {
+        plan: "pro",
+        lastScanCount: 4,
+        lastScanAt: now - 30 * 60_000,
+      })
+    ).toBe(true);
   });
 });
