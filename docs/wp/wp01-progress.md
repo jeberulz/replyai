@@ -91,3 +91,14 @@
 - Added a Vitest smoke test for the audit script.
 - Verification: `npm run typecheck`, `npm run lint` (0 errors; pre-existing
   warnings only), full `npm test`, and `npm run security:audit` all passed.
+
+## 2026-07-08 - Review fix: token secret setup docs
+
+- Added `.env.example` entries and setup comments for `X_TOKEN_ENCRYPTION_KEY`
+  and `CONVEX_SERVER_TOKEN_ACCESS_SECRET`.
+- Updated `README.md` Real integrations setup to mirror the existing Convex env
+  pattern: `X_TOKEN_ENCRYPTION_KEY` must be set in Convex, and
+  `CONVEX_SERVER_TOKEN_ACCESS_SECRET` must use the same value in `.env.local`
+  and Convex.
+- Documented that demo mode still works without these secrets, while live X
+  OAuth/publish paths fail closed until configured.

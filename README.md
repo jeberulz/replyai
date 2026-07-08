@@ -79,6 +79,21 @@ data and Claude-generated analysis with no code changes.
   callback to `{NEXT_PUBLIC_APP_URL}/api/auth/callback`, and set
   `X_CLIENT_ID`/`X_CLIENT_SECRET`. Publishing posts via `POST /2/tweets` with
   the user's token.
+- **X token security** — live X OAuth flows also require server-only token
+  hardening secrets. Set `X_TOKEN_ENCRYPTION_KEY` in Convex env so stored
+  access/refresh tokens can be encrypted, and set the same
+  `CONVEX_SERVER_TOKEN_ACCESS_SECRET` value in both `.env.local` and Convex so
+  Next.js server actions can request decrypted tokens from Convex:
+
+  ```bash
+  npx convex env set X_CLIENT_ID <value>
+  npx convex env set X_CLIENT_SECRET <value>
+  npx convex env set X_TOKEN_ENCRYPTION_KEY <long-random-value>
+  npx convex env set CONVEX_SERVER_TOKEN_ACCESS_SECRET <long-random-value>
+  ```
+
+  Without these secrets, demo mode still works, but live X OAuth/publish paths
+  intentionally fail closed instead of storing or returning plaintext tokens.
 
 ## Commands
 
@@ -91,6 +106,7 @@ data and Claude-generated analysis with no code changes.
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript, app + convex |
 | `npm run evals` | Deterministic eval gate — guardrails + voice fidelity vs `evals/fixtures/`, no keys |
+| `npm run security:audit` | Convex auth/token surface audit + high/critical dependency audit |
 | `npm run evals:llm` | Optional LLM-judged eval pass — needs `ANTHROPIC_API_KEY`, skips without it |
 
 ## Architecture notes
