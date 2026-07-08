@@ -20,7 +20,7 @@
   - Deletion requires an explicit typed confirmation and presents the dry-run inventory before calling the destructive action.
   - Server actions authenticate from the httpOnly session cookie, demo mode does not break, and the UI follows Dark Chrome settings conventions.
 
-- [ ] `WP03-S5` Final verification and security audit
+- [x] `WP03-S5` Final verification and security audit
   - `npm run typecheck && npm run lint && npm test && npm run build` pass on the WP3 branch.
   - `npm run security:audit` runs because WP3 touches auth and data deletion/export behavior.
   - `docs/wp/wp03-progress.md` records verification results, decisions, and any unresolved escalation.

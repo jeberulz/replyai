@@ -34,3 +34,10 @@
   - UI follows the existing settings card/border/button conventions and keeps deletion behind a Radix dialog plus disabled submit until the username matches.
   - Checks: `npm run typecheck` passed; `npm run lint` passed with the repo's existing generated-file warnings only; `npm test` passed (26 files, 208 tests; 1 skipped); `npm run build` passed.
   - Interactive browser-flow verification was not run because this worktree has no `CONVEX_DEPLOYMENT`/Convex app configured; `npx convex codegen` is blocked for the same reason.
+- Completed `WP03-S5`.
+  - Final check chain passed: `npm run typecheck && npm run lint && npm test && npm run build`.
+  - `npm run lint` still reports only existing warnings in checked-in generated Convex files (`api.js`, `dataModel.d.ts`, `server.d.ts`, `server.js`) and exits 0.
+  - `npm test` passed: 26 test files passed, 1 skipped; 208 tests passed, 1 skipped.
+  - `npm run build` passed with `/settings` as a dynamic route.
+  - `npm run security:audit` passed: 63 public Convex functions checked, 3 allow-listed.
+  - No product-behavior escalation needed. Operational caveat remains: this local worktree lacks `CONVEX_DEPLOYMENT`, so normal `npx convex codegen` and interactive Convex-backed browser verification could not run here.
