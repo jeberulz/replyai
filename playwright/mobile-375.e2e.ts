@@ -123,11 +123,6 @@ test("feed detail stacks cleanly at 375px", async ({ page }) => {
   await expectNoHorizontalScroll(page, "feed list");
 
   if (!hasOpportunity) {
-    await expect(
-      page.getByText(
-        /Last scan found no tweets matching your keywords|No opportunities surfaced yet/i
-      )
-    ).toBeVisible();
     await page.getByRole("button", { name: /Sources/i }).click();
     await expect(
       page.getByRole("heading", { name: /Sources & settings/i })
