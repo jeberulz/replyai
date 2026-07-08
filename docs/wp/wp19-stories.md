@@ -18,7 +18,7 @@
   - Demo mode remains deterministic and continues to work with zero external keys.
   - Any budget change stays inside `convex/scannerActions.ts` and does not alter UI contracts.
 
-- [ ] WP19-S5: Verify WP19 end to end
+- [x] WP19-S5: Verify WP19 end to end
   - `npm run typecheck`
   - `npm run lint`
   - `npm test`

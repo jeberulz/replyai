@@ -37,3 +37,12 @@
   - The plan-aware budget applies to both live X recent-search fetches and deterministic demo-mode candidate collection.
   - Added focused search-budget coverage in `tests/scannerActions.test.ts`.
   - Story checks passed: `npm run typecheck`, `npm test -- tests/scannerActions.test.ts`.
+- WP19-S5 complete:
+  - Final verification run completed in the wp19 worktree:
+    - `npm run typecheck` passed
+    - `npm run lint` completed with warnings only:
+      - existing generated-file warnings in `convex/_generated/*`
+      - one unrelated unused import warning in `src/components/app/drafts-list.tsx`
+    - `npm test` passed (`16` files passed, `1` skipped; `162` tests passed, `1` skipped)
+    - `npm run build` passed on Next.js `16.2.10`
+  - All stories are now checked and the branch carries the ruling, decisions, and verification history needed to resume or review without chat context.
