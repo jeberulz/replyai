@@ -5,6 +5,7 @@ import {
   opportunityToAnalyzeRate,
   type OpportunityFunnelRow,
 } from "../shared/rankingWeights";
+import { countObservedEditBuckets } from "../shared/editDistance";
 
 export const record = mutation({
   args: {
@@ -47,7 +48,7 @@ export const record = mutation({
 
 /**
  * Dashboard stats, including the north-star metric: the share of published
- * replies that were used with no edits.
+ * replies that were used with no or minor edits.
  */
 export const stats = query({
   args: { sessionToken: v.string() },
@@ -68,19 +69,21 @@ export const stats = query({
       )
       .collect();
 
-    let usedUnedited = 0;
-    let usedFromGenerated = 0;
+    const observedBuckets: Array<
+      "no_edit" | "minor_edit" | "major_edit" | null | undefined
+    > = [];
     const publishDurationsMs: number[] = [];
     for (const draft of published) {
       if (!draft.replyId) continue;
-      usedFromGenerated++;
       const reply = await ctx.db.get(draft.replyId);
-      if (reply && !reply.editedBeforeSend) usedUnedited++;
+      observedBuckets.push(draft.editBucket ?? reply?.editBucket);
       // Supporting metric: time from drafting the option to publishing it.
       if (reply && draft.publishedAt) {
         publishDurationsMs.push(draft.publishedAt - reply.createdAt);
       }
     }
+
+    const observedEditBuckets = countObservedEditBuckets(observedBuckets);
 
     const medianMs = median(publishDurationsMs);
 
@@ -110,11 +113,9 @@ export const stats = query({
       analyses: usage?.analyses ?? 0,
       generations: usage?.generations ?? 0,
       published: published.length,
-      // North star: % of generated replies published without edits.
-      noEditRate:
-        usedFromGenerated === 0
-          ? null
-          : Math.round((usedUnedited / usedFromGenerated) * 100),
+      // North star: % of generated replies published with no or minor edits.
+      noOrMinorEditRate: observedEditBuckets.noOrMinorRate,
+      observedEditBuckets,
       // Supporting metric: median seconds from draft to publish.
       medianSecondsToPublish:
         medianMs === null ? null : Math.round(medianMs / 1000),

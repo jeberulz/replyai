@@ -44,6 +44,10 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import {
+  measureObservedEdit,
+  type ObservedEditBucket,
+} from "../../../shared/editDistance";
 import { buildXIntentUrl } from "../../../shared/xPublish";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -65,7 +69,9 @@ export type Option = {
   category: string;
   content: string;
   reason: string;
-  editedBeforeSend?: boolean;
+  baselineContent?: string;
+  editDistanceNormalized?: number;
+  editBucket?: ObservedEditBucket;
 };
 
 export function OptionCard({
@@ -191,6 +197,11 @@ export function OptionCard({
   ]);
 
   const content = editing ? draft : option.content;
+  const observedEdit = measureObservedEdit(
+    option.baselineContent ?? option.content,
+    content
+  );
+  const currentEditBucket = observedEdit.bucket;
   const overLimit = content.length > 280;
   const canThread = Boolean(targetTweetId);
 
@@ -205,10 +216,8 @@ export function OptionCard({
       kind: option.kind,
       category: option.category,
       action: "copied",
-      // Coerce: an option that's never been edited stores this as
-      // `undefined`, not `false` — leaving it as-is would undercount the
-      // no-edit rate this event exists to make visible.
-      editedBeforeSend: Boolean(option.editedBeforeSend),
+      editBucket: currentEditBucket,
+      editDistanceNormalized: observedEdit.normalizedEditDistance,
     });
   };
 
@@ -252,7 +261,6 @@ export function OptionCard({
           scheduledFor,
           publishMode,
           category: option.category,
-          editedBeforeSend: option.editedBeforeSend,
         });
         setScheduleOpen(false);
         if (scheduledFor) {
@@ -280,7 +288,6 @@ export function OptionCard({
         targetTweetId,
         targetTweetUrl,
         category: option.category,
-        editedBeforeSend: option.editedBeforeSend,
       });
       toast.success("Saved to drafts");
     });
@@ -294,8 +301,10 @@ export function OptionCard({
             <Badge variant="accent" className="capitalize">
               {option.category}
             </Badge>
-            {option.editedBeforeSend && (
-              <Badge variant="outline">edited</Badge>
+            {currentEditBucket !== "no_edit" && (
+              <Badge variant="outline">
+                {currentEditBucket === "minor_edit" ? "minor edits" : "major edits"}
+              </Badge>
             )}
           </div>
           <span

@@ -59,7 +59,16 @@ export const run = internalAction({
     const wasScheduled = scheduled ?? false;
     const bundle = await ctx.runQuery(internal.drafts.getForPublish, { draftId });
     if (!bundle) return;
-    const { draft, isDemo, userId, refreshToken, expiresAt, scope, editedBeforeSend } = bundle;
+    const {
+      draft,
+      isDemo,
+      userId,
+      refreshToken,
+      expiresAt,
+      scope,
+      editBucket,
+      editDistanceNormalized,
+    } = bundle;
     if (draft.status === "published") return;
 
     const resolvedMode = draft.publishMode ?? (draft.kind === "quote" ? "url_quote" : "threaded");
@@ -74,7 +83,8 @@ export const run = internalAction({
         kind: draft.kind,
         publishMode: resolvedMode,
         scheduled: wasScheduled,
-        editedBeforeSend,
+        editBucket,
+        editDistanceNormalized,
       });
       return;
     }
@@ -182,7 +192,8 @@ export const run = internalAction({
         kind: draft.kind,
         publishMode: successMode,
         scheduled: wasScheduled,
-        editedBeforeSend,
+        editBucket,
+        editDistanceNormalized,
       });
     } catch (error) {
       await captureConvexException(error, { action: "publishRun", userId, draftId });

@@ -25,6 +25,7 @@ export type FunnelSource = "following" | "list" | "watched" | "search";
 export type OptionKind = "reply" | "quote";
 
 export type PublishMode = "threaded" | "standalone" | "url_quote";
+export type ObservedEditBucket = "no_edit" | "minor_edit" | "major_edit";
 
 /** How the user acted on a specific generated option. */
 export type OptionSelectedAction = "copied" | "saved" | "published";
@@ -56,7 +57,8 @@ export type AnalyticsEventProperties = {
     kind: OptionKind;
     category: string;
     action: OptionSelectedAction;
-    editedBeforeSend?: boolean;
+    editBucket?: ObservedEditBucket;
+    editDistanceNormalized?: number;
   };
   /** Fired when a generated option is explicitly saved to drafts. */
   draft_saved: {
@@ -70,7 +72,8 @@ export type AnalyticsEventProperties = {
     kind: OptionKind;
     publishMode: PublishMode;
     scheduled: boolean;
-    editedBeforeSend?: boolean;
+    editBucket?: ObservedEditBucket;
+    editDistanceNormalized?: number;
   };
 };
 

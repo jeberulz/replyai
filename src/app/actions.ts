@@ -605,10 +605,9 @@ export async function publishAction(args: {
   scheduledFor?: number;
   publishMode?: "threaded" | "standalone" | "url_quote";
   category?: string;
-  editedBeforeSend?: boolean;
 }): Promise<string> {
   const { sessionToken, user } = await requireSession();
-  const draftId = await convexServer().mutation(api.drafts.publish, {
+  const result = await convexServer().mutation(api.drafts.publish, {
     sessionToken,
     text: args.text,
     kind: args.kind,
@@ -626,12 +625,13 @@ export async function publishAction(args: {
       kind: args.kind,
       category: args.category ?? "unknown",
       action: "published",
-      editedBeforeSend: Boolean(args.editedBeforeSend),
+      editBucket: result.editBucket,
+      editDistanceNormalized: result.editDistanceNormalized,
     });
   }
   revalidatePath("/dashboard");
   if (args.analysisId) revalidatePath(`/analysis/${args.analysisId}`);
-  return draftId;
+  return result.draftId;
 }
 
 export async function retryDraftAsStandaloneAction(draftId: string) {
@@ -651,10 +651,9 @@ export async function saveDraftAction(args: {
   targetTweetId?: string;
   targetTweetUrl?: string;
   category?: string;
-  editedBeforeSend?: boolean;
 }) {
   const { sessionToken, user } = await requireSession();
-  await convexServer().mutation(api.drafts.save, {
+  const result = await convexServer().mutation(api.drafts.save, {
     sessionToken,
     text: args.text,
     kind: args.kind,
@@ -670,7 +669,8 @@ export async function saveDraftAction(args: {
       kind: args.kind,
       category: args.category ?? "unknown",
       action: "saved",
-      editedBeforeSend: Boolean(args.editedBeforeSend),
+      editBucket: result.editBucket,
+      editDistanceNormalized: result.editDistanceNormalized,
     });
   }
   await trackServer("draft_saved", user._id, {

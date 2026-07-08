@@ -24,9 +24,9 @@ from there — no ad-hoc event-name strings anywhere else.
 | 1 | `opportunity_surfaced` | `convex/scannerActions.ts` (`scanUser`, after `opportunities.upsertMany`) | user id | `count` (new opportunities this scan) |
 | 2 | `opportunity_opened` | `src/components/app/feed-scanner.tsx` (row/detail select) | user id | `opportunityId`, `source`, `score` |
 | 3 | `generation_requested` | `src/app/actions.ts` (`continueAnalysisAction`, `generateMoreAction`) | user id | `analysisId`, `trigger` (`"initial"` \| `"more"`), `kind` |
-| 4 | `option_selected` | `src/components/app/option-card.tsx` (copy) + `src/app/actions.ts` (`saveDraftAction`, `publishAction`) | user id | `replyId`, `kind`, `category`, `action` (`"copied"` \| `"saved"` \| `"published"`), `editedBeforeSend` |
+| 4 | `option_selected` | `src/components/app/option-card.tsx` (copy) + `src/app/actions.ts` (`saveDraftAction`, `publishAction`) | user id | `replyId`, `kind`, `category`, `action` (`"copied"` \| `"saved"` \| `"published"`), `editBucket`, `editDistanceNormalized` |
 | 5 | `draft_saved` | `src/app/actions.ts` (`saveDraftAction`) | user id | `analysisId`, `replyId`, `kind` |
-| 6 | `published` | `convex/publish.ts` (`run`, every successful branch incl. demo mode) | user id | `draftId`, `kind`, `publishMode`, `scheduled`, `editedBeforeSend` |
+| 6 | `published` | `convex/publish.ts` (`run`, every successful branch incl. demo mode) | user id | `draftId`, `kind`, `publishMode`, `scheduled`, `editBucket`, `editDistanceNormalized` |
 
 Distinct id is always the Convex `users._id` string — never the session
 token (a bearer credential with no reason to also hand it to a third-party
@@ -43,10 +43,10 @@ vendor).
   publish) with one event name and an `action` property, rather than three
   event names — the funnel step ("did the user commit to an option") stays
   unambiguous; `action` is there for breakdown analysis.
-- **Edit-extent metadata** (`editedBeforeSend`) is attached wherever it's
-  cheaply known today (the linked `generatedReplies` row). This is *not*
-  WP20's edit-distance buckets (no/minor/major) — just the existing boolean,
-  carried through so the funnel can already be sliced by "was this edited."
+- **Edit-extent metadata** now uses WP20's real observed edit distance:
+  `editBucket` (`no_edit` / `minor_edit` / `major_edit`) plus
+  `editDistanceNormalized`. This keeps funnel breakdowns tied to the PRD's
+  actual north-star definition instead of the old boolean proxy.
 
 ## PostHog setup
 
@@ -100,11 +100,9 @@ Settings:
 
 ### Companion insights
 
-- **North-star proxy (until WP20 ships edit-distance buckets):** Trend of
-  `option_selected` events where `editedBeforeSend = false`, as a fraction
-  of all `option_selected` events, broken down by `action`. This is a
-  boolean proxy for "no/minor edits" — WP20 replaces it with real
-  no/minor/major buckets from normalized edit distance.
+- **North-star quality breakdown:** Trend of `option_selected` or `published`
+  events broken down by `editBucket`, with `no_edit + minor_edit` treated as
+  the north-star numerator and `major_edit` as the counter-signal.
 - **Opportunity volume:** Sum of `count` on `opportunity_surfaced`, daily,
   per user — a scanner health/volume check.
 - **Time-to-send:** Time between `opportunity_opened` and `published` for

@@ -139,7 +139,9 @@ export function AnalysisThread({
     category: o.category,
     content: o.content,
     reason: o.reason,
-    editedBeforeSend: o.editedBeforeSend,
+    baselineContent: o.baselineContent,
+    editDistanceNormalized: o.editDistanceNormalized,
+    editBucket: o.editBucket,
   }));
   const you = {
     name: me?.displayName ?? "You",

@@ -61,13 +61,17 @@ export const save = mutation({
       args.replyId,
       args.text
     );
-    return await ctx.db.insert("savedDrafts", {
+    const draftId = await ctx.db.insert("savedDrafts", {
       userId: user._id,
       ...args,
       ...observedEdit.draftPatch,
       status: "draft",
       createdAt: Date.now(),
     });
+    return {
+      draftId,
+      ...observedEdit.analytics,
+    };
   },
 });
 
@@ -116,7 +120,10 @@ export const publish = mutation({
     } else {
       await ctx.scheduler.runAfter(0, internal.publish.run, { draftId, scheduled: false });
     }
-    return draftId;
+    return {
+      draftId,
+      ...observedEdit.analytics,
+    };
   },
 });
 
@@ -186,10 +193,6 @@ export const getForPublish = internalQuery({
       .query("xTokens")
       .withIndex("by_user", (q) => q.eq("userId", draft.userId))
       .unique();
-    // Best-effort edit-extent metadata for the `published` funnel event
-    // (docs/observability.md) — whether the option this draft came from was
-    // ever manually edited. Not available for drafts with no linked reply
-    // (e.g. a URL-quote composed outside the option workflow).
     const reply = draft.replyId ? await ctx.db.get(draft.replyId) : null;
     return {
       draft,
@@ -199,17 +202,9 @@ export const getForPublish = internalQuery({
       refreshToken: tokenRow?.refreshToken ?? null,
       expiresAt: tokenRow?.expiresAt ?? 0,
       scope: tokenRow?.scope ?? "",
-      // Coerce: a reply that's never been edited stores this field as
-      // `undefined`, not `false` — reporting `undefined` on the `published`
-      // event would make PostHog's `editedBeforeSend = false` filter miss
-      // the common (never-edited) case, undercounting the no-edit rate.
-      // Stays `undefined` only when there's no linked reply to check at all.
-      editedBeforeSend:
-        draft.editDistanceNormalized !== undefined
-          ? draft.editDistanceNormalized > 0
-          : reply
-            ? Boolean(reply.editedBeforeSend)
-            : undefined,
+      editDistanceNormalized:
+        draft.editDistanceNormalized ?? reply?.editDistanceNormalized,
+      editBucket: draft.editBucket ?? reply?.editBucket,
     };
   },
 });
@@ -276,6 +271,10 @@ async function getObservedEditForDraft(
 
   return {
     draftPatch: {
+      editDistanceNormalized: observedEdit.normalizedEditDistance,
+      editBucket: observedEdit.bucket,
+    },
+    analytics: {
       editDistanceNormalized: observedEdit.normalizedEditDistance,
       editBucket: observedEdit.bucket,
     },

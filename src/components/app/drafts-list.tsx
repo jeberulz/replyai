@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { MasterDetail } from "@/components/app/split/master-detail";
-import { FilterChips, PaneEyebrow } from "@/components/app/split/pane-chrome";
+import { FilterChips } from "@/components/app/split/pane-chrome";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DraftRow, type Draft } from "@/components/app/drafts/draft-row";
 import { DraftDetail } from "@/components/app/drafts/draft-detail";
