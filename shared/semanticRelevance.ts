@@ -37,6 +37,16 @@ export type SemanticScore = {
   reason: string;
 };
 
+export function resolveManualTopicRelevance(
+  keywordScore: number,
+  semanticScore?: number
+): number {
+  if (semanticScore === undefined) {
+    return keywordScore > 0 ? keywordScore : 0.5;
+  }
+  return combineTopicRelevance(keywordScore, semanticScore);
+}
+
 /** Combined relevance: keyword wins unless semantic is stronger (scaled by 0.9). */
 export function combineTopicRelevance(
   keywordScore: number,

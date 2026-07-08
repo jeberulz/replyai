@@ -4,6 +4,7 @@ import {
   combineTopicRelevance,
   demoSemanticRelevance,
   passesCombinedFeedFilter,
+  resolveManualTopicRelevance,
   selectSemanticClassificationTargets,
 } from "../shared/semanticRelevance";
 
@@ -92,5 +93,16 @@ describe("demoSemanticRelevance", () => {
         recentTopics: [],
       }).relevance
     ).toBe(0);
+  });
+});
+
+describe("resolveManualTopicRelevance", () => {
+  it("uses semantic relevance when available instead of defaulting to 0.5", () => {
+    expect(resolveManualTopicRelevance(0, 0.82)).toBeCloseTo(0.738);
+  });
+
+  it("keeps the old 0.5 neutral fallback only when no semantic score is available", () => {
+    expect(resolveManualTopicRelevance(0, undefined)).toBe(0.5);
+    expect(resolveManualTopicRelevance(0.7, undefined)).toBe(0.7);
   });
 });

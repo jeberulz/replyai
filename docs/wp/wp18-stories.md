@@ -25,7 +25,7 @@ classifier-based brand-safety screen.
       overpowering relevance and timing.
     - Focused tests cover follower-band normalization and preserve score bounds.
 
-- [ ] WP18-S3 - Run semantic relevance for manual analyses
+- [x] WP18-S3 - Run semantic relevance for manual analyses
   - Acceptance criteria:
     - Manual analysis scoring uses semantic relevance when the classifier can run
       instead of defaulting to an assumed `0.5`.

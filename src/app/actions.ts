@@ -1,7 +1,10 @@
 "use server";
 
+import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import {
@@ -19,7 +22,7 @@ import {
   trackServer,
 } from "@/lib/analytics/server";
 import { convexServer } from "@/lib/convex";
-import { env } from "@/lib/env";
+import { env, hasAnthropicKey } from "@/lib/env";
 import { getSessionUser } from "@/lib/session";
 import {
   fetchOwnedLists,
@@ -36,6 +39,12 @@ import {
   scoreConversation,
   topicRelevanceForKeywords,
 } from "../../shared/scoring";
+import {
+  demoSemanticRelevance,
+  resolveManualTopicRelevance,
+  SEMANTIC_HAIKU_MODEL,
+  type NicheContext,
+} from "../../shared/semanticRelevance";
 import { refreshAccessToken } from "../../shared/xOAuth";
 import { buildVoiceStyleFromTweets, type VoiceStyle } from "../../shared/voice";
 
@@ -121,6 +130,111 @@ async function defaultVoice(
   return { profile };
 }
 
+const ManualSemanticSchema = z.object({
+  relevance: z.number().min(0).max(1),
+  reason: z.string(),
+});
+
+function buildManualSemanticPrompt(
+  niche: NicheContext,
+  text: string
+): string {
+  const nicheBlock = [
+    niche.keywords.length > 0
+      ? `Focus keywords: ${niche.keywords.join(", ")}`
+      : null,
+    niche.recentTopics.length > 0
+      ? `Recent analysis topics: ${niche.recentTopics.join("; ")}`
+      : null,
+    niche.voiceTopics.length > 0
+      ? `Voice / interest signals: ${niche.voiceTopics.slice(0, 12).join("; ")}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return `Score this X post for niche relevance to the user's interests (0 = off-topic, 1 = perfect fit). Catch paraphrases — exact keyword overlap is NOT required.
+
+USER NICHE:
+${nicheBlock || "(general tech/builder audience)"}
+
+POST:
+"""${text}"""
+
+Return a single JSON object.`;
+}
+
+async function buildManualNicheContext(sessionToken: string): Promise<NicheContext> {
+  const convex = convexServer();
+  const [scannerSettings, profiles, recentAnalyses] = await Promise.all([
+    convex.query(api.scanner.settings, { sessionToken }),
+    convex.query(api.voiceProfiles.list, { sessionToken }),
+    convex.query(api.analyses.listRecent, { sessionToken, limit: 10 }),
+  ]);
+
+  const defaultProfile =
+    profiles.find((profile) => profile.isDefault) ?? profiles[0] ?? null;
+
+  const voiceTopics: string[] = [];
+  if (defaultProfile) {
+    voiceTopics.push(defaultProfile.name);
+    voiceTopics.push(...defaultProfile.style.commonPhrases.slice(0, 8));
+    for (const example of defaultProfile.examples.slice(0, 3)) {
+      voiceTopics.push(example.slice(0, 80));
+    }
+  }
+
+  const recentTopics = recentAnalyses
+    .map((analysis) => analysis.topic.trim())
+    .filter((topic) => topic.length > 0)
+    .slice(0, 10);
+
+  const keywords = [
+    ...new Set([
+      ...(scannerSettings?.keywords ?? []),
+      ...(scannerSettings?.searchKeywords ?? []),
+    ]),
+  ];
+
+  return { keywords, voiceTopics, recentTopics };
+}
+
+async function classifyManualSemanticRelevance(
+  text: string,
+  niche: NicheContext
+): Promise<number> {
+  if (!hasAnthropicKey()) {
+    return demoSemanticRelevance(text, niche).relevance;
+  }
+
+  try {
+    const anthropic = new Anthropic({ apiKey: env.anthropicApiKey });
+    const model = process.env.ANTHROPIC_SEMANTIC_MODEL ?? SEMANTIC_HAIKU_MODEL;
+    const response = await anthropic.messages.create({
+      model,
+      max_tokens: 256,
+      system:
+        "You classify X posts for niche relevance. Output structured JSON only.",
+      messages: [
+        {
+          role: "user",
+          content: buildManualSemanticPrompt(niche, text),
+        },
+      ],
+      output_config: { format: zodOutputFormat(ManualSemanticSchema) },
+    });
+
+    const block = response.content.find((item) => item.type === "text");
+    if (!block || block.type !== "text") {
+      throw new Error("Empty semantic classifier response");
+    }
+    return ManualSemanticSchema.parse(JSON.parse(block.text)).relevance;
+  } catch (error) {
+    console.error("Manual semantic classification failed, falling back to demo", error);
+    return demoSemanticRelevance(text, niche).relevance;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Analyze
 // ---------------------------------------------------------------------------
@@ -177,19 +291,26 @@ export async function startAnalysisAction(input: {
       replySettings = bundle.replySettings;
     }
 
-    // Score manual analyzes with the same signals the scanner uses: niche
-    // keywords drive topicRelevance and the onboarding goal picks the factor
-    // weights. A keyword miss counts as "no signal" (0.5 default), not
-    // irrelevance — the user chose this tweet deliberately, and their
-    // keyword list is narrower than their actual interests.
+    // Score manual analyzes with the same signals the scanner uses: keyword
+    // overlap plus semantic niche-fit, with a deterministic demo fallback
+    // when the semantic classifier key is missing.
     const convex = convexServer();
-    const [me, scannerSettings] = await Promise.all([
+    const [me, nicheContext] = await Promise.all([
       convex.query(api.users.me, { sessionToken }),
-      convex.query(api.scanner.settings, { sessionToken }),
+      buildManualNicheContext(sessionToken),
     ]);
-    const keywords = scannerSettings?.keywords ?? [];
     const keywordRelevance =
-      keywords.length > 0 ? topicRelevanceForKeywords(bundle.text, keywords) : 0;
+      nicheContext.keywords.length > 0
+        ? topicRelevanceForKeywords(bundle.text, nicheContext.keywords)
+        : 0;
+    const semanticRelevance = await classifyManualSemanticRelevance(
+      bundle.text,
+      nicheContext
+    );
+    const topicRelevance = resolveManualTopicRelevance(
+      keywordRelevance,
+      semanticRelevance
+    );
 
     const score = scoreConversation({
       followers: bundle.authorFollowers,
@@ -198,7 +319,7 @@ export async function startAnalysisAction(input: {
       replies: bundle.replies,
       quotes: bundle.quotes,
       ageMinutes: (Date.now() - bundle.postedAt) / 60_000,
-      topicRelevance: keywordRelevance > 0 ? keywordRelevance : undefined,
+      topicRelevance,
       goal: me?.goal,
     });
 

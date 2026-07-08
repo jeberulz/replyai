@@ -49,3 +49,19 @@ Append-only progress log. New entries go at the bottom.
 - Verification for S2:
   - `npm run typecheck` passed
   - `npm test -- tests/scoring.test.ts` passed
+
+## 2026-07-08 - WP18-S3
+
+- Manual analysis scoring now builds a real niche context from the authenticated
+  user's scanner keywords, recent analysis topics, and default voice profile
+  examples instead of relying on keyword-only relevance.
+- `startAnalysisAction` now runs semantic relevance for manual analyses:
+  - live Haiku classification when `ANTHROPIC_API_KEY` is present
+  - deterministic `demoSemanticRelevance(...)` fallback when the key is
+    missing or the live call fails
+- Added `resolveManualTopicRelevance(...)` in `shared/semanticRelevance.ts` so
+  tests can lock the rule that manual analyses use classifier output when it is
+  available instead of silently defaulting to `0.5`.
+- Verification for S3:
+  - `npm run typecheck` passed
+  - `npm test -- tests/semanticRelevance.test.ts` passed
