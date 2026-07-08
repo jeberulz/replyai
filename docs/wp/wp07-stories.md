@@ -4,7 +4,7 @@ Definition of done from `docs/PRODUCT_STRATEGY.md` §14: `responded` populated i
 
 ## Stories
 
-- [ ] **WP7-S1 — Tracking model and seed path**
+- [x] **WP7-S1 — Tracking model and seed path**
   - Add additive/optional-first tracking persistence for published reply/quote outcomes.
   - Seed tracking from the existing publish result mutation when `publishedTweetId` is stored.
   - Keep demo mode deterministic and non-blocking with zero X credentials.
