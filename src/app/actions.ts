@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
+import type { AccountExportPayload } from "../../shared/accountData";
 import {
   analyzeTweet,
   generateOptions,
@@ -20,7 +21,7 @@ import {
 } from "@/lib/analytics/server";
 import { convexServer } from "@/lib/convex";
 import { env } from "@/lib/env";
-import { getSessionUser } from "@/lib/session";
+import { clearSessionCookie, getSessionUser } from "@/lib/session";
 import {
   fetchOwnedLists,
   fetchTweetBundle,
@@ -1043,4 +1044,62 @@ export async function dismissSetupChecklistAction() {
     sessionToken,
   });
   revalidatePath("/dashboard");
+}
+
+export async function exportAccountDataAction(): Promise<
+  | { ok: true; filename: string; payload: AccountExportPayload }
+  | { ok: false; error: string }
+> {
+  const { sessionToken, user } = await requireSession();
+  try {
+    const payload = await convexServer().query(api.account.exportData, {
+      sessionToken,
+    });
+    const exportedAt = payload.exportedAt.slice(0, 10);
+    return {
+      ok: true,
+      filename: `replypilot-${user.username}-account-export-${exportedAt}.json`,
+      payload,
+    };
+  } catch (error) {
+    captureServerException(error, {
+      action: "account_export",
+      userId: user._id,
+    });
+    return { ok: false, error: "Couldn't prepare your account export." };
+  }
+}
+
+export type DeleteAccountActionState = {
+  error: string | null;
+};
+
+export async function deleteAccountAction(
+  _previousState: DeleteAccountActionState,
+  formData: FormData
+): Promise<DeleteAccountActionState> {
+  const { sessionToken, user } = await requireSession();
+  const confirmationUsername = String(
+    formData.get("confirmationUsername") ?? ""
+  ).trim();
+
+  if (confirmationUsername !== user.username) {
+    return { error: "Type your username exactly to confirm deletion." };
+  }
+
+  try {
+    await convexServer().mutation(api.account.deleteAccount, {
+      sessionToken,
+      confirmationUsername,
+    });
+  } catch (error) {
+    captureServerException(error, {
+      action: "account_delete",
+      userId: user._id,
+    });
+    return { error: "Couldn't start account deletion. Try again." };
+  }
+
+  await clearSessionCookie();
+  redirect("/");
 }

@@ -15,7 +15,7 @@
   - Large accounts are processed in bounded batches with continuation scheduling rather than a single unbounded destructive mutation.
   - Add focused tests proving all related rows are deleted, unrelated users' rows remain, and dry-run/inventory counts match deletion behavior.
 
-- [ ] `WP03-S4` Settings export and deletion UI
+- [x] `WP03-S4` Settings export and deletion UI
   - Add Settings UI controls for downloading JSON export and requesting account deletion without changing unrelated settings surfaces.
   - Deletion requires an explicit typed confirmation and presents the dry-run inventory before calling the destructive action.
   - Server actions authenticate from the httpOnly session cookie, demo mode does not break, and the UI follows Dark Chrome settings conventions.

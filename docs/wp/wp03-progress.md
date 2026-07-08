@@ -27,3 +27,10 @@
   - Added shared cascade planner tests proving batch bounds, child-before-root behavior, and unrelated-user exclusion.
   - Because `npx convex codegen` is blocked without `CONVEX_DEPLOYMENT`, manually added the new `account` module to checked-in `convex/_generated/api.d.ts` so `internal.account.continueDelete` typechecks. This should be replaced by normal codegen when a deployment is configured.
   - Checks: `npm run typecheck` passed; `npm test -- tests/accountData.test.ts` passed; `npm test` passed (26 files, 208 tests; 1 skipped).
+- Completed `WP03-S4`.
+  - Added `AccountDataControls` to Settings with JSON download and destructive deletion controls.
+  - Settings now fetches `account.inventory` server-side and displays the dry-run row counts before deletion.
+  - Added `exportAccountDataAction` and `deleteAccountAction`; both derive identity from the httpOnly session via `requireSession()`. Delete validates typed username server-side, calls `account.deleteAccount`, clears the session cookie, and redirects home.
+  - UI follows the existing settings card/border/button conventions and keeps deletion behind a Radix dialog plus disabled submit until the username matches.
+  - Checks: `npm run typecheck` passed; `npm run lint` passed with the repo's existing generated-file warnings only; `npm test` passed (26 files, 208 tests; 1 skipped); `npm run build` passed.
+  - Interactive browser-flow verification was not run because this worktree has no `CONVEX_DEPLOYMENT`/Convex app configured; `npx convex codegen` is blocked for the same reason.

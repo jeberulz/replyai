@@ -24,94 +24,94 @@ async function countByUser(
 
   switch (table) {
     case "sessions":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("sessions")
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
     case "xTokens":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("xTokens")
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
     case "scannerSettings":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("scannerSettings")
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
     case "usage":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("usage")
         .withIndex("by_user_month", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
     case "opportunities":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("opportunities")
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
     case "savedDrafts":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("savedDrafts")
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
     case "generatedReplies":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("generatedReplies")
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
     case "modelEvals":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("modelEvals")
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
     case "tweetAnalyses":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("tweetAnalyses")
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
     case "voiceProfiles":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("voiceProfiles")
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
     case "researchProfiles":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("researchProfiles")
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
     case "researchRuns":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("researchRuns")
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
     case "projects":
-      for await (const _row of ctx.db
+      for await (const row of ctx.db
         .query("projects")
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
-        count += 1;
+        if (row._id) count += 1;
       }
       return count;
   }

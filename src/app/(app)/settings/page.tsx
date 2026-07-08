@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DefaultModelCard } from "@/components/app/default-model-card";
+import { AccountDataControls } from "@/components/app/account-data-controls";
 import { PageHeader } from "@/components/app/page-header";
 import { convexServer } from "@/lib/convex";
 import { hasAnthropicKey, hasXCredentials } from "@/lib/env";
@@ -54,9 +55,10 @@ export default async function SettingsPage() {
   if (!session) redirect("/");
   const { user, sessionToken } = session;
 
-  const [stats, billing] = await Promise.all([
+  const [stats, billing, accountInventory] = await Promise.all([
     convexServer().query(api.usage.stats, { sessionToken }),
     convexServer().query(api.billing.status, { sessionToken }),
+    convexServer().query(api.account.inventory, { sessionToken }),
   ]);
 
   return (
@@ -96,6 +98,11 @@ export default async function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AccountDataControls
+        username={user.username}
+        inventory={accountInventory}
+      />
 
       <Card>
         <CardHeader>
