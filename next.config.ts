@@ -9,7 +9,7 @@ export const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' blob: data: https://*.twimg.com https://pbs.twimg.com https://abs.twimg.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://api.x.com https://api.anthropic.com https://*.convex.cloud https://*.convex.site https://*.posthog.com https://app.posthog.com https://*.sentry.io",
+  "connect-src 'self' https://api.x.com https://api.anthropic.com https://*.convex.cloud https://*.convex.site wss://*.convex.cloud wss://*.convex.site https://*.posthog.com https://app.posthog.com https://*.sentry.io",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
