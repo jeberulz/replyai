@@ -252,6 +252,44 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Reply quality — {stats.month}</CardTitle>
+          <CardDescription>
+            Launch baseline for the north star: generated replies sent with no or minor edits.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            {(
+              [
+                [
+                  "No/minor edits",
+                  stats.noOrMinorEditRate === null
+                    ? "—"
+                    : `${stats.noOrMinorEditRate}%`,
+                ],
+                ["No edit", stats.observedEditBuckets.no_edit],
+                ["Minor edit", stats.observedEditBuckets.minor_edit],
+                ["Major edit", stats.observedEditBuckets.major_edit],
+              ] as const
+            ).map(([label, value]) => (
+              <div key={label} className="rounded-lg border p-3">
+                <dt className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+                  {label}
+                </dt>
+                <dd className="mt-1.5 font-mono text-lg tabular-nums text-foreground">
+                  {typeof value === "number" ? formatCount(value) : value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className="text-xs text-muted-foreground">
+            Only generated replies with observed edit-distance data are counted here. Legacy publishes without bucket data are excluded from this baseline.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">How publishing works</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">

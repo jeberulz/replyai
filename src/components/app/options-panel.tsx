@@ -64,7 +64,9 @@ export function OptionsPanel({
     category: o.category,
     content: o.content,
     reason: o.reason,
-    editedBeforeSend: o.editedBeforeSend,
+    baselineContent: o.baselineContent,
+    editDistanceNormalized: o.editDistanceNormalized,
+    editBucket: o.editBucket,
   }));
 
   const generateMore = (kind: "reply" | "quote") => {

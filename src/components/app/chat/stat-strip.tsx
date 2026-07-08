@@ -28,8 +28,8 @@ export function StatStrip() {
         : `${stats.opportunityToAnalyzeRate}%`,
     ],
     [
-      "No edits",
-      stats.noEditRate === null ? "—" : `${stats.noEditRate}%`,
+      "No/minor",
+      stats.noOrMinorEditRate === null ? "—" : `${stats.noOrMinorEditRate}%`,
     ],
     [
       "To publish",

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireUser } from "./helpers";
+import { measureObservedEdit } from "../shared/editDistance";
 
 export const insertMany = mutation({
   args: {
@@ -35,6 +36,9 @@ export const insertMany = mutation({
           voiceProfileId,
           model,
           ...option,
+          baselineContent: option.content,
+          editDistanceNormalized: 0,
+          editBucket: "no_edit",
           createdAt: now,
         })
       );
@@ -69,9 +73,24 @@ export const updateContent = mutation({
     const user = await requireUser(ctx, sessionToken);
     const reply = await ctx.db.get(replyId);
     if (!reply || reply.userId !== user._id) throw new Error("Not found");
+    if (markEdited === false) {
+      await ctx.db.patch(replyId, {
+        content,
+        baselineContent: content,
+        editedBeforeSend: false,
+        editDistanceNormalized: 0,
+        editBucket: "no_edit",
+      });
+      return;
+    }
+
+    const baseline = reply.baselineContent ?? reply.content;
+    const observedEdit = measureObservedEdit(baseline, content);
     await ctx.db.patch(replyId, {
       content,
       editedBeforeSend: (markEdited ?? true) ? true : reply.editedBeforeSend,
+      editDistanceNormalized: observedEdit.normalizedEditDistance,
+      editBucket: observedEdit.bucket,
     });
   },
 });

@@ -56,7 +56,8 @@ describe("trackServer", () => {
       kind: "quote",
       publishMode: "url_quote",
       scheduled: false,
-      editedBeforeSend: true,
+      editBucket: "minor_edit",
+      editDistanceNormalized: 0.0714,
     });
 
     expect(seen).toHaveLength(1);
@@ -68,7 +69,8 @@ describe("trackServer", () => {
         kind: "quote",
         publishMode: "url_quote",
         scheduled: false,
-        editedBeforeSend: true,
+        editBucket: "minor_edit",
+        editDistanceNormalized: 0.0714,
       },
     });
   });
