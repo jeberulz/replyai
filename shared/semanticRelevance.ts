@@ -35,16 +35,27 @@ export type SemanticCandidateInput = {
 export type SemanticScore = {
   relevance: number;
   reason: string;
+  brandSafety: "safe" | "unsafe";
 };
 
 export function resolveManualTopicRelevance(
   keywordScore: number,
-  semanticScore?: number
+  semanticScore?: number | SemanticScore
 ): number {
   if (semanticScore === undefined) {
     return keywordScore > 0 ? keywordScore : 0.5;
   }
-  return combineTopicRelevance(keywordScore, semanticScore);
+  return combineTopicRelevance(
+    keywordScore,
+    typeof semanticScore === "number"
+      ? semanticScore
+      : effectiveSemanticRelevance(semanticScore)
+  );
+}
+
+export function effectiveSemanticRelevance(score?: SemanticScore): number {
+  if (!score || score.brandSafety === "unsafe") return 0;
+  return score.relevance;
 }
 
 /** Combined relevance: keyword wins unless semantic is stronger (scaled by 0.9). */
@@ -104,15 +115,64 @@ export function passesCombinedFeedFilter(
   text: string,
   keywords: string[],
   keywordScore: number,
-  semanticScore: number,
+  semantic: SemanticScore | number | undefined,
   source?: OpportunitySource
 ): boolean {
+  if (typeof semantic !== "number" && semantic?.brandSafety === "unsafe") {
+    return false;
+  }
   if (source === "list" || source === "watched" || source === "search") {
     return true;
   }
-  if (isPoliticalContent(text)) return false;
+  const semanticScore =
+    typeof semantic === "number"
+      ? semantic
+      : effectiveSemanticRelevance(semantic);
   const combined = combineTopicRelevance(keywordScore, semanticScore);
   return combined >= FEED_SCANNER_MIN_RELEVANCE;
+}
+
+const TECH_POLICY_SIGNAL =
+  /\b(ai act|policy|policies|regulat(?:ion|ory)|privacy|copyright|compliance|antitrust|open source|export controls?)\b/i;
+const TRAGEDY_SIGNAL =
+  /\b(tragedy|disaster|earthquake|flood|wildfire|hurricane|shooting|bombing|war|hostage|funeral|grief|mourning|victim|killed|died|death)\b/i;
+const OUTRAGE_SIGNAL =
+  /\b(boycott|cancel(?:ed|ling)?|dogpile|pile[- ]on|outrage|ratio(?:ed)?|scam(?:mer)?|fraud|exposed|call(?:ing)? out)\b/i;
+
+function hasNichePolicyContext(
+  haystack: string,
+  nicheTerms: string[]
+): boolean {
+  if (!TECH_POLICY_SIGNAL.test(haystack)) return false;
+  return nicheTerms.some((term) => {
+    if (term.includes(" ")) return haystack.includes(term);
+    return haystack.includes(term);
+  });
+}
+
+function demoBrandSafetyVerdict(
+  haystack: string,
+  nicheTerms: string[]
+): { brandSafety: "safe" | "unsafe"; reason: string } {
+  if (TRAGEDY_SIGNAL.test(haystack)) {
+    return {
+      brandSafety: "unsafe",
+      reason: "Tragedy or disaster context",
+    };
+  }
+  if (OUTRAGE_SIGNAL.test(haystack)) {
+    return {
+      brandSafety: "unsafe",
+      reason: "Outrage-bait or dogpile context",
+    };
+  }
+  if (isPoliticalContent(haystack) && !hasNichePolicyContext(haystack, nicheTerms)) {
+    return {
+      brandSafety: "unsafe",
+      reason: "Political or culture-war context",
+    };
+  }
+  return { brandSafety: "safe", reason: "Brand-safe context" };
 }
 
 /** Deterministic demo classifier — no API key required. */
@@ -120,10 +180,6 @@ export function demoSemanticRelevance(
   text: string,
   niche: NicheContext
 ): SemanticScore {
-  if (isPoliticalContent(text)) {
-    return { relevance: 0, reason: "Political content excluded" };
-  }
-
   const haystack = text.toLowerCase();
   const nicheTerms = [
     ...niche.keywords,
@@ -132,6 +188,14 @@ export function demoSemanticRelevance(
   ]
     .map((t) => t.trim().toLowerCase())
     .filter((t) => t.length > 1);
+  const safety = demoBrandSafetyVerdict(haystack, nicheTerms);
+  if (safety.brandSafety === "unsafe") {
+    return {
+      relevance: 0,
+      reason: safety.reason,
+      brandSafety: "unsafe",
+    };
+  }
 
   let hits = 0;
   for (const term of nicheTerms) {
@@ -156,6 +220,7 @@ export function demoSemanticRelevance(
   const relevance = Math.min(1, hits * 0.2);
   return {
     relevance,
+    brandSafety: "safe",
     reason:
       relevance >= 0.5
         ? "Topic aligns with your niche (demo semantic match)"
@@ -182,13 +247,10 @@ export function opportunityStillRelevant(
   storedTopicRelevance?: number
 ): boolean {
   if (source === "list" || source === "watched" || source === "search") {
-    return !isPoliticalContent(text);
+    return true;
   }
   if (storedTopicRelevance !== undefined) {
-    return (
-      storedTopicRelevance >= FEED_SCANNER_MIN_RELEVANCE &&
-      !isPoliticalContent(text)
-    );
+    return storedTopicRelevance >= FEED_SCANNER_MIN_RELEVANCE;
   }
   return topicRelevanceForKeywords(text, keywords) >= FEED_SCANNER_MIN_RELEVANCE;
 }

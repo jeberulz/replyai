@@ -202,6 +202,15 @@ describe("topicRelevanceForKeywords", () => {
     expect(passesFeedScannerFilter(text, ["ai", "build", "startup"])).toBe(false);
   });
 
+  it("does not hard-zero niche policy discussions that match specific keywords", () => {
+    const text =
+      "Congress is debating how the EU AI Act compliance burden will change how AI startups ship in Europe.";
+    expect(isPoliticalContent(text)).toBe(true);
+    expect(
+      topicRelevanceForKeywords(text, ["ai", "startup", "compliance"])
+    ).toBeGreaterThanOrEqual(0.8);
+  });
+
   it("rejects a lone generic keyword hit", () => {
     expect(
       topicRelevanceForKeywords("We must build a better society", ["build", "product"])

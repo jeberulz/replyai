@@ -34,7 +34,7 @@ classifier-based brand-safety screen.
     - Focused tests cover classifier, fallback, and no-key behavior for manual
       analysis scoring.
 
-- [ ] WP18-S4 - Replace regex-only political blocking with classifier-based brand safety
+- [x] WP18-S4 - Replace regex-only political blocking with classifier-based brand safety
   - Acceptance criteria:
     - Brand-safety screening uses the semantic classifier path as the final
       decision-maker for political/news tangents and broader unsafe contexts,

@@ -65,3 +65,27 @@ Append-only progress log. New entries go at the bottom.
 - Verification for S3:
   - `npm run typecheck` passed
   - `npm test -- tests/semanticRelevance.test.ts` passed
+
+## 2026-07-08 - WP18-S4
+
+- Expanded the semantic score shape to carry `brandSafety: "safe" | "unsafe"`
+  alongside relevance, so the classifier can make a final safety decision
+  instead of the old regex-only hard zero.
+- The political regex now acts as a signal, not the final gate:
+  - `topicRelevanceForKeywords(...)` no longer hard-zeros policy posts
+  - `shouldExcludeCandidate(...)` no longer drops tweets only because they look
+    political
+  - `passesCombinedFeedFilter(...)` now blocks only when the semantic classifier
+    marks the conversation unsafe
+- The demo fallback is broader than politics now:
+  - unsafe for tragedy/disaster threads
+  - unsafe for outrage-bait / dogpile language
+  - allows niche policy/regulation discussions when they fit the user's focus
+- Both classifier call sites now carry the brand-safety contract:
+  - `convex/semanticActions.ts` asks the live classifier for relevance plus a
+    safe/unsafe verdict
+  - manual `startAnalysisAction` uses that verdict to keep the displayed score
+    and reason honest for risky conversations
+- Verification for S4:
+  - `npm run typecheck` passed
+  - `npm test -- tests/semanticRelevance.test.ts tests/scoring.test.ts tests/feedFilters.test.ts` passed

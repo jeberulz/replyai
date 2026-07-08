@@ -44,6 +44,7 @@ import {
   resolveManualTopicRelevance,
   SEMANTIC_HAIKU_MODEL,
   type NicheContext,
+  type SemanticScore,
 } from "../../shared/semanticRelevance";
 import { refreshAccessToken } from "../../shared/xOAuth";
 import { buildVoiceStyleFromTweets, type VoiceStyle } from "../../shared/voice";
@@ -132,6 +133,7 @@ async function defaultVoice(
 
 const ManualSemanticSchema = z.object({
   relevance: z.number().min(0).max(1),
+  brandSafety: z.enum(["safe", "unsafe"]),
   reason: z.string(),
 });
 
@@ -153,7 +155,7 @@ function buildManualSemanticPrompt(
     .filter(Boolean)
     .join("\n");
 
-  return `Score this X post for niche relevance to the user's interests (0 = off-topic, 1 = perfect fit). Catch paraphrases — exact keyword overlap is NOT required.
+  return `Score this X post for niche relevance to the user's interests (0 = off-topic, 1 = perfect fit) and decide whether replying is brand-safe. Catch paraphrases — exact keyword overlap is NOT required.
 
 USER NICHE:
 ${nicheBlock || "(general tech/builder audience)"}
@@ -161,7 +163,12 @@ ${nicheBlock || "(general tech/builder audience)"}
 POST:
 """${text}"""
 
-Return a single JSON object.`;
+Return a single JSON object.
+
+Brand-safety rules:
+- Mark "unsafe" for partisan politics, tragedy/disaster threads, outrage-bait, dogpiles, harassment, or culture-war fights.
+- A niche policy/regulation discussion can still be "safe" when it is clearly professional and squarely inside the user's focus.
+- Unsafe posts should have relevance 0.`;
 }
 
 async function buildManualNicheContext(sessionToken: string): Promise<NicheContext> {
@@ -202,9 +209,9 @@ async function buildManualNicheContext(sessionToken: string): Promise<NicheConte
 async function classifyManualSemanticRelevance(
   text: string,
   niche: NicheContext
-): Promise<number> {
+): Promise<SemanticScore> {
   if (!hasAnthropicKey()) {
-    return demoSemanticRelevance(text, niche).relevance;
+    return demoSemanticRelevance(text, niche);
   }
 
   try {
@@ -228,10 +235,10 @@ async function classifyManualSemanticRelevance(
     if (!block || block.type !== "text") {
       throw new Error("Empty semantic classifier response");
     }
-    return ManualSemanticSchema.parse(JSON.parse(block.text)).relevance;
+    return ManualSemanticSchema.parse(JSON.parse(block.text));
   } catch (error) {
     console.error("Manual semantic classification failed, falling back to demo", error);
-    return demoSemanticRelevance(text, niche).relevance;
+    return demoSemanticRelevance(text, niche);
   }
 }
 
@@ -303,13 +310,13 @@ export async function startAnalysisAction(input: {
       nicheContext.keywords.length > 0
         ? topicRelevanceForKeywords(bundle.text, nicheContext.keywords)
         : 0;
-    const semanticRelevance = await classifyManualSemanticRelevance(
+    const semantic = await classifyManualSemanticRelevance(
       bundle.text,
       nicheContext
     );
     const topicRelevance = resolveManualTopicRelevance(
       keywordRelevance,
-      semanticRelevance
+      semantic
     );
 
     const score = scoreConversation({
@@ -320,6 +327,7 @@ export async function startAnalysisAction(input: {
       quotes: bundle.quotes,
       ageMinutes: (Date.now() - bundle.postedAt) / 60_000,
       topicRelevance,
+      brandSafety: semantic.brandSafety,
       goal: me?.goal,
     });
 

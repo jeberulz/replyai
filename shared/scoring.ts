@@ -262,8 +262,6 @@ export function topicRelevanceForKeywords(
   text: string,
   keywords: string[]
 ): number {
-  if (isPoliticalContent(text)) return 0;
-
   const normalized = keywords
     .map((k) => k.trim().toLowerCase())
     .filter((k) => k.length > 0);
