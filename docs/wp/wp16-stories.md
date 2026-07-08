@@ -33,7 +33,7 @@ Thread-ancestor context in analysis; weighted 280-char validation + category-dis
     - Retry state is idempotent across re-entry and cannot create an auto-publish path beyond the originally approved draft text.
     - Demo publish behavior remains deterministic and key-free.
 
-- [ ] WP16-S5 - Final gate
+- [x] WP16-S5 - Final gate
   - Acceptance criteria:
     - Focused tests/eval fixtures cover the new guardrail behavior where needed.
     - `npm run typecheck && npm run lint && npm test && npm run evals && npm run build` passes locally.

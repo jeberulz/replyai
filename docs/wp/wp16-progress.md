@@ -37,3 +37,9 @@ Append-only progress log. New entries go at the bottom.
 - Added weighted-length validation before all publish sends and weighted-safe URL quote composition before appending a permalink.
 - Added focused unit tests for retryability, jitter delay, and weighted URL quote composition.
 - Verification: `npm run typecheck && npm test` passed.
+
+## 2026-07-08 - WP16-S5
+
+- Ran final verification: `npm run typecheck && npm run lint && npm test && npm run evals && npm run build`.
+- Result: passed. `npm run lint` emitted existing warnings only: unused eslint-disable directives in `convex/_generated/*` and an unused `PaneEyebrow` import in `src/components/app/drafts-list.tsx`.
+- Demo-mode notes: no external keys are required. Demo tweet analysis now includes deterministic thread ancestors for the Sarah Chen fixture; manual text analyses carry an empty ancestor list and continue to work.
