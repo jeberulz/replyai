@@ -156,7 +156,15 @@ export function deriveBestReplyWindows({
     .map((hour) => buildWindow(hour, currentHour, statsByHour.get(hour)))
     .sort((a, b) => b.rank - a.rank || a.distance - b.distance || a.hour - b.hour)
     .slice(0, maxWindows)
-    .map(({ rank: _rank, distance: _distance, ...window }) => window);
+    .map((window) => ({
+      hour: window.hour,
+      label: window.label,
+      source: window.source,
+      opportunityCount: window.opportunityCount,
+      historyCount: window.historyCount,
+      noOrMinorRate: window.noOrMinorRate,
+      reason: window.reason,
+    }));
 
   return ranked.length > 0
     ? ranked

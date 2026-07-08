@@ -5,7 +5,7 @@
   - Report today's sent-reply count, target framing around 15–20 replies/day, escalating warning levels as the count approaches or exceeds ~50/day, and a deterministic "best windows" dataset with a safe fallback when live opportunity data is thin.
   - Add focused tests for daily sent counts, warning-threshold behavior, and best-window derivation/fallback logic.
 
-- [ ] `WP22-S2` Dashboard pacing module
+- [x] `WP22-S2` Dashboard pacing module
   - Add a dashboard module that turns the account-health guardrail into a visible daily workflow: current sent count vs. target, pacing copy, and "today's best windows" surfaced without predictive/fake score language.
   - Keep the UI inside the existing Dark Chrome dashboard shell and ensure demo mode still renders meaningful pacing guidance with deterministic fallback data.
   - Preserve the chat-first dashboard behavior; this WP adds coaching, not a new primary flow.
