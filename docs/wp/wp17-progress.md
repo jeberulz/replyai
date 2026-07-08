@@ -23,3 +23,13 @@
 - Verification:
   - `npm run typecheck`
   - `npm test`
+
+## 2026-07-08 - VFU-3
+
+- Replaced the old first-5-example voice prompt with a single exported voice-instruction builder used by generation, repair, model-eval judging, and rewrite.
+- The builder selects examples by similarity to the target tweet, includes up to 10 examples, and includes user/derived negative constraints.
+- `rewriteText` now receives voice examples and constraints, so rewrite chains no longer collapse to only `voice.tone`.
+- Voice training and onboarding now call an optional LLM tone-label refinement pass. It catches failures and returns measured stats unchanged without `ANTHROPIC_API_KEY`, preserving demo mode.
+- Verification:
+  - `npm run typecheck`
+  - `npm test`

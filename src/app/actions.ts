@@ -8,6 +8,7 @@ import {
   analyzeTweet,
   generateOptions,
   judgeModelEval,
+  refineVoiceStyleLabels,
   rewriteText,
   REWRITE_DIRECTIONS,
   type RewriteDirection,
@@ -126,6 +127,19 @@ async function defaultVoice(
     ? (profiles.find((p) => p._id === voiceProfileId) ?? null)
     : (profiles.find((p) => p.isDefault) ?? profiles[0] ?? null);
   return { profile };
+}
+
+function negativeConstraintsForProfile(
+  profile: Doc<"voiceProfiles"> | null
+): VoiceNegativeConstraints | undefined {
+  if (!profile) return undefined;
+  if (profile.bannedPhrases === undefined && profile.antiPatterns === undefined) {
+    return undefined;
+  }
+  return normalizeNegativeConstraints({
+    bannedPhrases: profile.bannedPhrases,
+    antiPatterns: profile.antiPatterns,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -308,6 +322,7 @@ export async function continueAnalysisAction(
     const { profile } = await defaultVoice(sessionToken);
     const voice = (profile?.style as VoiceStyle | undefined) ?? null;
     const examples = profile?.examples ?? [];
+    const negativeConstraints = negativeConstraintsForProfile(profile);
     const { model, goal } = await resolveGenerationPrefs(sessionToken);
 
     const generateKind = async (kind: "reply" | "quote") => {
@@ -327,6 +342,7 @@ export async function continueAnalysisAction(
         analysis,
         voice,
         voiceExamples: examples,
+        voiceNegativeConstraints: negativeConstraints,
         goal,
         model,
       });
@@ -396,6 +412,7 @@ export async function generateMoreAction(args: {
   });
   const { profile } = await defaultVoice(sessionToken, args.voiceProfileId);
   const { model, goal } = await resolveGenerationPrefs(sessionToken, args.model);
+  const negativeConstraints = negativeConstraintsForProfile(profile);
 
   await trackServer("generation_requested", user._id, {
     analysisId,
@@ -415,6 +432,7 @@ export async function generateMoreAction(args: {
     },
     voice: (profile?.style as VoiceStyle | undefined) ?? null,
     voiceExamples: profile?.examples ?? [],
+    voiceNegativeConstraints: negativeConstraints,
     goal,
     avoidContents: existing
       .filter((r) => r.kind === args.kind)
@@ -472,6 +490,8 @@ export async function rewriteAction(args: {
     direction: direction as RewriteDirection,
     bundle: bundleFromAnalysis(analysis),
     voice: (profile?.style as VoiceStyle | undefined) ?? null,
+    voiceExamples: profile?.examples ?? [],
+    voiceNegativeConstraints: negativeConstraintsForProfile(profile),
     model,
   });
 
@@ -539,6 +559,7 @@ export async function runModelEvalAction(analysisId: string) {
   const { profile } = await defaultVoice(sessionToken);
   const voice = (profile?.style as VoiceStyle | undefined) ?? null;
   const examples = profile?.examples ?? [];
+  const negativeConstraints = negativeConstraintsForProfile(profile);
   const bundle = bundleFromAnalysis(analysis);
   const analysisInput = {
     summary: analysis.summary,
@@ -558,6 +579,7 @@ export async function runModelEvalAction(analysisId: string) {
         analysis: analysisInput,
         voice,
         voiceExamples: examples,
+        voiceNegativeConstraints: negativeConstraints,
         model: m.id,
       });
       return { model: m.id, ...result };
@@ -569,6 +591,7 @@ export async function runModelEvalAction(analysisId: string) {
     analysis: analysisInput,
     voice,
     voiceExamples: examples,
+    voiceNegativeConstraints: negativeConstraints,
     candidates: runs.map((r) => ({ model: r.model, options: r.options })),
   });
 
@@ -726,7 +749,11 @@ export async function trainVoiceAction(name: string) {
   const auth = await convex.query(api.users.xAuthForSession, { sessionToken });
   const accessToken = await resolveXAccessToken(sessionToken);
   const tweets = await fetchUserTweets(auth?.xUserId ?? "", accessToken);
-  const style = buildVoiceStyleFromTweets(tweets);
+  const measuredStyle = buildVoiceStyleFromTweets(tweets);
+  const { style } = await refineVoiceStyleLabels({
+    style: measuredStyle,
+    examples: tweets,
+  });
   const constraints = buildVoiceNegativeConstraints(tweets, style);
   await convex.mutation(api.voiceProfiles.create, {
     sessionToken,
@@ -1023,7 +1050,11 @@ export async function buildWritingModelAction(args: {
     tweets.length === DEMO_TWEETS.length &&
     tweets[0] === DEMO_TWEETS[0].text;
 
-  const style = buildVoiceStyleFromTweets(tweets);
+  const measuredStyle = buildVoiceStyleFromTweets(tweets);
+  const { style } = await refineVoiceStyleLabels({
+    style: measuredStyle,
+    examples: tweets,
+  });
   const constraints = buildVoiceNegativeConstraints(tweets, style);
   const profileName = `${user.displayName.split(" ")[0]}'s voice`;
   const profileId = await convex.mutation(api.voiceProfiles.create, {

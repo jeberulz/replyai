@@ -24,7 +24,7 @@ Definition of done from `docs/PRODUCT_STRATEGY.md` §14:
     - Voice Studio lets users review and edit the constraints in the existing profile dialog.
     - Existing Convex authorization and demo-mode behavior remain unchanged.
 
-- [ ] VFU-3 - Full voice block in generation and rewrite
+- [x] VFU-3 - Full voice block in generation and rewrite
   - Acceptance criteria:
     - Generation and repair prompts use similarity-selected examples capped at 8-10.
     - The voice instruction block includes editable and derived negative constraints.
