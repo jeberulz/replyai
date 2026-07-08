@@ -13,9 +13,12 @@ import { DEFAULT_KEYWORDS } from "../../shared/onboarding";
  */
 export async function ensureDefaults(sessionToken: string) {
   const convex = convexServer();
-  const me = await convex.query(api.users.me, { sessionToken });
+  const [me, profiles, settings] = await Promise.all([
+    convex.query(api.users.me, { sessionToken }),
+    convex.query(api.voiceProfiles.list, { sessionToken }),
+    convex.query(api.scanner.settings, { sessionToken }),
+  ]);
 
-  const profiles = await convex.query(api.voiceProfiles.list, { sessionToken });
   if (profiles.length === 0) {
     await convex.mutation(api.voiceProfiles.create, {
       sessionToken,
@@ -26,7 +29,6 @@ export async function ensureDefaults(sessionToken: string) {
     });
   }
 
-  const settings = await convex.query(api.scanner.settings, { sessionToken });
   if (!settings) {
     await convex.mutation(api.scanner.updateSettings, {
       sessionToken,

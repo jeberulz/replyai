@@ -23,8 +23,10 @@ describe("billing helpers", () => {
     expect(planFromStripeStatus("past_due")).toBe(PRO_PLAN);
   });
 
-  it("maps canceled or missing subscription states to free", () => {
+  it("maps canceled, unpaid, or missing subscription states to free", () => {
     expect(planFromStripeStatus("canceled")).toBe(FREE_PLAN);
+    // unpaid = dunning exhausted; access ends (past_due is the grace state).
+    expect(planFromStripeStatus("unpaid")).toBe(FREE_PLAN);
     expect(planFromStripeStatus(undefined)).toBe(FREE_PLAN);
   });
 

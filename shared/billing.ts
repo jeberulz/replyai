@@ -4,12 +4,11 @@ export const PRO_PLAN = "pro";
 export type BillingPlan = typeof FREE_PLAN | typeof PRO_PLAN;
 export type PaidFeature = "scanner" | "notifications";
 
-const ACTIVE_PRO_STATUSES = new Set([
-  "active",
-  "trialing",
-  "past_due",
-  "unpaid",
-]);
+// past_due keeps access as a dunning grace period (Stripe is still
+// retrying the payment). unpaid is deliberately excluded: it is the
+// terminal state after retries are exhausted and, depending on dunning
+// settings, no further webhook may ever arrive to downgrade the user.
+const ACTIVE_PRO_STATUSES = new Set(["active", "trialing", "past_due"]);
 
 export function normalizePlan(plan: string | null | undefined): BillingPlan {
   return plan === PRO_PLAN ? PRO_PLAN : FREE_PLAN;

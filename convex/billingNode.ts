@@ -3,8 +3,8 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { action } from "./_generated/server";
-import Stripe from "stripe";
+import { action, env } from "./_generated/server";
+import { getStripe, stripeConfigured } from "./lib/stripe";
 import { hasProAccess } from "../shared/billing";
 
 type BillingViewer = {
@@ -14,26 +14,6 @@ type BillingViewer = {
   plan: string;
   stripeCustomerId?: string;
 };
-
-let stripeClient: Stripe | null = null;
-
-function stripeConfigured(): boolean {
-  return Boolean(
-    process.env.STRIPE_SECRET_KEY &&
-      process.env.STRIPE_PRO_PRICE_ID &&
-      process.env.STRIPE_WEBHOOK_SECRET
-  );
-}
-
-function getStripe(): Stripe {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error("Stripe is not configured.");
-  }
-  if (!stripeClient) {
-    stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY);
-  }
-  return stripeClient;
-}
 
 function billingReturnUrl(returnUrl: string, suffix: string): string {
   return `${returnUrl.replace(/\/$/, "")}${suffix}`;
@@ -56,7 +36,8 @@ export const createCheckoutSession = action({
     if (hasProAccess(viewer)) {
       throw new Error("Your account already has Pro access.");
     }
-    if (!stripeConfigured() || !process.env.STRIPE_PRO_PRICE_ID) {
+    const proPriceId = env.STRIPE_PRO_PRICE_ID;
+    if (!stripeConfigured() || !proPriceId) {
       throw new Error("Stripe billing is not configured.");
     }
 
@@ -77,8 +58,13 @@ export const createCheckoutSession = action({
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      line_items: [{ price: process.env.STRIPE_PRO_PRICE_ID, quantity: 1 }],
+      line_items: [{ price: proPriceId, quantity: 1 }],
       allow_promotion_codes: true,
+      // Session-level metadata is what the checkout.session.completed
+      // webhook reads (subscription_data.metadata lands on the Subscription
+      // object only) — it is the safety net that re-links the customer if
+      // the storeStripeCustomer call above ever failed mid-flight.
+      metadata: { convexUserId: viewer.userId },
       subscription_data: {
         trial_period_days: 7,
         metadata: { convexUserId: viewer.userId },

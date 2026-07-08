@@ -34,6 +34,7 @@ import {
 import { refreshAccessToken } from "../shared/xOAuth";
 
 const MIN_OPPORTUNITY_SCORE = 30;
+
 /** Max watched handles fetched per scan; see selectWatchedHandlesForScan. */
 const MAX_WATCHED_HANDLES_PER_SCAN = 15;
 /** Max discovery search queries per scan (1 X API call each). */

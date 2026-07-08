@@ -1,53 +1,37 @@
 import Stripe from "stripe";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 import {
+  env,
   httpAction,
   internalMutation,
   internalQuery,
   query,
 } from "./_generated/server";
 import { requireUser } from "./helpers";
+import { captureConvexException } from "./lib/sentry";
+import { getStripe, stripeConfigured } from "./lib/stripe";
 import {
   FREE_PLAN,
   hasProAccess,
   planFromStripeStatus,
 } from "../shared/billing";
 
-function stripeConfigured(): boolean {
-  return Boolean(
-    process.env.STRIPE_SECRET_KEY &&
-      process.env.STRIPE_PRO_PRICE_ID &&
-      process.env.STRIPE_WEBHOOK_SECRET
-  );
-}
-
-function replaceUserWithoutStripeSnapshot(
-  user: Doc<"users">,
-  updates: Partial<Doc<"users">>
-): Doc<"users"> {
-  const next = { ...user, ...updates } as Partial<Doc<"users">>;
-  delete next.stripeSubscriptionId;
-  delete next.stripePriceId;
-  delete next.stripeCurrentPeriodEnd;
-  delete next.stripeTrialEndsAt;
-  return next as Doc<"users">;
-}
-
 export const status = query({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
     const user = await requireUser(ctx, sessionToken);
     const proAccess = hasProAccess(user);
+    const configured = stripeConfigured();
     return {
       plan: user.plan,
       isDemo: user.isDemo,
       hasProAccess: proAccess,
-      stripeConfigured: stripeConfigured(),
-      canStartCheckout: stripeConfigured() && !user.isDemo && !proAccess,
+      stripeConfigured: configured,
+      canStartCheckout: configured && !user.isDemo && !proAccess,
       canManageBilling:
-        stripeConfigured() && !user.isDemo && Boolean(user.stripeCustomerId),
+        configured && !user.isDemo && Boolean(user.stripeCustomerId),
       subscriptionStatus: user.stripeSubscriptionStatus ?? null,
       currentPeriodEnd: user.stripeCurrentPeriodEnd ?? null,
       trialEndsAt: user.stripeTrialEndsAt ?? null,
@@ -99,21 +83,29 @@ export const applySubscriptionSnapshot = internalMutation({
         q.eq("stripeCustomerId", args.stripeCustomerId)
       )
       .unique();
-    if (!user) return false;
+    if (!user) return "no_user";
 
-    const next = replaceUserWithoutStripeSnapshot(user, {
-      plan: planFromStripeStatus(args.stripeSubscriptionStatus),
-      stripeCustomerId: args.stripeCustomerId,
-      stripeSubscriptionStatus: args.stripeSubscriptionStatus,
-    });
-    next.stripeSubscriptionId = args.stripeSubscriptionId;
-    if (args.stripePriceId) next.stripePriceId = args.stripePriceId;
-    if (args.stripeCurrentPeriodEnd) {
-      next.stripeCurrentPeriodEnd = args.stripeCurrentPeriodEnd;
+    // Stripe does not guarantee webhook ordering and retries deliveries:
+    // once this exact subscription has been processed as canceled, a late
+    // "updated" event carrying an older active status must not resurrect it.
+    if (
+      user.stripeSubscriptionId === args.stripeSubscriptionId &&
+      user.stripeSubscriptionStatus === "canceled"
+    ) {
+      return "stale";
     }
-    if (args.stripeTrialEndsAt) next.stripeTrialEndsAt = args.stripeTrialEndsAt;
-    await ctx.db.replace("users", user._id, next);
-    return true;
+
+    // Explicit undefined clears a field (snapshot semantics): values the
+    // incoming event doesn't carry must not survive from a prior state.
+    await ctx.db.patch(user._id, {
+      plan: planFromStripeStatus(args.stripeSubscriptionStatus),
+      stripeSubscriptionStatus: args.stripeSubscriptionStatus,
+      stripeSubscriptionId: args.stripeSubscriptionId,
+      stripePriceId: args.stripePriceId,
+      stripeCurrentPeriodEnd: args.stripeCurrentPeriodEnd,
+      stripeTrialEndsAt: args.stripeTrialEndsAt,
+    });
+    return "applied";
   },
 });
 
@@ -129,34 +121,29 @@ export const clearSubscription = internalMutation({
         q.eq("stripeCustomerId", stripeCustomerId)
       )
       .unique();
-    if (!user) return false;
+    if (!user) return "no_user";
     if (
       stripeSubscriptionId &&
       user.stripeSubscriptionId &&
       user.stripeSubscriptionId !== stripeSubscriptionId
     ) {
-      return false;
+      // A delete for a subscription we no longer track (user re-subscribed
+      // under a new subscription id) must not downgrade the current one.
+      return "stale";
     }
 
-    await ctx.db.replace(
-      "users",
-      user._id,
-      replaceUserWithoutStripeSnapshot(user, {
+    // stripeSubscriptionId is deliberately kept: applySubscriptionSnapshot's
+    // out-of-order guard needs to recognize late events for this canceled id.
+    await ctx.db.patch(user._id, {
       plan: FREE_PLAN,
       stripeSubscriptionStatus: "canceled",
-      stripeCustomerId,
-      })
-    );
-    return true;
+      stripePriceId: undefined,
+      stripeCurrentPeriodEnd: undefined,
+      stripeTrialEndsAt: undefined,
+    });
+    return "applied";
   },
 });
-
-function getStripe(): Stripe {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error("Stripe is not configured.");
-  }
-  return new Stripe(process.env.STRIPE_SECRET_KEY);
-}
 
 function toMillis(timestamp: number | null | undefined): number | undefined {
   return typeof timestamp === "number" ? timestamp * 1000 : undefined;
@@ -169,14 +156,19 @@ function primaryPriceId(subscription: Stripe.Subscription): string | undefined {
 function currentPeriodEnd(
   subscription: Stripe.Subscription
 ): number | undefined {
-  const candidate = (
-    subscription as Stripe.Subscription & { current_period_end?: number | null }
-  ).current_period_end;
-  return toMillis(candidate);
+  // Since Stripe API 2025-08-27 (pinned by the installed SDK),
+  // current_period_end lives on each subscription item, not the
+  // subscription. Our subscriptions have a single price; take the latest
+  // item period end to be safe.
+  const ends = subscription.items.data
+    .map((item) => item.current_period_end)
+    .filter((end): end is number => typeof end === "number");
+  return ends.length > 0 ? toMillis(Math.max(...ends)) : undefined;
 }
 
 export const stripeWebhook = httpAction(async (ctx, request) => {
-  if (!stripeConfigured() || !process.env.STRIPE_WEBHOOK_SECRET) {
+  const webhookSecret = env.STRIPE_WEBHOOK_SECRET;
+  if (!stripeConfigured() || !webhookSecret) {
     return new Response("Stripe webhook is not configured.", { status: 503 });
   }
 
@@ -192,7 +184,7 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
     event = await getStripe().webhooks.constructEventAsync(
       payload,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET,
+      webhookSecret,
       undefined,
       Stripe.createSubtleCryptoProvider()
     );
@@ -210,14 +202,26 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
         typeof subscription.customer === "string"
           ? subscription.customer
           : subscription.customer.id;
-      await ctx.runMutation(internal.billing.applySubscriptionSnapshot, {
-        stripeCustomerId,
-        stripeSubscriptionId: subscription.id,
-        stripeSubscriptionStatus: subscription.status,
-        stripePriceId: primaryPriceId(subscription),
-        stripeCurrentPeriodEnd: currentPeriodEnd(subscription),
-        stripeTrialEndsAt: toMillis(subscription.trial_end),
-      });
+      const result = await ctx.runMutation(
+        internal.billing.applySubscriptionSnapshot,
+        {
+          stripeCustomerId,
+          stripeSubscriptionId: subscription.id,
+          stripeSubscriptionStatus: subscription.status,
+          stripePriceId: primaryPriceId(subscription),
+          stripeCurrentPeriodEnd: currentPeriodEnd(subscription),
+          stripeTrialEndsAt: toMillis(subscription.trial_end),
+        }
+      );
+      if (result === "no_user") {
+        // A paying customer we can't map to a user is an incident, not a
+        // silent no-op — without this signal "paid but still Free" is
+        // undiagnosable.
+        await captureConvexException(
+          new Error("Stripe webhook: no user matched subscription event"),
+          { eventType: event.type, stripeCustomerId, subscriptionId: subscription.id }
+        );
+      }
       break;
     }
     case "customer.subscription.deleted": {
@@ -226,10 +230,16 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
         typeof subscription.customer === "string"
           ? subscription.customer
           : subscription.customer.id;
-      await ctx.runMutation(internal.billing.clearSubscription, {
+      const result = await ctx.runMutation(internal.billing.clearSubscription, {
         stripeCustomerId,
         stripeSubscriptionId: subscription.id,
       });
+      if (result === "no_user") {
+        await captureConvexException(
+          new Error("Stripe webhook: no user matched subscription delete"),
+          { eventType: event.type, stripeCustomerId, subscriptionId: subscription.id }
+        );
+      }
       break;
     }
     case "checkout.session.completed": {

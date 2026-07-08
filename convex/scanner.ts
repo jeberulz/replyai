@@ -73,7 +73,15 @@ export const updateSettings = mutation({
     }
   ) => {
     const user = await requireUser(ctx, sessionToken);
-    if (enabled && !hasProAccess(user)) {
+    const row = await ctx.db
+      .query("scannerSettings")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    // Gate only a genuine attempt to turn the scanner ON. Clients with an
+    // already-enabled row echo `enabled: true` back on unrelated edits
+    // (keywords, sources) — after a plan lapse that echo must not throw;
+    // enforcement lives in enabledSettings/scanNow, which re-check the plan.
+    if (enabled && !hasProAccess(user) && !row?.enabled) {
       throw new Error(paidFeatureGateMessage("scanner"));
     }
 
@@ -101,10 +109,6 @@ export const updateSettings = mutation({
       ...(enabledSources !== undefined ? { enabledSources } : {}),
     };
 
-    const row = await ctx.db
-      .query("scannerSettings")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .unique();
     if (row) {
       await ctx.db.patch(row._id, patch);
     } else {
@@ -203,14 +207,14 @@ export const enabledSettings = internalQuery({
   args: {},
   handler: async (ctx) => {
     const all = await ctx.db.query("scannerSettings").collect();
-    const enabled: { userId: typeof all[number]["userId"] }[] = [];
-    for (const settings of all) {
-      const user = await ctx.db.get(settings.userId);
-      if (user && settings.enabled && hasProAccess(user)) {
-        enabled.push({ userId: settings.userId });
-      }
-    }
-    return enabled;
+    const enabledRows = all.filter((s) => s.enabled);
+    const users = await Promise.all(enabledRows.map((s) => ctx.db.get(s.userId)));
+    return enabledRows
+      .filter((_, i) => {
+        const user = users[i];
+        return user !== null && hasProAccess(user);
+      })
+      .map((s) => ({ userId: s.userId }));
   },
 });
 
@@ -230,7 +234,6 @@ export const scanContext = internalQuery({
     return {
       xUserId: user.xUserId,
       isDemo: user.isDemo,
-      plan: user.plan,
       goal: user.goal,
       keywords: settingsRow?.keywords ?? [],
       searchKeywords: settingsRow?.searchKeywords ?? [],

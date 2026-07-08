@@ -134,9 +134,12 @@ export default async function SettingsPage() {
               <div className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
                 Free
               </div>
+              {/* Only describe what the code actually enforces today — the
+                  strategy's numeric caps (analyses/day, profile count) ship
+                  with their own enforcement, not as copy. */}
               <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                <li>3 analyses per day</li>
-                <li>1 voice profile</li>
+                <li>Manual tweet analysis</li>
+                <li>Voice-matched reply generation</li>
                 <li>No live scanner or notifications</li>
               </ul>
             </div>
@@ -145,9 +148,9 @@ export default async function SettingsPage() {
                 Pro
               </div>
               <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                <li>Unlimited analyses under fair use</li>
+                <li>Everything in Free</li>
                 <li>Feed scanner across all 4 sources</li>
-                <li>Hot-window notifications</li>
+                <li>Hot-window notifications when they launch</li>
               </ul>
             </div>
           </div>
