@@ -6,7 +6,7 @@ Thread-ancestor context in analysis; weighted 280-char validation + category-dis
 
 ## Stories
 
-- [ ] WP16-S1 - Thread ancestors in analysis context
+- [x] WP16-S1 - Thread ancestors in analysis context
   - Acceptance criteria:
     - `TweetBundle` carries a bounded list of ancestor tweets for live and demo/manual flows without breaking deterministic demo mode.
     - `tweetAnalyses` persists ancestor snapshots additively, and saved analyses rebuild bundles with that context.

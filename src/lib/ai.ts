@@ -47,12 +47,18 @@ const ANALYST_SYSTEM = `You are ReplyPilot, an expert analyst of X (Twitter) con
  * rewrite) reuse the cached prefix.
  */
 function tweetContextBlock(bundle: TweetBundle): Anthropic.TextBlockParam {
+  const ancestors = bundle.threadAncestors
+    .map(
+      (ancestor, i) =>
+        `${i + 1}. @${ancestor.authorHandle}: """\n${ancestor.text}\n"""`
+    )
+    .join("\n");
   const replies = bundle.topReplies
     .map((r) => `- @${r.authorHandle} (${r.likes} likes): ${r.text}`)
     .join("\n");
   return {
     type: "text",
-    text: `TWEET UNDER ANALYSIS
+    text: `${ancestors ? `THREAD CONTEXT BEFORE TARGET TWEET\n${ancestors}\n\n` : ""}TWEET UNDER ANALYSIS
 Author: ${bundle.authorName} (@${bundle.authorHandle}) — ${bundle.authorFollowers.toLocaleString()} followers
 Bio: ${bundle.authorBio ?? "n/a"}
 Engagement: ${bundle.likes} likes, ${bundle.retweets} retweets, ${bundle.replies} replies, ${bundle.quotes} quotes${bundle.views ? `, ${bundle.views} views` : ""}

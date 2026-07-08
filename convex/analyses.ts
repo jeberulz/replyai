@@ -3,7 +3,7 @@ import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { requireUser } from "./helpers";
-import { tweetSnapshot } from "./schema";
+import { tweetAncestorSnapshot, tweetSnapshot } from "./schema";
 
 async function requireOwnedProject(
   ctx: MutationCtx,
@@ -27,6 +27,7 @@ export const start = mutation({
     tweetUrl: v.string(),
     tweetId: v.string(),
     tweet: tweetSnapshot,
+    threadAncestors: v.optional(v.array(tweetAncestorSnapshot)),
     topReplies: v.array(
       v.object({
         authorHandle: v.string(),

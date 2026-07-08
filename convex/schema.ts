@@ -18,6 +18,14 @@ export const tweetSnapshot = v.object({
   mediaText: v.optional(v.string()),
 });
 
+export const tweetAncestorSnapshot = v.object({
+  tweetId: v.string(),
+  authorName: v.string(),
+  authorHandle: v.string(),
+  text: v.string(),
+  postedAt: v.number(),
+});
+
 export const voiceStyle = v.object({
   tone: v.string(),
   sentenceLength: v.string(),
@@ -89,6 +97,7 @@ export default defineSchema({
     tweetUrl: v.string(),
     tweetId: v.string(),
     tweet: tweetSnapshot,
+    threadAncestors: v.optional(v.array(tweetAncestorSnapshot)),
     topReplies: v.array(
       v.object({
         authorHandle: v.string(),
