@@ -10,7 +10,7 @@
   - Keep the UI inside the existing Dark Chrome dashboard shell and ensure demo mode still renders meaningful pacing guidance with deterministic fallback data.
   - Preserve the chat-first dashboard behavior; this WP adds coaching, not a new primary flow.
 
-- [ ] `WP22-S3` Draft-flow warnings near send
+- [x] `WP22-S3` Draft-flow warnings near send
   - Surface pacing warnings inside the existing draft/publish flow when a user is nearing or above the researched high-volume envelope, without blocking manual publish or creating any auto-publish behavior.
   - Reuse the same warning levels/copy source across the option publish path and the saved-draft detail surface so the coaching stays consistent.
   - Keep all warnings advisory only, compatible with reply/quote/standalone paths, and safe in demo mode.

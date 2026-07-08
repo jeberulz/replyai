@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ReplyPacingWarning } from "@/components/app/reply-pacing/reply-pacing-warning";
 import { cn } from "@/lib/utils";
 import {
   measureObservedEdit,
@@ -360,6 +361,7 @@ export function OptionCard({
         </p>
 
         <div className="space-y-2 border-t pt-3">
+          <ReplyPacingWarning />
           <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"

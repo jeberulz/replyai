@@ -17,6 +17,7 @@ import {
   updateDraftAction,
 } from "@/app/actions";
 import { XLogo } from "@/components/app/x-logo";
+import { ReplyPacingWarning } from "@/components/app/reply-pacing/reply-pacing-warning";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -275,6 +276,7 @@ export function DraftDetail({
           </>
         }
       >
+        <ReplyPacingWarning className="w-full" />
         {canReplyOnX && (
           <Button
             className="w-full sm:w-auto"
