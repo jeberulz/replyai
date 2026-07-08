@@ -1,6 +1,6 @@
 # WP03 Stories - Deletion + export
 
-- [ ] `WP03-S1` Account data inventory and export contract
+- [x] `WP03-S1` Account data inventory and export contract
   - Document the exact user-owned tables included in account export and deletion, with relationship fields and deletion order.
   - Add a safe, authenticated Convex account module surface that can return a dry-run inventory without deleting data.
   - Add focused tests proving the inventory is scoped to the authenticated user and excludes unrelated users.

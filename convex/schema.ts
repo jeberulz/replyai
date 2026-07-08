@@ -76,6 +76,7 @@ export default defineSchema({
     expiresAt: v.number(),
     absoluteExpiresAt: v.optional(v.number()),
   })
+    .index("by_user", ["userId"])
     .index("by_token", ["token"])
     .index("by_token_hash", ["tokenHash"]),
 
@@ -426,6 +427,7 @@ export default defineSchema({
     ),
     discoveredAt: v.number(),
   })
+    .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
     .index("by_run", ["runId"])
     .index("by_user_handle", ["userId", "handle"]),
