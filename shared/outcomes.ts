@@ -15,6 +15,12 @@ export type PublishedTweetMetrics = {
   replyCount: number;
 };
 
+export type ReplyOutcomeTrackerStatus =
+  | "active"
+  | "responded"
+  | "expired"
+  | "failed";
+
 export type ClassifiedReplyOutcome = {
   label: ReplyOutcomeLabel;
   responseTweetId?: string;
@@ -93,4 +99,18 @@ export function replyResponseRate(args: {
 }): number | null {
   if (args.sent <= 0) return null;
   return Math.round((args.responded / args.sent) * 100);
+}
+
+export function replyResponseStats(
+  rows: Array<{ status: ReplyOutcomeTrackerStatus }>
+): { rate: number | null; responded: number; sent: number } {
+  const responded = rows.filter((row) => row.status === "responded").length;
+  const sent = rows.filter(
+    (row) => row.status === "responded" || row.status === "expired"
+  ).length;
+  return {
+    rate: replyResponseRate({ responded, sent }),
+    responded,
+    sent,
+  };
 }

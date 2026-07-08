@@ -19,7 +19,7 @@ Definition of done from `docs/PRODUCT_STRATEGY.md` §14: `responded` populated i
   - Wire a Convex cron that regularly runs the outcome poller.
   - Keep the cron internal-only and safe when no rows are eligible.
 
-- [ ] **WP7-S4 — Dashboard response-rate metric**
+- [x] **WP7-S4 — Dashboard response-rate metric**
   - Add dashboard metric logic for reply response-rate from real observed outcomes.
   - Surface the metric in the existing dashboard stat strip without fake prediction language.
   - Add focused tests for the response-rate calculation.

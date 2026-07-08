@@ -22,3 +22,12 @@
 - Wired `convex/crons.ts` with `crons.interval("poll reply outcomes", { minutes: 15 }, internal.outcomes.pollDue, {})`.
 - Left existing unrelated cron definitions unchanged to preserve scope.
 - Story checks passed: `npm run typecheck && npm test`.
+
+## 2026-07-08 — WP7-S4
+
+- Added `replyResponseStats` in `shared/outcomes.ts` and wired `usage.stats` to return `replyBackRate`, `replyBackResponded`, and `replyBackSent` for the current month.
+- Dashboard metric semantics: completed 48h outcomes only. Numerator is `responded`; denominator is `responded + expired`. Active rows are still under observation and failed rows are excluded so API/token problems do not look like user response outcomes.
+- Added `by_user_and_publishedAt` index on `replyOutcomeTrackers` so dashboard stats can query the current month by indexed range.
+- Surfaced the metric in `src/components/app/chat/stat-strip.tsx` as `Reply-back`, using the same compact mono treatment as the other dashboard stats and no predictive language.
+- Relevant Next.js App Router guide read before UI edit: `node_modules/next/dist/docs/01-app/01-getting-started/05-server-and-client-components.md`. `design.md` was read before UI work.
+- Story checks passed: `npm run typecheck && npm test && npm run lint`; lint reported only existing generated-file unused-disable warnings. `npm run build` also passed after the UI change.

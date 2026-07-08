@@ -13,7 +13,6 @@ import {
   nextOutcomePollDelayMs,
   type PublishedTweetMetrics,
   type ReplyOutcomeCandidate,
-  type ReplyOutcomeLabel,
 } from "../shared/outcomes";
 
 const RESPONSE_WINDOW_MS = 48 * 60 * 60 * 1000;

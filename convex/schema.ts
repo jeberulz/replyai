@@ -269,6 +269,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_user", ["userId"])
+    .index("by_user_and_publishedAt", ["userId", "publishedAt"])
     .index("by_draft", ["draftId"])
     .index("by_published_tweet", ["publishedTweetId"])
     .index("by_status_and_nextPollAt", ["status", "nextPollAt"]),

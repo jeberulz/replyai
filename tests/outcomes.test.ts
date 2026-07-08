@@ -3,6 +3,7 @@ import {
   classifyReplyOutcome,
   nextOutcomePollDelayMs,
   replyResponseRate,
+  replyResponseStats,
 } from "../shared/outcomes";
 
 describe("classifyReplyOutcome", () => {
@@ -83,5 +84,18 @@ describe("replyResponseRate", () => {
 
   it("rounds the observed response percentage", () => {
     expect(replyResponseRate({ responded: 2, sent: 3 })).toBe(67);
+  });
+});
+
+describe("replyResponseStats", () => {
+  it("counts completed observed outcomes and excludes active/failed trackers", () => {
+    expect(
+      replyResponseStats([
+        { status: "responded" },
+        { status: "expired" },
+        { status: "active" },
+        { status: "failed" },
+      ])
+    ).toEqual({ rate: 50, responded: 1, sent: 2 });
   });
 });
