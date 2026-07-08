@@ -138,7 +138,8 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_tweet", ["userId", "tweetId"])
-    .index("by_user_project", ["userId", "projectId"]),
+    .index("by_user_project", ["userId", "projectId"])
+    .index("by_status_and_updatedAt", ["status", "updatedAt"]),
 
   generatedReplies: defineTable({
     analysisId: v.id("tweetAnalyses"),

@@ -20,7 +20,7 @@ Thread-ancestor context in analysis; weighted 280-char validation + category-dis
     - Violating model output is recovered with a shorter/different-category rewrite when possible, and rejected instead of saved when recovery fails.
     - Demo mode still returns exactly 3 options with reasons, no fake scores.
 
-- [ ] WP16-S3 - Stale pipeline sweep
+- [x] WP16-S3 - Stale pipeline sweep
   - Acceptance criteria:
     - Analyses stuck in `analyzing` or `generating` beyond the configured stale threshold are marked failed with a retryable user-facing message.
     - The sweep is bounded and scheduled from `convex/crons.ts`.

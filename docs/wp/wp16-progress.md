@@ -22,3 +22,10 @@ Append-only progress log. New entries go at the bottom.
 - Wired `generateOptions` to run the guardrail after parsing, make one strict model repair pass when needed, and reject the output if repair still violates the guardrail. Usage accounting includes repair tokens.
 - Added focused unit tests for duplicate categories, invalid categories, weighted length, and category normalization.
 - Verification: `npm run typecheck && npm test` passed.
+
+## 2026-07-08 - WP16-S3
+
+- Added an additive `tweetAnalyses` index on `status` and `updatedAt`.
+- Added bounded internal stale-pipeline sweep logic for rows stuck in `analyzing` or `generating`, marking them failed with a retryable message.
+- Scheduled the sweep every five minutes from `convex/crons.ts`.
+- Verification: `npm run typecheck && npm test` passed.

@@ -1,9 +1,14 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { requireUser } from "./helpers";
 import { tweetAncestorSnapshot, tweetSnapshot } from "./schema";
+
+const STALE_PIPELINE_MS = 15 * 60 * 1000;
+const STALE_SWEEP_LIMIT = 50;
+const STALE_PIPELINE_ERROR =
+  "This analysis stalled before completion. Please retry; nothing was lost.";
 
 async function requireOwnedProject(
   ctx: MutationCtx,
@@ -244,5 +249,41 @@ export const setProject = mutation({
       await ctx.db.patch(projectId, { updatedAt: Date.now() });
     }
     await ctx.db.patch(analysisId, { projectId });
+  },
+});
+
+export const failStalePipelines = internalMutation({
+  args: {
+    now: v.optional(v.number()),
+    staleMs: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = args.now ?? Date.now();
+    const cutoff = now - (args.staleMs ?? STALE_PIPELINE_MS);
+    const limit = Math.min(args.limit ?? STALE_SWEEP_LIMIT, STALE_SWEEP_LIMIT);
+    let failed = 0;
+
+    for (const status of ["analyzing", "generating"] as const) {
+      const rows = await ctx.db
+        .query("tweetAnalyses")
+        .withIndex("by_status_and_updatedAt", (q) =>
+          q.eq("status", status).lt("updatedAt", cutoff)
+        )
+        .take(Math.max(0, limit - failed));
+
+      for (const row of rows) {
+        await ctx.db.patch(row._id, {
+          status: "failed",
+          error: STALE_PIPELINE_ERROR,
+          updatedAt: now,
+        });
+        failed += 1;
+      }
+
+      if (failed >= limit) break;
+    }
+
+    return { failed };
   },
 });
