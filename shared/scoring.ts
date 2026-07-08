@@ -41,8 +41,40 @@ export type ConversationScore = {
   factors: ScoreFactors;
 };
 
+type VelocityFollowerBand = "micro" | "small" | "medium" | "large";
+
+const VELOCITY_SATURATION_PER_MINUTE: Record<VelocityFollowerBand, number> = {
+  micro: 0.4,
+  small: 1.2,
+  medium: 4,
+  large: 12,
+};
+
 function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
+}
+
+function velocityFollowerBand(followers: number): VelocityFollowerBand {
+  if (followers < 1_000) return "micro";
+  if (followers < 10_000) return "small";
+  if (followers < 100_000) return "medium";
+  return "large";
+}
+
+function normalizedGrowthVelocity(input: {
+  followers: number;
+  likes: number;
+  retweets: number;
+  replies: number;
+  quotes: number;
+  ageMinutes: number;
+}): number {
+  const engagement =
+    input.likes + input.retweets * 2 + input.replies * 3 + input.quotes * 2;
+  const perMinute = engagement / Math.max(1, input.ageMinutes);
+  const saturation =
+    VELOCITY_SATURATION_PER_MINUTE[velocityFollowerBand(input.followers)];
+  return clamp01(perMinute / saturation);
 }
 
 /**
@@ -89,8 +121,6 @@ export const SCORE_WEIGHTS: Record<
 
 export function scoreConversation(input: EngagementInput): ConversationScore {
   const ageMinutes = Math.max(1, input.ageMinutes);
-  const engagement =
-    input.likes + input.retweets * 2 + input.replies * 3 + input.quotes * 2;
 
   // Reach: log scale, 10M followers ≈ 1.0.
   const audienceSize = clamp01(Math.log10(Math.max(1, input.followers)) / 7);
@@ -100,8 +130,16 @@ export function scoreConversation(input: EngagementInput): ConversationScore {
   const replyTiming =
     ageMinutes <= 120 ? 1 : clamp01(1 - (ageMinutes - 120) / 360);
 
-  // Engagement per minute; ~5/min saturates.
-  const growthVelocity = clamp01(engagement / ageMinutes / 5);
+  // Engagement per minute, normalized by author follower band so small
+  // accounts can still show meaningful momentum.
+  const growthVelocity = normalizedGrowthVelocity({
+    followers: input.followers,
+    likes: input.likes,
+    retweets: input.retweets,
+    replies: input.replies,
+    quotes: input.quotes,
+    ageMinutes,
+  });
 
   const topicRelevance = clamp01(input.topicRelevance ?? 0.5);
 
@@ -145,9 +183,9 @@ function describeScore(
   }
 
   if (factors.growthVelocity >= 0.6) {
-    parts.push("engagement is accelerating fast");
+    parts.push("engagement is moving fast for this audience size");
   } else if (factors.growthVelocity >= 0.25) {
-    parts.push("engagement is growing steadily");
+    parts.push("engagement is growing steadily for this audience size");
   }
 
   if (factors.audienceSize >= 0.7) {

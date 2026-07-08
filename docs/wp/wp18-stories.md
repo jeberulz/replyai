@@ -17,7 +17,7 @@ classifier-based brand-safety screen.
       surfaces.
     - Focused tests lock the displayed-score vs displayed-reason contract.
 
-- [ ] WP18-S2 - Normalize velocity by audience context
+- [x] WP18-S2 - Normalize velocity by audience context
   - Acceptance criteria:
     - Growth velocity is normalized against author follower band instead of a
       single global viral threshold.

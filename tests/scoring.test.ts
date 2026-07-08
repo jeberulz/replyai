@@ -133,6 +133,44 @@ describe("scoreConversation", () => {
     });
     expect(score.reason).toContain("risky for your brand");
   });
+
+  it("normalizes velocity by follower band so smaller accounts can earn momentum credit", () => {
+    const sameRawEngagement = {
+      likes: 24,
+      retweets: 3,
+      replies: 5,
+      quotes: 1,
+      ageMinutes: 30,
+      topicRelevance: 0.8,
+    };
+
+    const micro = scoreConversation({
+      ...sameRawEngagement,
+      followers: 700,
+    });
+    const large = scoreConversation({
+      ...sameRawEngagement,
+      followers: 400_000,
+    });
+
+    expect(micro.factors.growthVelocity).toBeGreaterThan(large.factors.growthVelocity);
+    expect(micro.value).toBeGreaterThan(large.value - 15);
+  });
+
+  it("still bounds normalized velocity at 1 for very fast large-account tweets", () => {
+    const score = scoreConversation({
+      followers: 800_000,
+      likes: 4_000,
+      retweets: 600,
+      replies: 500,
+      quotes: 200,
+      ageMinutes: 20,
+      topicRelevance: 0.8,
+    });
+
+    expect(score.factors.growthVelocity).toBeLessThanOrEqual(1);
+    expect(score.reason).toContain("audience size");
+  });
 });
 
 describe("topicRelevanceForKeywords", () => {

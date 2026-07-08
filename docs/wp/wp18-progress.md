@@ -32,3 +32,20 @@ Append-only progress log. New entries go at the bottom.
 - Verification for S1:
   - `npm run typecheck` passed
   - `npm test -- tests/scoring.test.ts` passed
+
+## 2026-07-08 - WP18-S2
+
+- Replaced the single global growth-velocity curve with follower-band
+  normalization in `shared/scoring.ts`:
+  - micro accounts saturate much earlier than large accounts
+  - the score still stays inside 0..100 and keeps topic relevance as the
+    heaviest factor
+- Updated the user-facing reason copy so momentum language is explicitly framed
+  relative to audience size instead of implying one global viral threshold.
+- Added focused tests proving:
+  - the same raw engagement produces more velocity credit for a small account
+    than for a large one
+  - high-momentum large-account tweets still clamp velocity at 1
+- Verification for S2:
+  - `npm run typecheck` passed
+  - `npm test -- tests/scoring.test.ts` passed
