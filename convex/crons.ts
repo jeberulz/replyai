@@ -10,6 +10,15 @@ crons.interval("scan feeds", { minutes: 15 }, internal.scannerActions.scanAll, {
 // Drop expired AI response cache entries daily.
 crons.interval("prune cache", { hours: 24 }, internal.cache.prune, {});
 
+// Recover abandoned staged analysis pipelines so users can retry instead of
+// watching a dead spinner.
+crons.interval(
+  "sweep stale analysis pipelines",
+  { minutes: 5 },
+  internal.analyses.failStalePipelines,
+  {}
+);
+
 // Recompute per-user ranking weights from opportunity funnel outcomes.
 crons.weekly(
   "recompute ranking weights",

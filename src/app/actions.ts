@@ -79,6 +79,7 @@ function bundleFromAnalysis(analysis: Doc<"tweetAnalyses">): TweetBundle {
   return {
     tweetId: analysis.tweetId,
     ...analysis.tweet,
+    threadAncestors: analysis.threadAncestors ?? [],
     topReplies: analysis.topReplies,
     isDemoData: false,
   };
@@ -221,6 +222,7 @@ export async function startAnalysisAction(input: {
         views: bundle.views,
         mediaText: bundle.mediaText,
       },
+      threadAncestors: bundle.threadAncestors,
       topReplies: bundle.topReplies,
       score: {
         value: score.value,
