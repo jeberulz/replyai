@@ -9,7 +9,7 @@ Definition of done from `docs/PRODUCT_STRATEGY.md` §14: `responded` populated i
   - Seed tracking from the existing publish result mutation when `publishedTweetId` is stored.
   - Keep demo mode deterministic and non-blocking with zero X credentials.
 
-- [ ] **WP7-S2 — Poller and outcome classification**
+- [x] **WP7-S2 — Poller and outcome classification**
   - Add `convex/outcomes.ts` with bounded internal poller functions and retry/backoff scheduling.
   - Poll X for replies to tracked published tweet IDs during a 48h window.
   - Classify observed responses into stable outcome labels, marking matching opportunities as `responded`.
