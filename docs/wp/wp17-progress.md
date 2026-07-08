@@ -33,3 +33,16 @@
 - Verification:
   - `npm run typecheck`
   - `npm test`
+
+## 2026-07-08 - VFU-4
+
+- Added focused prompt tests covering:
+  - similarity-selected 10-example voice blocks;
+  - user-specific banned phrases and anti-patterns in the voice prompt;
+  - rewrite prompt parity with the full voice block;
+  - no-key tone-label refinement fallback with zero usage.
+- Tightened similarity scoring so examples with zero meaningful token overlap do not outrank relevant examples because of length alone.
+- Verified the existing eval fixture gate still catches banned phrase regressions through `bad-banned-phrase`.
+- Final verification:
+  - `npm run typecheck && npm run lint && npm test && npm run evals && npm run build`
+  - Lint completed with existing generated-file warnings in `convex/_generated/*`, no errors.

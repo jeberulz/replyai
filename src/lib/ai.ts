@@ -516,6 +516,27 @@ Generate exactly ${count} ${args.kind === "quote" ? "quote tweets" : "replies"},
 // Rewrite
 // ---------------------------------------------------------------------------
 
+export function buildRewritePrompt(args: {
+  text: string;
+  direction: RewriteDirection;
+  bundle: TweetBundle;
+  voice: VoiceStyle | null;
+  voiceExamples: string[];
+  voiceNegativeConstraints?: VoiceNegativeConstraints | null;
+}): string {
+  return `${buildVoiceInstructions({
+    voice: args.voice,
+    examples: args.voiceExamples,
+    targetText: args.bundle.text,
+    negativeConstraints: args.voiceNegativeConstraints,
+  })}
+
+Rewrite this draft reply to be ${args.direction}, keeping the core point and the author's voice. Under 280 characters.
+
+Draft:
+"""${args.text}"""`;
+}
+
 export async function rewriteText(args: {
   text: string;
   direction: RewriteDirection;
@@ -545,17 +566,7 @@ export async function rewriteText(args: {
     messages: [
       {
         role: "user",
-        content: `${buildVoiceInstructions({
-          voice: args.voice,
-          examples: args.voiceExamples,
-          targetText: args.bundle.text,
-          negativeConstraints: args.voiceNegativeConstraints,
-        })}
-
-Rewrite this draft reply to be ${args.direction}, keeping the core point and the author's voice. Under 280 characters.
-
-Draft:
-"""${args.text}"""`,
+        content: buildRewritePrompt(args),
       },
     ],
     output_config: { format: zodOutputFormat(RewriteSchema) },

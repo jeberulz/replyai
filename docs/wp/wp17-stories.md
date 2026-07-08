@@ -32,7 +32,7 @@ Definition of done from `docs/PRODUCT_STRATEGY.md` §14:
     - LLM model-eval judging sees the same voice block used for generation.
     - Demo mode stays deterministic without `ANTHROPIC_API_KEY`.
 
-- [ ] VFU-4 - Regression coverage, docs, and final verification
+- [x] VFU-4 - Regression coverage, docs, and final verification
   - Acceptance criteria:
     - Eval fixtures cover banned phrases / anti-pattern regression behavior.
     - Focused tests prove rewrite receives the full voice block and no-key tone refinement falls back cleanly.

@@ -174,6 +174,8 @@ const STOP_WORDS = new Set([
   "the", "a", "an", "of", "to", "in", "on", "is", "it", "and", "or", "for",
   "at", "by", "be", "as", "this", "that", "was", "are", "with", "you", "your",
   "i", "my", "we", "our", "but", "not", "if", "so", "do", "did", "have", "has",
+  "should", "would", "could", "can", "will", "just", "from", "about", "into",
+  "than", "then",
 ]);
 
 function isStopPhrase(phrase: string): boolean {
@@ -236,6 +238,7 @@ function similarityScore(example: string, targetText: string): number {
   for (const token of exampleTokens) {
     if (targetTokens.has(token)) overlap++;
   }
+  if (overlap === 0) return 0;
   const union = new Set([...exampleTokens, ...targetTokens]).size;
   const jaccard = union === 0 ? 0 : overlap / union;
 

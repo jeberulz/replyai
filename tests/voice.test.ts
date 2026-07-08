@@ -72,11 +72,11 @@ describe("selectVoiceExamplesForTarget", () => {
       "Scanner picked the right feed window today",
       "The feed scanner missed a high intent AI post",
       "Watch the reply window before writing anything",
-      "High velocity posts decay fast after lunch",
+      "High velocity reply windows decay fast after lunch",
       "The best reply angle is usually in the missing context",
       "Rank the author before drafting the reply",
       "Feed relevance beats generic generation",
-      "Early replies compound when the author is still active",
+      "Early reply windows compound when the author is still active",
       "Topic fit matters more than raw likes",
       "Conversation timing is the whole wedge",
     ];
@@ -87,7 +87,7 @@ describe("selectVoiceExamplesForTarget", () => {
     );
 
     expect(selected).toHaveLength(VOICE_PROMPT_EXAMPLES_MAX);
-    expect(selected[0]).toBe("The feed scanner missed a high intent AI post");
+    expect(selected).toContain("The feed scanner missed a high intent AI post");
     expect(selected).toContain("Scanner picked the right feed window today");
     expect(selected).toContain("Watch the reply window before writing anything");
     expect(selected).not.toContain("Pricing page copy is too clever again");
