@@ -15,3 +15,9 @@
   - Added `tests/accountData.test.ts` for table contract, authenticated-owner scoping, unrelated-user exclusion, and deterministic dry-run totals.
   - Checks: `npm run typecheck` passed; `npm test -- tests/accountData.test.ts` passed; `npm test` passed (26 files, 204 tests; 1 skipped).
   - Attempted `npx convex codegen`; blocked locally because `CONVEX_DEPLOYMENT` is unset in this worktree. Revisit generated API metadata before any `api.account.*` TypeScript references land.
+- Completed `WP03-S2`.
+  - Added authenticated `account.exportData` query that returns schema-versioned, JSON-safe account export data for the current session user.
+  - Export includes `users` plus every child table in `docs/wp/wp03-data-inventory.md`, scoped by the same owner contract as inventory.
+  - Redaction decision: `sessions` export omits `token`/`tokenHash` and reports only presence booleans; `xTokens` export omits plaintext and encrypted token material and reports connection metadata (`expiresAt`, `scope`, token presence, storage mode).
+  - Added tests for payload shape, unrelated-user exclusion, undefined stripping, and redaction of credential material.
+  - Checks: `npm run typecheck` passed; `npm test -- tests/accountData.test.ts` passed; `npm test` passed (26 files, 206 tests; 1 skipped).

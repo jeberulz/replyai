@@ -122,6 +122,24 @@ export type AccountRowsByTable = Partial<
   Record<AccountTable, Array<Record<string, unknown>>>
 >;
 
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+export type JsonObject = { [key: string]: JsonValue };
+
+export type AccountExportPayload = {
+  schemaVersion: 1;
+  exportedAt: string;
+  userId: string;
+  inventory: AccountInventory;
+  tables: Record<AccountTable, JsonObject[]>;
+};
+
 export function tableBelongsToAccount(
   table: AccountTable,
   row: Record<string, unknown>,
@@ -180,5 +198,106 @@ export function buildAccountInventory(args: {
     userId: args.userId,
     tables,
     totalRows: tables.reduce((sum, table) => sum + table.count, 0),
+  };
+}
+
+function jsonSafeValue(value: unknown): JsonValue {
+  if (value === null) return null;
+  if (value === undefined) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : String(value);
+  }
+  if (typeof value === "bigint") return value.toString();
+  if (Array.isArray(value)) return value.map((entry) => jsonSafeValue(entry));
+  if (typeof value === "object") {
+    const output: JsonObject = {};
+    for (const [key, entry] of Object.entries(value)) {
+      if (entry !== undefined) output[key] = jsonSafeValue(entry);
+    }
+    return output;
+  }
+  return String(value);
+}
+
+export function jsonSafeObject(row: Record<string, unknown>): JsonObject {
+  const output: JsonObject = {};
+  for (const [key, value] of Object.entries(row)) {
+    if (value !== undefined) output[key] = jsonSafeValue(value);
+  }
+  return output;
+}
+
+export function sanitizeAccountExportRow(
+  table: AccountTable,
+  row: Record<string, unknown>
+): JsonObject {
+  if (table === "sessions") {
+    const { token, tokenHash, ...safeRow } = row;
+    return jsonSafeObject({
+      ...safeRow,
+      hasLegacyToken: Boolean(token),
+      hasTokenHash: Boolean(tokenHash),
+    });
+  }
+
+  if (table === "xTokens") {
+    const {
+      accessToken,
+      refreshToken,
+      encryptedAccessToken,
+      encryptedRefreshToken,
+      ...safeRow
+    } = row;
+    const hasEncryptedToken = Boolean(
+      encryptedAccessToken || encryptedRefreshToken
+    );
+    const hasLegacyPlaintextToken = Boolean(accessToken || refreshToken);
+    return jsonSafeObject({
+      ...safeRow,
+      hasAccessToken: Boolean(accessToken || encryptedAccessToken),
+      hasRefreshToken: Boolean(refreshToken || encryptedRefreshToken),
+      tokenStorage: hasEncryptedToken
+        ? "encrypted"
+        : hasLegacyPlaintextToken
+          ? "legacy_plaintext"
+          : "none",
+    });
+  }
+
+  return jsonSafeObject(row);
+}
+
+export function buildAccountExportPayload(args: {
+  userId: string;
+  exportedAt: string;
+  rowsByTable: AccountRowsByTable;
+}): AccountExportPayload {
+  const counts = inventoryCountsFromRows(args.rowsByTable, args.userId);
+  const tables = {} as Record<AccountTable, JsonObject[]>;
+
+  for (const descriptor of ACCOUNT_USER_TABLES) {
+    tables[descriptor.table] = (args.rowsByTable[descriptor.table] ?? [])
+      .filter((row) =>
+        tableBelongsToAccount(descriptor.table, row, args.userId)
+      )
+      .map((row) => sanitizeAccountExportRow(descriptor.table, row));
+  }
+
+  tables.users = (args.rowsByTable.users ?? [])
+    .filter((row) => tableBelongsToAccount("users", row, args.userId))
+    .map((row) => sanitizeAccountExportRow("users", row));
+
+  return {
+    schemaVersion: 1,
+    exportedAt: args.exportedAt,
+    userId: args.userId,
+    inventory: buildAccountInventory({
+      userId: args.userId,
+      generatedAt: args.exportedAt,
+      counts,
+    }),
+    tables,
   };
 }

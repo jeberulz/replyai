@@ -23,3 +23,14 @@ Every listed child table is selected by the authenticated user's `users._id`;
 
 `cachedResponses` is intentionally excluded: it has no `userId` owner field and
 is a keyed, expiring external-response cache. It is pruned by `convex/cache.ts`.
+
+## Export redaction
+
+The JSON export includes the rows listed above, but credential material is
+reduced to metadata:
+
+- `sessions`: omits `token` and `tokenHash`; includes `hasLegacyToken` and
+  `hasTokenHash`.
+- `xTokens`: omits `accessToken`, `refreshToken`, `encryptedAccessToken`, and
+  `encryptedRefreshToken`; includes `hasAccessToken`, `hasRefreshToken`,
+  `tokenStorage`, `expiresAt`, and `scope`.

@@ -5,7 +5,7 @@
   - Add a safe, authenticated Convex account module surface that can return a dry-run inventory without deleting data.
   - Add focused tests proving the inventory is scoped to the authenticated user and excludes unrelated users.
 
-- [ ] `WP03-S2` JSON export payload
+- [x] `WP03-S2` JSON export payload
   - Implement an authenticated JSON export payload that includes the user's account record and all related user data needed for a portable account download.
   - Export omits secrets or irreversible credential material while still listing token/account metadata needed to understand connected-account state.
   - Add focused tests proving export payload shape, ownership isolation, and deterministic JSON-safe values.

@@ -1,8 +1,10 @@
 import { describe, expect, test } from "vitest";
 import {
   ACCOUNT_USER_TABLES,
+  buildAccountExportPayload,
   buildAccountInventory,
   inventoryCountsFromRows,
+  sanitizeAccountExportRow,
   tableBelongsToAccount,
   type AccountTable,
 } from "../shared/accountData";
@@ -91,5 +93,96 @@ describe("account data inventory contract", () => {
     expect(inventory.dryRun).toBe(true);
     expect(inventory.totalRows).toBe(6);
     expect(inventory.tables.map((table) => table.table).at(-1)).toBe("users");
+  });
+
+  test("redacts session and X token secrets from export rows", () => {
+    expect(
+      sanitizeAccountExportRow("sessions", {
+        _id: "session-1",
+        userId: "user-1",
+        token: "raw-session-token",
+        tokenHash: "hashed-session-token",
+        createdAt: 1,
+        expiresAt: 2,
+      })
+    ).toEqual({
+      _id: "session-1",
+      userId: "user-1",
+      createdAt: 1,
+      expiresAt: 2,
+      hasLegacyToken: true,
+      hasTokenHash: true,
+    });
+
+    expect(
+      sanitizeAccountExportRow("xTokens", {
+        _id: "token-1",
+        userId: "user-1",
+        accessToken: "legacy-access",
+        encryptedRefreshToken: "encrypted-refresh",
+        expiresAt: 123,
+        scope: "tweet.read",
+      })
+    ).toEqual({
+      _id: "token-1",
+      userId: "user-1",
+      expiresAt: 123,
+      scope: "tweet.read",
+      hasAccessToken: true,
+      hasRefreshToken: true,
+      tokenStorage: "encrypted",
+    });
+  });
+
+  test("builds a JSON-safe export payload with ownership isolation", () => {
+    const payload = buildAccountExportPayload({
+      userId: "user-1",
+      exportedAt: "2026-07-08T12:00:00.000Z",
+      rowsByTable: {
+        users: [
+          { _id: "user-1", username: "owner", optionalUndefined: undefined },
+          { _id: "user-2", username: "other" },
+        ],
+        xTokens: [
+          {
+            _id: "token-1",
+            userId: "user-1",
+            encryptedAccessToken: "secret",
+            expiresAt: 1,
+            scope: "tweet.read",
+          },
+          {
+            _id: "token-2",
+            userId: "user-2",
+            encryptedAccessToken: "other-secret",
+            expiresAt: 1,
+            scope: "tweet.read",
+          },
+        ],
+        savedDrafts: [
+          { _id: "draft-1", userId: "user-1", text: "hello" },
+          { _id: "draft-2", userId: "user-2", text: "nope" },
+        ],
+      },
+    });
+
+    expect(payload.schemaVersion).toBe(1);
+    expect(payload.inventory.totalRows).toBe(3);
+    expect(payload.tables.users).toEqual([{ _id: "user-1", username: "owner" }]);
+    expect(payload.tables.xTokens).toEqual([
+      {
+        _id: "token-1",
+        userId: "user-1",
+        expiresAt: 1,
+        scope: "tweet.read",
+        hasAccessToken: true,
+        hasRefreshToken: false,
+        tokenStorage: "encrypted",
+      },
+    ]);
+    expect(JSON.stringify(payload)).not.toContain("secret");
+    expect(payload.tables.savedDrafts).toEqual([
+      { _id: "draft-1", userId: "user-1", text: "hello" },
+    ]);
   });
 });
