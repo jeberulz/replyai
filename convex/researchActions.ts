@@ -72,6 +72,7 @@ function mapSearchResponse(json: XTimelineResponse): ResearchTweetSample[] {
       text: t.text,
       likes: t.public_metrics.like_count,
       replies: t.public_metrics.reply_count,
+      postedAt: Date.parse(t.created_at),
       authorHandle: author?.username ?? "unknown",
       authorName: author?.name ?? "Unknown",
       authorFollowers: author?.public_metrics?.followers_count ?? 0,

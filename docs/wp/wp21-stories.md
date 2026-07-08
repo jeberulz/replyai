@@ -1,6 +1,6 @@
 # WP21 Stories — Research agent tightening
 
-- [ ] `WP21-S1` Honest research scoring and posting cadence
+- [x] `WP21-S1` Honest research scoring and posting cadence
   - Replace the current `avgLikes / 500` heuristic with engagement normalization that is relative to the candidate's follower band, so mid-size accounts are not structurally outranked by large accounts on raw like volume alone.
   - Compute research `postFrequency` from tweet timestamps when timestamp data exists; any fallback text must stay explicitly approximate rather than presenting inferred sample-count activity as fact.
   - Add focused unit tests in `tests/` for band-normalized engagement and timestamp-based post-frequency labeling, including at least one case that previously over-favored a large account.
