@@ -17,7 +17,7 @@ Definition of done from `docs/PRODUCT_STRATEGY.md` §14:
     - Tone/style label refinement has a deterministic no-key fallback that keeps measured metrics as ground truth.
     - Focused unit tests cover selection, sentence splitting, negative constraints, and fallback behavior.
 
-- [ ] VFU-2 - Editable negative constraints on voice profiles
+- [x] VFU-2 - Editable negative constraints on voice profiles
   - Acceptance criteria:
     - Voice profiles persist optional banned phrases / anti-patterns without breaking existing rows.
     - Create, train, update, and sent-reply learning paths preserve or refresh the constraints correctly.

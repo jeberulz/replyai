@@ -35,13 +35,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import type { VoiceStyle } from "../../../shared/voice";
+import {
+  buildVoiceNegativeConstraints,
+  normalizeNegativeConstraints,
+  type VoiceNegativeConstraints,
+  type VoiceStyle,
+} from "../../../shared/voice";
 
 type Profile = {
   _id: string;
   name: string;
   style: VoiceStyle;
   examples: string[];
+  bannedPhrases?: string[];
+  antiPatterns?: string[];
   source: "manual" | "trained";
   isDefault: boolean;
 };
@@ -62,15 +69,39 @@ function ProfileForm({
   pending,
 }: {
   initial: Profile | null;
-  onSave: (data: { name: string; style: VoiceStyle; examples: string[] }) => void;
+  onSave: (data: {
+    name: string;
+    style: VoiceStyle;
+    examples: string[];
+    negativeConstraints: VoiceNegativeConstraints;
+  }) => void;
   pending: boolean;
 }) {
+  const derivedConstraints = initial
+    ? buildVoiceNegativeConstraints(initial.examples, initial.style)
+    : { bannedPhrases: [], antiPatterns: [] };
+  const initialConstraints = normalizeNegativeConstraints({
+    bannedPhrases:
+      initial?.bannedPhrases && initial.bannedPhrases.length > 0
+        ? initial.bannedPhrases
+        : derivedConstraints.bannedPhrases,
+    antiPatterns:
+      initial?.antiPatterns && initial.antiPatterns.length > 0
+        ? initial.antiPatterns
+        : derivedConstraints.antiPatterns,
+  });
   const [name, setName] = useState(initial?.name ?? "");
   const [style, setStyle] = useState<VoiceStyle>(initial?.style ?? EMPTY_STYLE);
   const [phrases, setPhrases] = useState(
     (initial?.style.commonPhrases ?? []).join(", ")
   );
   const [examples, setExamples] = useState((initial?.examples ?? []).join("\n"));
+  const [bannedPhrases, setBannedPhrases] = useState(
+    initialConstraints.bannedPhrases.join("\n")
+  );
+  const [antiPatterns, setAntiPatterns] = useState(
+    initialConstraints.antiPatterns.join("\n")
+  );
 
   const field = (
     label: string,
@@ -122,6 +153,26 @@ function ProfileForm({
           onChange={(e) => setExamples(e.target.value)}
         />
       </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label>Banned phrases (one per line)</Label>
+          <Textarea
+            rows={5}
+            value={bannedPhrases}
+            placeholder={"Great point!\n🚀"}
+            onChange={(e) => setBannedPhrases(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Anti-patterns (one per line)</Label>
+          <Textarea
+            rows={5}
+            value={antiPatterns}
+            placeholder={"Do not use hashtags.\nDo not add emoji."}
+            onChange={(e) => setAntiPatterns(e.target.value)}
+          />
+        </div>
+      </div>
       <DialogFooter>
         <Button
           disabled={pending || !name.trim()}
@@ -139,6 +190,10 @@ function ProfileForm({
                 .split("\n")
                 .map((e) => e.trim())
                 .filter(Boolean),
+              negativeConstraints: normalizeNegativeConstraints({
+                bannedPhrases: bannedPhrases.split("\n"),
+                antiPatterns: antiPatterns.split("\n"),
+              }),
             })
           }
         >
@@ -249,6 +304,20 @@ export function VoiceStudio({ xConnected }: { xConnected: boolean }) {
                         {phrase}
                       </Badge>
                     ))}
+                  </div>
+                )}
+                {(profile.bannedPhrases?.length || profile.antiPatterns?.length) && (
+                  <div className="space-y-1 border-t pt-3 text-xs">
+                    {profile.bannedPhrases && profile.bannedPhrases.length > 0 && (
+                      <p className="line-clamp-2 text-muted-foreground">
+                        Bans: {profile.bannedPhrases.slice(0, 4).join(", ")}
+                      </p>
+                    )}
+                    {profile.antiPatterns && profile.antiPatterns.length > 0 && (
+                      <p className="line-clamp-2 text-muted-foreground">
+                        Avoids: {profile.antiPatterns.slice(0, 2).join(" ")}
+                      </p>
+                    )}
                   </div>
                 )}
                 <div className="flex items-center gap-2 border-t pt-3">

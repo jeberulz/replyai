@@ -37,7 +37,14 @@ import {
   topicRelevanceForKeywords,
 } from "../../shared/scoring";
 import { refreshAccessToken } from "../../shared/xOAuth";
-import { buildVoiceStyleFromTweets, type VoiceStyle } from "../../shared/voice";
+import {
+  buildVoiceNegativeConstraints,
+  buildVoiceStyleFromTweets,
+  normalizeNegativeConstraints,
+  VOICE_PROMPT_EXAMPLES_MAX,
+  type VoiceNegativeConstraints,
+  type VoiceStyle,
+} from "../../shared/voice";
 
 async function requireSession() {
   const session = await getSessionUser();
@@ -720,11 +727,13 @@ export async function trainVoiceAction(name: string) {
   const accessToken = await resolveXAccessToken(sessionToken);
   const tweets = await fetchUserTweets(auth?.xUserId ?? "", accessToken);
   const style = buildVoiceStyleFromTweets(tweets);
+  const constraints = buildVoiceNegativeConstraints(tweets, style);
   await convex.mutation(api.voiceProfiles.create, {
     sessionToken,
     name: name || "Trained voice",
     style,
-    examples: tweets.slice(0, 8),
+    examples: tweets.slice(0, VOICE_PROMPT_EXAMPLES_MAX),
+    ...constraints,
     source: "trained",
   });
   revalidatePath("/voice");
@@ -734,13 +743,17 @@ export async function createVoiceProfileAction(args: {
   name: string;
   style: VoiceStyle;
   examples: string[];
+  negativeConstraints?: VoiceNegativeConstraints;
 }) {
   const { sessionToken } = await requireSession();
+  const constraints =
+    args.negativeConstraints ?? buildVoiceNegativeConstraints(args.examples, args.style);
   await convexServer().mutation(api.voiceProfiles.create, {
     sessionToken,
     name: args.name,
     style: args.style,
     examples: args.examples,
+    ...normalizeNegativeConstraints(constraints),
     source: "manual",
   });
   revalidatePath("/voice");
@@ -751,6 +764,7 @@ export async function updateVoiceProfileAction(args: {
   name: string;
   style: VoiceStyle;
   examples: string[];
+  negativeConstraints: VoiceNegativeConstraints;
 }) {
   const { sessionToken } = await requireSession();
   await convexServer().mutation(api.voiceProfiles.update, {
@@ -759,6 +773,7 @@ export async function updateVoiceProfileAction(args: {
     name: args.name,
     style: args.style,
     examples: args.examples,
+    ...normalizeNegativeConstraints(args.negativeConstraints),
   });
   revalidatePath("/voice");
 }
@@ -1009,12 +1024,14 @@ export async function buildWritingModelAction(args: {
     tweets[0] === DEMO_TWEETS[0].text;
 
   const style = buildVoiceStyleFromTweets(tweets);
+  const constraints = buildVoiceNegativeConstraints(tweets, style);
   const profileName = `${user.displayName.split(" ")[0]}'s voice`;
   const profileId = await convex.mutation(api.voiceProfiles.create, {
     sessionToken,
     name: profileName,
     style,
-    examples: tweets.slice(0, 8),
+    examples: tweets.slice(0, VOICE_PROMPT_EXAMPLES_MAX),
+    ...constraints,
     source: "trained",
   });
   await convex.mutation(api.voiceProfiles.setDefault, {

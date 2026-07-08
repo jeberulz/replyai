@@ -4,8 +4,10 @@ import type { Id } from "./_generated/dataModel";
 import { requireUser } from "./helpers";
 import { voiceStyle } from "./schema";
 import {
+  buildVoiceNegativeConstraints,
   buildVoiceStyleFromTweets,
   mergeVoiceExamples,
+  normalizeNegativeConstraints,
 } from "../shared/voice";
 
 /**
@@ -31,10 +33,18 @@ export async function learnFromSentText(
   if (!profile) return;
 
   const examples = mergeVoiceExamples(profile.examples, sentText);
+  const style =
+    profile.source === "trained" ? buildVoiceStyleFromTweets(examples) : profile.style;
+  const existingConstraints = normalizeNegativeConstraints({
+    bannedPhrases: profile.bannedPhrases,
+    antiPatterns: profile.antiPatterns,
+  });
   await ctx.db.patch(profile._id, {
     examples,
-    ...(profile.source === "trained"
-      ? { style: buildVoiceStyleFromTweets(examples) }
+    ...(profile.source === "trained" ? { style } : {}),
+    ...(existingConstraints.bannedPhrases.length === 0 &&
+    existingConstraints.antiPatterns.length === 0
+      ? buildVoiceNegativeConstraints(examples, style)
       : {}),
   });
 }
@@ -56,6 +66,8 @@ export const create = mutation({
     name: v.string(),
     style: voiceStyle,
     examples: v.array(v.string()),
+    bannedPhrases: v.optional(v.array(v.string())),
+    antiPatterns: v.optional(v.array(v.string())),
     source: v.union(v.literal("manual"), v.literal("trained")),
   },
   handler: async (ctx, { sessionToken, ...args }) => {
@@ -64,9 +76,20 @@ export const create = mutation({
       .query("voiceProfiles")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
+    let constraints = normalizeNegativeConstraints({
+      bannedPhrases: args.bannedPhrases,
+      antiPatterns: args.antiPatterns,
+    });
+    if (
+      constraints.bannedPhrases.length === 0 &&
+      constraints.antiPatterns.length === 0
+    ) {
+      constraints = buildVoiceNegativeConstraints(args.examples, args.style);
+    }
     return await ctx.db.insert("voiceProfiles", {
       userId: user._id,
       ...args,
+      ...constraints,
       isDefault: existing.length === 0,
       createdAt: Date.now(),
     });
@@ -80,6 +103,8 @@ export const update = mutation({
     name: v.optional(v.string()),
     style: v.optional(voiceStyle),
     examples: v.optional(v.array(v.string())),
+    bannedPhrases: v.optional(v.array(v.string())),
+    antiPatterns: v.optional(v.array(v.string())),
   },
   handler: async (ctx, { sessionToken, profileId, ...patch }) => {
     const user = await requireUser(ctx, sessionToken);
@@ -89,6 +114,16 @@ export const update = mutation({
     if (patch.name !== undefined) updates.name = patch.name;
     if (patch.style !== undefined) updates.style = patch.style;
     if (patch.examples !== undefined) updates.examples = patch.examples;
+    if (patch.bannedPhrases !== undefined) {
+      updates.bannedPhrases = normalizeNegativeConstraints({
+        bannedPhrases: patch.bannedPhrases,
+      }).bannedPhrases;
+    }
+    if (patch.antiPatterns !== undefined) {
+      updates.antiPatterns = normalizeNegativeConstraints({
+        antiPatterns: patch.antiPatterns,
+      }).antiPatterns;
+    }
     await ctx.db.patch(profileId, updates);
   },
 });

@@ -13,3 +13,13 @@
   - `npm test -- --run tests/voice.test.ts`
   - `npm run typecheck`
   - `npm test`
+
+## 2026-07-08 - VFU-2
+
+- Added optional `bannedPhrases` and `antiPatterns` arrays to `voiceProfiles`; the schema change is additive so legacy rows remain valid.
+- Convex `voiceProfiles.create` now derives default negative constraints when callers omit them or pass empty arrays. `voiceProfiles.update` preserves user intent, including clearing a list to empty.
+- `learnFromSentText` preserves existing user-edited constraints. For old rows without constraints, it seeds derived defaults while refreshing trained-profile style from learned examples.
+- Voice Studio now exposes line-based editors for banned phrases and anti-patterns in the existing create/edit dialog, and cards show a compact summary when constraints exist.
+- Verification:
+  - `npm run typecheck`
+  - `npm test`

@@ -98,6 +98,8 @@ export default defineSchema({
     name: v.string(),
     style: voiceStyle,
     examples: v.array(v.string()),
+    bannedPhrases: v.optional(v.array(v.string())),
+    antiPatterns: v.optional(v.array(v.string())),
     source: v.union(v.literal("manual"), v.literal("trained")),
     isDefault: v.boolean(),
     createdAt: v.number(),
