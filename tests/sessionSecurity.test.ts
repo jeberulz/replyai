@@ -36,7 +36,7 @@ function fakeCtx(rows: { sessions: SessionRow[]; users: UserRow[] }) {
   return {
     patches,
     db: {
-      query(table: "sessions") {
+      query() {
         return {
           withIndex(
             index: "by_token" | "by_token_hash",

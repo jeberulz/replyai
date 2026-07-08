@@ -53,3 +53,24 @@
   shared helper and keep legacy plaintext fallback for existing rows.
 - Verification: `npm run typecheck`, `npm test -- tests/xTokenSecurity.test.ts`,
   and full `npm test` all passed.
+
+## 2026-07-08 - S3 route and header hardening
+
+- Added static security headers through `next.config.ts`: CSP, HSTS,
+  `X-Frame-Options: DENY`, `Referrer-Policy`,
+  `Permissions-Policy`, and `X-Content-Type-Options`; also disabled the
+  `X-Powered-By` header.
+- Used `next.config` headers rather than nonce CSP because the installed Next
+  docs say nonce CSP forces dynamic rendering for all pages. The static CSP
+  keeps the current build model and allows the expected Convex/X/Anthropic/
+  PostHog/Sentry connection origins.
+- Added `src/lib/authSecurity.ts` with Origin validation and per-IP, per-route
+  auth rate limiting. OAuth GET flows allow missing Origin for top-level
+  redirects/navigation but reject mismatches; logout POST requires a matching
+  Origin.
+- Wired guards into login, demo login, OAuth callback, and logout route
+  handlers. Demo mode still works without X credentials because the demo route
+  is guarded but does not require external keys.
+- Verification: `npm run typecheck`, focused auth/header tests, full
+  `npm test`, `npm run lint` (0 errors; pre-existing generated/component
+  warnings only), and `npm run build` all passed.

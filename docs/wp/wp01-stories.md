@@ -27,13 +27,13 @@ WP1 scope: `convex/helpers.ts`, `sessions`/`xTokens` auth and token handling,
 
 ## Story S3 - Harden route handlers and platform headers
 
-- [ ] Add security headers in `next.config.ts`: CSP, HSTS,
+- [x] Add security headers in `next.config.ts`: CSP, HSTS,
   `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, and
   `X-Content-Type-Options`.
-- [ ] Verify Origin on OAuth callback and mutating auth route handlers.
-- [ ] Add per-IP auth route rate limiting for login/demo/callback/logout without
+- [x] Verify Origin on OAuth callback and mutating auth route handlers.
+- [x] Add per-IP auth route rate limiting for login/demo/callback/logout without
   breaking local demo mode.
-- [ ] Add focused tests for header values, Origin checks, and route rate-limit
+- [x] Add focused tests for header values, Origin checks, and route rate-limit
   behavior where practical.
 
 ## Story S4 - Add CI security audit gates
