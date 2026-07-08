@@ -4,6 +4,7 @@ import {
   combineTopicRelevance,
   demoSemanticRelevance,
   passesCombinedFeedFilter,
+  resolveManualTopicRelevance,
   selectSemanticClassificationTargets,
 } from "../shared/semanticRelevance";
 
@@ -17,13 +18,17 @@ describe("combineTopicRelevance", () => {
 describe("passesCombinedFeedFilter", () => {
   const keywords = ["ai", "startup"];
 
-  it("blocks political tweets even with high semantic score", () => {
+  it("blocks tweets the semantic screen marks unsafe", () => {
     expect(
       passesCombinedFeedFilter(
         "Trump won the election again",
         keywords,
         0,
-        0.95,
+        {
+          relevance: 0,
+          reason: "Political context",
+          brandSafety: "unsafe",
+        },
         "following"
       )
     ).toBe(false);
@@ -44,15 +49,21 @@ describe("passesCombinedFeedFilter", () => {
         text,
         ["llm agents"],
         keywordScore,
-        semantic.relevance,
+        semantic,
         "following"
       )
     ).toBe(true);
   });
 
-  it("always passes curated sources unless political", () => {
+  it("passes curated sources when the semantic screen does not flag them unsafe", () => {
     expect(
-      passesCombinedFeedFilter("random pasta recipe", keywords, 0, 0, "watched")
+      passesCombinedFeedFilter(
+        "random pasta recipe",
+        keywords,
+        0,
+        { relevance: 0.1, reason: "off-topic", brandSafety: "safe" },
+        "watched"
+      )
     ).toBe(true);
   });
 });
@@ -84,13 +95,73 @@ describe("selectSemanticClassificationTargets", () => {
 });
 
 describe("demoSemanticRelevance", () => {
-  it("returns zero for political content", () => {
-    expect(
-      demoSemanticRelevance("Congress passed a new immigration bill", {
+  it("returns an unsafe verdict for political content", () => {
+    const result = demoSemanticRelevance(
+      "Congress passed a new immigration bill",
+      {
         keywords: ["ai"],
         voiceTopics: [],
         recentTopics: [],
-      }).relevance
-    ).toBe(0);
+      }
+    );
+    expect(result.relevance).toBe(0);
+    expect(result.brandSafety).toBe("unsafe");
+  });
+
+  it("allows niche policy discussions when they fit the user's focus", () => {
+    const result = demoSemanticRelevance(
+      "Congress is debating how the EU AI Act compliance rules will change how AI startups ship enterprise copilots",
+      {
+        keywords: ["ai", "startup", "compliance"],
+        voiceTopics: ["enterprise copilots"],
+        recentTopics: [],
+      }
+    );
+    expect(result.brandSafety).toBe("safe");
+    expect(result.relevance).toBeGreaterThan(0.4);
+  });
+
+  it("returns an unsafe verdict for tragedy and outrage-bait threads", () => {
+    expect(
+      demoSemanticRelevance("Breaking: earthquake victims need help right now", {
+        keywords: ["ai"],
+        voiceTopics: [],
+        recentTopics: [],
+      }).brandSafety
+    ).toBe("unsafe");
+    expect(
+      demoSemanticRelevance("Everyone should boycott this founder, total scam", {
+        keywords: ["startup"],
+        voiceTopics: [],
+        recentTopics: [],
+      }).brandSafety
+    ).toBe("unsafe");
+  });
+});
+
+describe("resolveManualTopicRelevance", () => {
+  it("uses semantic relevance when available instead of defaulting to 0.5", () => {
+    expect(
+      resolveManualTopicRelevance(0, {
+        relevance: 0.82,
+        reason: "strong semantic fit",
+        brandSafety: "safe",
+      })
+    ).toBeCloseTo(0.738);
+  });
+
+  it("zeros out unsafe semantic matches", () => {
+    expect(
+      resolveManualTopicRelevance(0.3, {
+        relevance: 0.9,
+        reason: "unsafe thread",
+        brandSafety: "unsafe",
+      })
+    ).toBe(0.3);
+  });
+
+  it("keeps the old 0.5 neutral fallback only when no semantic score is available", () => {
+    expect(resolveManualTopicRelevance(0, undefined)).toBe(0.5);
+    expect(resolveManualTopicRelevance(0.7, undefined)).toBe(0.7);
   });
 });

@@ -20,10 +20,12 @@ import { applyRankingMultiplier, normalizeRankingWeights } from "../shared/ranki
 import {
   augmentScoreReason,
   combineTopicRelevance,
+  effectiveSemanticRelevance,
   fingerprintText,
   passesCombinedFeedFilter,
   selectSemanticClassificationTargets,
   SEMANTIC_CACHE_MS,
+  type SemanticScore,
 } from "../shared/semanticRelevance";
 import {
   DEMO_TWEETS,
@@ -39,6 +41,7 @@ const SCAN_FAN_OUT_STAGGER_MS = 250;
 const MAX_WATCHED_HANDLES_PER_SCAN = 15;
 /** Cap on merged/deduped candidates before scoring, to bound per-scan cost. */
 const MAX_CANDIDATES = 150;
+const CURATED_SOURCE_RANKING_BONUS = 10;
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
 
@@ -83,6 +86,14 @@ type SearchBudget = {
   keywordLimit: number;
   resultsPerKeyword: number;
 };
+
+function internalCuratedSourceBonus(
+  source?: "following" | "list" | "watched" | "search"
+): number {
+  return source === "list" || source === "watched"
+    ? CURATED_SOURCE_RANKING_BONUS
+    : 0;
+}
 
 const PRIORITY_PLAN_NAMES = new Set([
   "pro+",
@@ -338,7 +349,7 @@ export const scanUser = internalAction({
 
       const semanticByTweetId = new Map<
         string,
-        { relevance: number; classifiedAt: number }
+        { semantic: SemanticScore; classifiedAt: number }
       >();
       for (const target of classifyTargets) {
         const fp = fingerprintText(target.text);
@@ -349,7 +360,11 @@ export const scanUser = internalAction({
           now - cached.semanticClassifiedAt < SEMANTIC_CACHE_MS
         ) {
           semanticByTweetId.set(target.tweetId, {
-            relevance: cached.semanticRelevance,
+            semantic: {
+              relevance: cached.semanticRelevance,
+              reason: "Cached safe result",
+              brandSafety: "safe",
+            },
             classifiedAt: cached.semanticClassifiedAt,
           });
           continue;
@@ -357,7 +372,7 @@ export const scanUser = internalAction({
         const fresh = freshSemanticScores[target.tweetId];
         if (fresh) {
           semanticByTweetId.set(target.tweetId, {
-            relevance: fresh.relevance,
+            semantic: fresh,
             classifiedAt: now,
           });
         }
@@ -365,7 +380,7 @@ export const scanUser = internalAction({
 
       const items = candidateMeta.map(({ tweet: t, ageMinutes, keywordScore }) => {
         const semantic = semanticByTweetId.get(t.tweetId);
-        const semanticScore = semantic?.relevance ?? 0;
+        const semanticScore = effectiveSemanticRelevance(semantic?.semantic);
         const topicRelevance = combineTopicRelevance(keywordScore, semanticScore);
         const score = scoreConversation({
           followers: t.authorFollowers,
@@ -377,12 +392,17 @@ export const scanUser = internalAction({
           topicRelevance,
           source: t.source,
           goal: context.goal,
+          brandSafety: semantic?.semantic.brandSafety,
         });
-        const adjustedScore = applySaturatedThreadPenalty(
-          applyRankingMultiplier(score.value, {
-            source: t.source,
-            authorFollowers: t.authorFollowers,
-          }, normalizeRankingWeights(context.rankingWeights)),
+        const rankingScore = applySaturatedThreadPenalty(
+          applyRankingMultiplier(
+            score.value + internalCuratedSourceBonus(t.source),
+            {
+              source: t.source,
+              authorFollowers: t.authorFollowers,
+            },
+            normalizeRankingWeights(context.rankingWeights)
+          ),
           t.replies,
           t.source
         );
@@ -394,7 +414,8 @@ export const scanUser = internalAction({
           authorName: t.authorName,
           authorFollowers: t.authorFollowers,
           text: t.text,
-          score: adjustedScore,
+          score: score.value,
+          rankingScore,
           reason: augmentScoreReason(score.reason, keywordScore, semanticScore),
           suggestedAngle: suggestAngle(t),
           replyCount: t.replies,
@@ -404,6 +425,7 @@ export const scanUser = internalAction({
           sourceLabel: t.sourceLabel,
           keywordRelevance: keywordScore,
           semanticRelevance: semantic ? semanticScore : undefined,
+          semanticScreen: semantic?.semantic,
           topicRelevance,
           semanticClassifiedAt: semantic?.classifiedAt,
           textFingerprint: semantic ? fp : undefined,
@@ -418,16 +440,21 @@ export const scanUser = internalAction({
                 i.text,
                 context.keywords,
                 i.keywordRelevance ?? 0,
-                i.semanticRelevance ?? 0,
+                i.semanticScreen,
                 i.source
-              ) && i.score >= MIN_OPPORTUNITY_SCORE
+              ) && i.rankingScore >= MIN_OPPORTUNITY_SCORE
           )
-          .sort((a, b) => b.score - a.score)
+          .sort((a, b) => b.rankingScore - a.rankingScore)
       );
 
       const { inserted } = await ctx.runMutation(internal.opportunities.upsertMany, {
         userId,
-        items: worthSurfacing,
+        items: worthSurfacing.map((item) => {
+          const { rankingScore, semanticScreen, ...persisted } = item;
+          void rankingScore;
+          void semanticScreen;
+          return persisted;
+        }),
       });
       if (inserted > 0) {
         await trackConvexEvent("opportunity_surfaced", userId, { count: inserted });

@@ -27,7 +27,10 @@ const ClassifyBatchSchema = z.object({
         .number()
         .min(0)
         .max(1)
-        .describe("0-1 niche fit for this user; 0 for politics/news tangents"),
+        .describe("0-1 niche fit for this user; 0 for off-topic or unsafe conversations"),
+      brandSafety: z
+        .enum(["safe", "unsafe"])
+        .describe("Whether replying is brand-safe for this user right now"),
       reason: z
         .string()
         .describe("One short internal phrase, not shown verbatim to user"),
@@ -61,7 +64,7 @@ function buildClassifierPrompt(
     .map((t, i) => `[${i + 1}] id=${t.tweetId}\n"""${t.text}"""`)
     .join("\n\n");
 
-  return `Score each tweet for niche relevance to this user's interests (0 = off-topic or political news, 1 = perfect fit). Catch paraphrases — exact keyword overlap is NOT required.
+  return `Score each tweet for niche relevance to this user's interests (0 = off-topic, 1 = perfect fit) and decide whether replying is brand-safe. Catch paraphrases — exact keyword overlap is NOT required.
 
 USER NICHE:
 ${nicheBlock || "(general tech/builder audience)"}
@@ -69,7 +72,12 @@ ${nicheBlock || "(general tech/builder audience)"}
 TWEETS:
 ${tweetBlock}
 
-Return one result per tweet id. Political campaign content, partisan news, and culture-war posts must score 0.`;
+Return one result per tweet id.
+
+Brand-safety rules:
+- Mark "unsafe" for partisan politics, tragedy/disaster threads, outrage-bait, dogpiles, harassment, or culture-war fights.
+- A niche policy/regulation discussion can still be "safe" when it is clearly professional and squarely inside the user's focus.
+- Unsafe tweets should have relevance 0.`;
 }
 
 async function classifyWithHaiku(
@@ -99,6 +107,7 @@ async function classifyWithHaiku(
     out[row.tweetId] = {
       relevance: row.relevance,
       reason: row.reason,
+      brandSafety: row.brandSafety,
     };
   }
   return out;
