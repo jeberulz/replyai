@@ -1,8 +1,15 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requireUser, userBySessionToken } from "./helpers";
+import {
+  hashSessionToken,
+  requireUser,
+  sessionByToken,
+  SESSION_ABSOLUTE_TTL_MS,
+  SESSION_SLIDING_TTL_MS,
+  userBySessionToken,
+} from "./helpers";
 
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
+const SESSION_TTL_MS = SESSION_SLIDING_TTL_MS;
 
 /**
  * Upsert a user after X OAuth (or demo login) and open a session.
@@ -67,9 +74,11 @@ export const upsertAndCreateSession = mutation({
 
     await ctx.db.insert("sessions", {
       userId,
-      token: args.sessionToken,
+      tokenHash: await hashSessionToken(args.sessionToken),
       createdAt: now,
+      lastSeenAt: now,
       expiresAt: now + SESSION_TTL_MS,
+      absoluteExpiresAt: now + SESSION_ABSOLUTE_TTL_MS,
     });
 
     return userId;
@@ -199,10 +208,7 @@ export const persistXTokensFromSession = mutation({
 export const logout = mutation({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", sessionToken))
-      .unique();
+    const session = await sessionByToken(ctx, sessionToken);
     if (session) await ctx.db.delete(session._id);
   },
 });

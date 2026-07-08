@@ -5,12 +5,12 @@ WP1 scope: `convex/helpers.ts`, `sessions`/`xTokens` auth and token handling,
 
 ## Story S1 - Hash and renew sessions
 
-- [ ] Store only a SHA-256 hash for newly created session tokens; keep a
+- [x] Store only a SHA-256 hash for newly created session tokens; keep a
   documented migration fallback for legacy plaintext session rows.
-- [ ] Enforce an absolute session lifetime and a sliding renewal window in
+- [x] Enforce an absolute session lifetime and a sliding renewal window in
   `requireUser`/session lookup without breaking demo login.
-- [ ] Make logout and session lookup work through the hashed index.
-- [ ] Add focused tests proving new tokens are hashed, legacy tokens still
+- [x] Make logout and session lookup work through the hashed index.
+- [x] Add focused tests proving new tokens are hashed, legacy tokens still
   authenticate during the migration window, expired sessions fail, and sliding
   renewal is bounded by the absolute expiry.
 

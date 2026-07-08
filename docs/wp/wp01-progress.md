@@ -18,3 +18,18 @@
   `users.xAuthForSession` is a public query that returns X tokens to any holder
   of a valid session token, so S2 will remove public token return paths and
   decrypt only in server/internal paths.
+
+## 2026-07-08 - S1 session hashing and renewal
+
+- Added optional `sessions.tokenHash`, `lastSeenAt`, and `absoluteExpiresAt`
+  fields plus a `by_token_hash` index. `sessions.token` is now optional and
+  deprecated for a zero-downtime migration fallback.
+- New sessions store `SHA-256(sessionToken)` and never write the plaintext
+  bearer token. Lookup checks `by_token_hash` first and falls back to
+  `by_token` for legacy rows.
+- `userBySessionToken` rejects both sliding-expired and absolute-expired
+  sessions. Mutating callers renew sessions within seven days of expiry, capped
+  at a 90-day absolute lifetime; query callers remain read-only.
+- `logout` now deletes via the hashed lookup with the same legacy fallback.
+- Verification: `npm run typecheck`, `npm test -- tests/sessionSecurity.test.ts`,
+  and full `npm test` all passed.

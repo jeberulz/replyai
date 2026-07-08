@@ -51,10 +51,17 @@ export default defineSchema({
 
   sessions: defineTable({
     userId: v.id("users"),
-    token: v.string(),
+    // Deprecated plaintext bearer token. Kept optional for a zero-downtime
+    // migration window; new sessions write only tokenHash.
+    token: v.optional(v.string()),
+    tokenHash: v.optional(v.string()),
     createdAt: v.number(),
+    lastSeenAt: v.optional(v.number()),
     expiresAt: v.number(),
-  }).index("by_token", ["token"]),
+    absoluteExpiresAt: v.optional(v.number()),
+  })
+    .index("by_token", ["token"])
+    .index("by_token_hash", ["tokenHash"]),
 
   // X OAuth tokens, kept out of the users table so they are never
   // returned to the client by user queries.
