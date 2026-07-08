@@ -39,6 +39,7 @@ const SCAN_FAN_OUT_STAGGER_MS = 250;
 const MAX_WATCHED_HANDLES_PER_SCAN = 15;
 /** Cap on merged/deduped candidates before scoring, to bound per-scan cost. */
 const MAX_CANDIDATES = 150;
+const CURATED_SOURCE_RANKING_BONUS = 10;
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
 
@@ -83,6 +84,14 @@ type SearchBudget = {
   keywordLimit: number;
   resultsPerKeyword: number;
 };
+
+function internalCuratedSourceBonus(
+  source?: "following" | "list" | "watched" | "search"
+): number {
+  return source === "list" || source === "watched"
+    ? CURATED_SOURCE_RANKING_BONUS
+    : 0;
+}
 
 const PRIORITY_PLAN_NAMES = new Set([
   "pro+",
@@ -378,11 +387,15 @@ export const scanUser = internalAction({
           source: t.source,
           goal: context.goal,
         });
-        const adjustedScore = applySaturatedThreadPenalty(
-          applyRankingMultiplier(score.value, {
-            source: t.source,
-            authorFollowers: t.authorFollowers,
-          }, normalizeRankingWeights(context.rankingWeights)),
+        const rankingScore = applySaturatedThreadPenalty(
+          applyRankingMultiplier(
+            score.value + internalCuratedSourceBonus(t.source),
+            {
+              source: t.source,
+              authorFollowers: t.authorFollowers,
+            },
+            normalizeRankingWeights(context.rankingWeights)
+          ),
           t.replies,
           t.source
         );
@@ -394,7 +407,8 @@ export const scanUser = internalAction({
           authorName: t.authorName,
           authorFollowers: t.authorFollowers,
           text: t.text,
-          score: adjustedScore,
+          score: score.value,
+          rankingScore,
           reason: augmentScoreReason(score.reason, keywordScore, semanticScore),
           suggestedAngle: suggestAngle(t),
           replyCount: t.replies,
@@ -420,14 +434,14 @@ export const scanUser = internalAction({
                 i.keywordRelevance ?? 0,
                 i.semanticRelevance ?? 0,
                 i.source
-              ) && i.score >= MIN_OPPORTUNITY_SCORE
+              ) && i.rankingScore >= MIN_OPPORTUNITY_SCORE
           )
-          .sort((a, b) => b.score - a.score)
+          .sort((a, b) => b.rankingScore - a.rankingScore)
       );
 
       const { inserted } = await ctx.runMutation(internal.opportunities.upsertMany, {
         userId,
-        items: worthSurfacing,
+        items: worthSurfacing.map(({ rankingScore: _rankingScore, ...item }) => item),
       });
       if (inserted > 0) {
         await trackConvexEvent("opportunity_surfaced", userId, { count: inserted });

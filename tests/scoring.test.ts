@@ -72,24 +72,24 @@ describe("scoreConversation", () => {
     expect(score.reason.length).toBeGreaterThan(10);
   });
 
-  it("boosts the score for curated 'list' sources over no source", () => {
+  it("keeps the displayed score the same for curated 'list' sources", () => {
     const plain = scoreConversation({ ...base, ageMinutes: 60 * 24 });
     const listed = scoreConversation({
       ...base,
       ageMinutes: 60 * 24,
       source: "list",
     });
-    expect(listed.value).toBeGreaterThan(plain.value);
+    expect(listed.value).toBe(plain.value);
   });
 
-  it("boosts the score for 'watched' sources over no source", () => {
+  it("keeps the displayed score the same for 'watched' sources", () => {
     const plain = scoreConversation({ ...base, ageMinutes: 60 * 24 });
     const watched = scoreConversation({
       ...base,
       ageMinutes: 60 * 24,
       source: "watched",
     });
-    expect(watched.value).toBeGreaterThan(plain.value);
+    expect(watched.value).toBe(plain.value);
   });
 
   it("treats 'following' as the baseline, same as no source", () => {
@@ -102,9 +102,36 @@ describe("scoreConversation", () => {
     expect(following.value).toBe(plain.value);
   });
 
-  it("clamps at 100 even when a near-max score gets the source boost", () => {
+  it("clamps at 100 for near-max base scores", () => {
     const score = scoreConversation({ ...base, ageMinutes: 30, source: "list" });
     expect(score.value).toBeLessThanOrEqual(100);
+  });
+
+  it("calls out off-topic conversations in the displayed reason", () => {
+    const score = scoreConversation({
+      followers: 12_000,
+      likes: 40,
+      retweets: 4,
+      replies: 3,
+      quotes: 1,
+      ageMinutes: 35,
+      topicRelevance: 0.05,
+    });
+    expect(score.reason).toContain("off-niche");
+  });
+
+  it("calls out brand-safety risk when the classifier flags it", () => {
+    const score = scoreConversation({
+      followers: 12_000,
+      likes: 40,
+      retweets: 4,
+      replies: 3,
+      quotes: 1,
+      ageMinutes: 35,
+      topicRelevance: 0,
+      brandSafety: "unsafe",
+    });
+    expect(score.reason).toContain("risky for your brand");
   });
 });
 

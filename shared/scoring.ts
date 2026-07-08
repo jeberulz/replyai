@@ -18,12 +18,14 @@ export type EngagementInput = {
   quotes: number;
   /** Minutes since the tweet was posted. */
   ageMinutes: number;
-  /** 0..1 how well the topic matches the user's interests. Defaults to 0.5 when omitted (manual analyze). */
+  /** 0..1 how well the topic matches the user's interests. */
   topicRelevance?: number;
-  /** Where this conversation was discovered. Curated sources get a scoring bonus. */
+  /** Where this conversation was discovered. Used for internal ranking only. */
   source?: OpportunitySource;
   /** Onboarding goal — shifts factor weights (relevance stays weighted highest). */
   goal?: GoalId;
+  /** Optional brand-safety verdict from the semantic classifier. */
+  brandSafety?: "safe" | "unsafe";
 };
 
 export type ScoreFactors = {
@@ -111,25 +113,25 @@ export function scoreConversation(input: EngagementInput): ConversationScore {
   };
 
   const weights = SCORE_WEIGHTS[input.goal ?? "default"];
-  let value =
+  const value =
     100 *
     (weights.audienceSize * audienceSize +
       weights.replyTiming * replyTiming +
       weights.growthVelocity * growthVelocity +
       weights.topicRelevance * topicRelevance);
 
-  // Curated sources (an explicit list or a handle the user chose to watch) are
-  // an intentional signal beyond the raw home-feed firehose — worth a flat bonus.
-  if (input.source === "list" || input.source === "watched") {
-    value += 10;
-  }
-
-  value = Math.round(Math.min(100, value));
-
-  return { value, reason: describeScore(factors, ageMinutes), factors };
+  return {
+    value: Math.round(Math.min(100, value)),
+    reason: describeScore(factors, ageMinutes, input.brandSafety),
+    factors,
+  };
 }
 
-function describeScore(factors: ScoreFactors, ageMinutes: number): string {
+function describeScore(
+  factors: ScoreFactors,
+  ageMinutes: number,
+  brandSafety?: "safe" | "unsafe"
+): string {
   const parts: string[] = [];
 
   if (factors.replyTiming >= 0.9) {
@@ -154,10 +156,14 @@ function describeScore(factors: ScoreFactors, ageMinutes: number): string {
     parts.push("the author has a solid audience");
   }
 
-  if (factors.topicRelevance >= 0.7) {
+  if (brandSafety === "unsafe") {
+    parts.push("the conversation looks risky for your brand right now");
+  } else if (factors.topicRelevance >= 0.7) {
     parts.push("the topic closely matches your focus areas");
   } else if (factors.topicRelevance >= 0.4) {
     parts.push("the topic matches one of your focus areas");
+  } else {
+    parts.push("the topic looks off-niche for your focus areas");
   }
 
   const sentence = parts.join(", ");

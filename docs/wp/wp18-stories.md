@@ -8,7 +8,7 @@ classifier-based brand-safety screen.
 
 ## Stories
 
-- [ ] WP18-S1 - Restore score and reason integrity
+- [x] WP18-S1 - Restore score and reason integrity
   - Acceptance criteria:
     - User-visible `scoreConversation` output only contains adjustments that the
       reason string can honestly explain, or the adjustment stays internal-only.
