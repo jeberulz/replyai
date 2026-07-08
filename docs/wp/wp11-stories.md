@@ -10,7 +10,7 @@
   - Bound the query to a clear recent-history window / item cap so it remains safe under Convex query guidance, and expose enough sample-size metadata for the UI to label thin data honestly.
   - Stay inside WP11 ownership boundaries: analytics modules/query wiring only, no generation, scanner, extension, or publish-behavior changes.
 
-- [ ] `WP11-S3` Dashboard personal-analytics section
+- [x] `WP11-S3` Dashboard personal-analytics section
   - Add a dashboard section that surfaces the strongest observed category, angle, and time-of-day takeaways in the existing Dark Chrome chat-home shell without replacing the chat-first flow.
   - Render honest empty and sparse states when the user does not yet have enough observed outcomes, and keep the copy firmly observational rather than predictive.
   - Reuse the new analytics query cleanly from the client, keeping the surface demo-safe and consistent with the existing dashboard modules.

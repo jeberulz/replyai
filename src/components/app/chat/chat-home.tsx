@@ -3,6 +3,7 @@
 import { useSidebar } from "@/components/app/sidebar/sidebar-provider";
 import { AnalysisThread } from "./analysis-thread";
 import { ChatComposer } from "./chat-composer";
+import { PersonalAnalyticsCard } from "./personal-analytics-card";
 import { ReplyPacingCard } from "./reply-pacing-card";
 import { StatStrip } from "./stat-strip";
 import { SuggestionChips } from "./suggestion-chips";
@@ -59,6 +60,7 @@ export function ChatHome({
           />
           <SuggestionChips onPick={submit} disabled={starting} />
           <ReplyPacingCard />
+          <PersonalAnalyticsCard />
         </div>
         <div className="py-6">
           <StatStrip />
