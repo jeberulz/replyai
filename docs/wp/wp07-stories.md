@@ -24,7 +24,7 @@ Definition of done from `docs/PRODUCT_STRATEGY.md` §14: `responded` populated i
   - Surface the metric in the existing dashboard stat strip without fake prediction language.
   - Add focused tests for the response-rate calculation.
 
-- [ ] **WP7-S5 — Final verification and docs**
+- [x] **WP7-S5 — Final verification and docs**
   - Append implementation notes, decisions, and gotchas to `docs/wp/wp07-progress.md`.
   - Run the required checks: `npm run typecheck && npm run lint && npm test && npm run build`, plus `npm run evals`.
   - Run `npm run security:audit` if any new public Convex functions are added.

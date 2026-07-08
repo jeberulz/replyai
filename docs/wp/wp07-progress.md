@@ -31,3 +31,11 @@
 - Surfaced the metric in `src/components/app/chat/stat-strip.tsx` as `Reply-back`, using the same compact mono treatment as the other dashboard stats and no predictive language.
 - Relevant Next.js App Router guide read before UI edit: `node_modules/next/dist/docs/01-app/01-getting-started/05-server-and-client-components.md`. `design.md` was read before UI work.
 - Story checks passed: `npm run typecheck && npm test && npm run lint`; lint reported only existing generated-file unused-disable warnings. `npm run build` also passed after the UI change.
+
+## 2026-07-08 — WP7-S5
+
+- Final required suite passed: `npm run typecheck && npm run lint && npm test && npm run build`.
+- `npm run lint` reports four warnings in existing generated Convex files for unused eslint-disable directives; there are no lint errors.
+- Eval gate passed: `npm run evals`.
+- Security audit passed: `npm run security:audit` (`60 public Convex functions checked, 3 allow-listed`). No new public Convex functions were added; this was run because WP7 touches token refresh and publish-result seeding.
+- `npx convex codegen` remains blocked in this worktree because `CONVEX_DEPLOYMENT` is not configured. The static generated API type list was manually updated for `outcomes`; runtime generated JS already uses `anyApi`.
