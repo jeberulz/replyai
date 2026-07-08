@@ -21,3 +21,9 @@
   - Redaction decision: `sessions` export omits `token`/`tokenHash` and reports only presence booleans; `xTokens` export omits plaintext and encrypted token material and reports connection metadata (`expiresAt`, `scope`, token presence, storage mode).
   - Added tests for payload shape, unrelated-user exclusion, undefined stripping, and redaction of credential material.
   - Checks: `npm run typecheck` passed; `npm test -- tests/accountData.test.ts` passed; `npm test` passed (26 files, 206 tests; 1 skipped).
+- Completed `WP03-S3`.
+  - Added authenticated `account.deleteAccount` mutation with backend username confirmation, pre-delete dry-run inventory, and fixed cascade order from `shared/accountData.ts`.
+  - Deletion batch size is `50` rows. Each mutation deletes at most one child-table batch, schedules `internal.account.continueDelete`, and deletes `users` only after every child table returns no rows for the account.
+  - Added shared cascade planner tests proving batch bounds, child-before-root behavior, and unrelated-user exclusion.
+  - Because `npx convex codegen` is blocked without `CONVEX_DEPLOYMENT`, manually added the new `account` module to checked-in `convex/_generated/api.d.ts` so `internal.account.continueDelete` typechecks. This should be replaced by normal codegen when a deployment is configured.
+  - Checks: `npm run typecheck` passed; `npm test -- tests/accountData.test.ts` passed; `npm test` passed (26 files, 208 tests; 1 skipped).

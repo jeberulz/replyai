@@ -5,6 +5,7 @@ import {
   buildAccountInventory,
   inventoryCountsFromRows,
   sanitizeAccountExportRow,
+  selectAccountDeletionBatch,
   tableBelongsToAccount,
   type AccountTable,
 } from "../shared/accountData";
@@ -184,5 +185,65 @@ describe("account data inventory contract", () => {
     expect(payload.tables.savedDrafts).toEqual([
       { _id: "draft-1", userId: "user-1", text: "hello" },
     ]);
+  });
+
+  test("selects bounded cascade deletion batches before the user row", () => {
+    const first = selectAccountDeletionBatch({
+      userId: "user-1",
+      batchSize: 2,
+      rowsByTable: {
+        sessions: [
+          { _id: "session-1", userId: "user-1" },
+          { _id: "session-2", userId: "user-1" },
+          { _id: "session-3", userId: "user-1" },
+          { _id: "session-other", userId: "user-2" },
+        ],
+        users: [{ _id: "user-1" }],
+      },
+    });
+
+    expect(first).toEqual({
+      table: "sessions",
+      ids: ["session-1", "session-2"],
+      deletesUser: false,
+      done: false,
+    });
+  });
+
+  test("keeps unrelated users and deletes the account root only after children", () => {
+    const rowsByTable = {
+      sessions: [{ _id: "session-other", userId: "user-2" }],
+      savedDrafts: [
+        { _id: "draft-1", userId: "user-1" },
+        { _id: "draft-other", userId: "user-2" },
+      ],
+      users: [
+        { _id: "user-1", username: "owner" },
+        { _id: "user-2", username: "other" },
+      ],
+    };
+
+    const child = selectAccountDeletionBatch({
+      userId: "user-1",
+      rowsByTable,
+    });
+    expect(child.table).toBe("savedDrafts");
+    expect(child.ids).toEqual(["draft-1"]);
+    expect(child.deletesUser).toBe(false);
+
+    const root = selectAccountDeletionBatch({
+      userId: "user-1",
+      rowsByTable: {
+        sessions: rowsByTable.sessions,
+        savedDrafts: [{ _id: "draft-other", userId: "user-2" }],
+        users: rowsByTable.users,
+      },
+    });
+    expect(root).toEqual({
+      table: "users",
+      ids: ["user-1"],
+      deletesUser: true,
+      done: false,
+    });
   });
 });

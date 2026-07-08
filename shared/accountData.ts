@@ -99,6 +99,8 @@ export const ACCOUNT_ROOT_TABLE = {
   deletionOrder: 140,
 } as const;
 
+export const ACCOUNT_DELETION_BATCH_SIZE = 50;
+
 export type AccountUserTable = (typeof ACCOUNT_USER_TABLES)[number]["table"];
 export type AccountTable = AccountUserTable | typeof ACCOUNT_ROOT_TABLE.table;
 
@@ -138,6 +140,13 @@ export type AccountExportPayload = {
   userId: string;
   inventory: AccountInventory;
   tables: Record<AccountTable, JsonObject[]>;
+};
+
+export type AccountDeletionBatch = {
+  table: AccountTable | null;
+  ids: string[];
+  deletesUser: boolean;
+  done: boolean;
 };
 
 export function tableBelongsToAccount(
@@ -299,5 +308,52 @@ export function buildAccountExportPayload(args: {
       counts,
     }),
     tables,
+  };
+}
+
+export function selectAccountDeletionBatch(args: {
+  rowsByTable: AccountRowsByTable;
+  userId: string;
+  batchSize?: number;
+}): AccountDeletionBatch {
+  const batchSize = args.batchSize ?? ACCOUNT_DELETION_BATCH_SIZE;
+  for (const descriptor of ACCOUNT_USER_TABLES) {
+    const ids = (args.rowsByTable[descriptor.table] ?? [])
+      .filter((row) =>
+        tableBelongsToAccount(descriptor.table, row, args.userId)
+      )
+      .map((row) => row._id)
+      .filter((id): id is string => typeof id === "string")
+      .slice(0, batchSize);
+    if (ids.length > 0) {
+      return {
+        table: descriptor.table,
+        ids,
+        deletesUser: false,
+        done: false,
+      };
+    }
+  }
+
+  const userIds = (args.rowsByTable.users ?? [])
+    .filter((row) => tableBelongsToAccount("users", row, args.userId))
+    .map((row) => row._id)
+    .filter((id): id is string => typeof id === "string")
+    .slice(0, 1);
+
+  if (userIds.length > 0) {
+    return {
+      table: "users",
+      ids: userIds,
+      deletesUser: true,
+      done: false,
+    };
+  }
+
+  return {
+    table: null,
+    ids: [],
+    deletesUser: false,
+    done: true,
   };
 }

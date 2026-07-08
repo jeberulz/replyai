@@ -10,7 +10,7 @@
   - Export omits secrets or irreversible credential material while still listing token/account metadata needed to understand connected-account state.
   - Add focused tests proving export payload shape, ownership isolation, and deterministic JSON-safe values.
 
-- [ ] `WP03-S3` Batched cascade deletion
+- [x] `WP03-S3` Batched cascade deletion
   - Implement authenticated account deletion that cascades across all user-owned tables listed in the inventory and deletes the user record only after related rows are gone.
   - Large accounts are processed in bounded batches with continuation scheduling rather than a single unbounded destructive mutation.
   - Add focused tests proving all related rows are deleted, unrelated users' rows remain, and dry-run/inventory counts match deletion behavior.

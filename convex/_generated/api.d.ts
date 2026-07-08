@@ -9,6 +9,7 @@
  */
 
 import type * as analyses from "../analyses.js";
+import type * as account from "../account.js";
 import type * as billing from "../billing.js";
 import type * as billingNode from "../billingNode.js";
 import type * as cache from "../cache.js";
@@ -43,6 +44,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   analyses: typeof analyses;
+  account: typeof account;
   billing: typeof billing;
   billingNode: typeof billingNode;
   cache: typeof cache;
