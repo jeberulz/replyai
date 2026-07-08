@@ -17,6 +17,13 @@ export type DemoTweet = {
   replies: number;
   quotes: number;
   views: number;
+  threadAncestors?: {
+    id: string;
+    authorName: string;
+    authorHandle: string;
+    text: string;
+    minutesAgo: number;
+  }[];
   topReplies: { authorHandle: string; text: string; likes: number }[];
 };
 
@@ -34,6 +41,22 @@ export const DEMO_TWEETS: DemoTweet[] = [
     replies: 389,
     quotes: 97,
     views: 412000,
+    threadAncestors: [
+      {
+        id: "1799999999999999901",
+        authorName: "Sarah Chen",
+        authorHandle: "sarahbuilds",
+        text: "The part people miss about AI moats: workflows compound before models do.",
+        minutesAgo: 51,
+      },
+      {
+        id: "1799999999999999902",
+        authorName: "Sarah Chen",
+        authorHandle: "sarahbuilds",
+        text: "If your product only swaps one model call for another, your customer can do that too.",
+        minutesAgo: 49,
+      },
+    ],
     topReplies: [
       { authorHandle: "devmarcus", text: "Counterpoint: wrappers that nail distribution win anyway. Perplexity was 'just a wrapper' too.", likes: 214 },
       { authorHandle: "aiskeptic", text: "The data moat argument is overrated. Most accumulated data is noise.", likes: 156 },

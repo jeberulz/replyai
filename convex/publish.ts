@@ -8,9 +8,13 @@ import { captureConvexException } from "./lib/sentry";
 import { parseXPublishError } from "../shared/xErrors";
 import { refreshAccessToken } from "../shared/xOAuth";
 import { composeQuotePostText } from "../shared/xPublish";
+import { MAX_WEIGHTED_LENGTH, weightedLength } from "../shared/evals";
 
 const X_API_BASE = "https://api.x.com/2";
 const USE_NATIVE_QUOTES = process.env.X_PUBLISH_NATIVE_QUOTES === "true";
+const MAX_PUBLISH_RETRIES = 2;
+const RETRY_BASE_DELAY_MS = 60_000;
+const RETRY_JITTER_MS = 30_000;
 
 type PostResult =
   | { ok: true; tweetId: string }
@@ -35,6 +39,56 @@ async function postTweet(
   return { ok: true, tweetId: json.data?.id ?? "unknown" };
 }
 
+export function isRetryablePublishStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+export function publishRetryDelayMs(
+  attempt: number,
+  jitterSource: () => number = Math.random
+): number {
+  const base = RETRY_BASE_DELAY_MS * 2 ** Math.max(0, attempt);
+  const jitter = Math.floor(jitterSource() * RETRY_JITTER_MS);
+  return base + jitter;
+}
+
+function ensureWeightedPublishLength(text: string): void {
+  const length = weightedLength(text);
+  if (length > MAX_WEIGHTED_LENGTH) {
+    throw new Error(
+      `Post is over X's ${MAX_WEIGHTED_LENGTH}-character limit after URL/emoji weighting (${length}). Shorten it and try again.`
+    );
+  }
+}
+
+function trimToWeightedLength(text: string, maxLength: number): string {
+  let output = "";
+  for (const char of text) {
+    const next = output + char;
+    if (weightedLength(next) > maxLength) break;
+    output = next;
+  }
+  return output.trimEnd();
+}
+
+export function composeWeightedQuotePostText(
+  text: string,
+  permalink: string
+): string {
+  const composed = composeQuotePostText(text, permalink);
+  if (weightedLength(composed) <= MAX_WEIGHTED_LENGTH) return composed;
+
+  const trimmed = text.trim();
+  const separator = trimmed.length > 0 ? "\n" : "";
+  const budget =
+    MAX_WEIGHTED_LENGTH - weightedLength(separator) - weightedLength(permalink);
+  const shortened =
+    budget > 0 ? trimToWeightedLength(trimmed, budget) : "";
+  const recomposed = `${shortened}${shortened ? separator : ""}${permalink}`;
+  ensureWeightedPublishLength(recomposed);
+  return recomposed;
+}
+
 /**
  * Publish a scheduled/immediate draft to X. Runs only after an explicit
  * user click on this specific draft — never triggered automatically.
@@ -54,9 +108,11 @@ export const run = internalAction({
     // time, and a required arg would fail validation and silently drop those
     // publishes. Current callers always pass an explicit true/false.
     scheduled: v.optional(v.boolean()),
+    attempt: v.optional(v.number()),
   },
-  handler: async (ctx, { draftId, scheduled }) => {
+  handler: async (ctx, { draftId, scheduled, attempt }) => {
     const wasScheduled = scheduled ?? false;
+    const retryAttempt = attempt ?? 0;
     const bundle = await ctx.runQuery(internal.drafts.getForPublish, { draftId });
     if (!bundle) return;
     const {
@@ -144,41 +200,61 @@ export const run = internalAction({
       let successMode = publishMode;
 
       if (publishMode === "standalone") {
+        ensureWeightedPublishLength(draft.text);
         result = await postTweet(accessToken, { text: draft.text });
       } else if (draft.kind === "quote") {
         const permalink = draft.targetTweetUrl;
         if (!permalink) {
+          ensureWeightedPublishLength(draft.text);
           result = await postTweet(accessToken, { text: draft.text });
           successMode = "standalone";
         } else if (USE_NATIVE_QUOTES && draft.targetTweetId) {
+          ensureWeightedPublishLength(draft.text);
           result = await postTweet(accessToken, {
             text: draft.text,
             quote_tweet_id: draft.targetTweetId,
           });
           if (!result.ok && result.status === 403) {
             result = await postTweet(accessToken, {
-              text: composeQuotePostText(draft.text, permalink),
+              text: composeWeightedQuotePostText(draft.text, permalink),
             });
             successMode = "url_quote";
           }
         } else {
           result = await postTweet(accessToken, {
-            text: composeQuotePostText(draft.text, permalink),
+            text: composeWeightedQuotePostText(draft.text, permalink),
           });
           successMode = "url_quote";
         }
       } else if (draft.kind === "reply" && draft.targetTweetId) {
+        ensureWeightedPublishLength(draft.text);
         result = await postTweet(accessToken, {
           text: draft.text,
           reply: { in_reply_to_tweet_id: draft.targetTweetId },
         });
       } else {
+        ensureWeightedPublishLength(draft.text);
         result = await postTweet(accessToken, { text: draft.text });
         successMode = "standalone";
       }
 
       if (!result.ok) {
         const parsed = parseXPublishError(result.status, result.body);
+        if (
+          isRetryablePublishStatus(result.status) &&
+          retryAttempt < MAX_PUBLISH_RETRIES
+        ) {
+          await ctx.scheduler.runAfter(
+            publishRetryDelayMs(retryAttempt),
+            internal.publish.run,
+            {
+              draftId,
+              scheduled: wasScheduled,
+              attempt: retryAttempt + 1,
+            }
+          );
+          return;
+        }
         throw new Error(parsed.message);
       }
 
