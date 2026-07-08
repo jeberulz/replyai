@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
+import { encryptedXTokenPatch } from "./tokenSecurity";
 
 /** Update stored X OAuth tokens after a refresh. Called from publish action only. */
 export const updateXTokens = internalMutation({
@@ -18,8 +19,12 @@ export const updateXTokens = internalMutation({
     if (!tokenRow) return;
 
     await ctx.db.patch(tokenRow._id, {
-      accessToken: args.accessToken,
-      refreshToken: args.refreshToken ?? tokenRow.refreshToken,
+      ...(await encryptedXTokenPatch({
+        accessToken: args.accessToken,
+        refreshToken: args.refreshToken,
+        existingRefreshToken: tokenRow.refreshToken,
+        existingEncryptedRefreshToken: tokenRow.encryptedRefreshToken,
+      })),
       expiresAt: args.expiresAt,
       scope: args.scope || tokenRow.scope,
     });

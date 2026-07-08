@@ -47,7 +47,12 @@ async function requireSession() {
 
 async function resolveXAccessToken(sessionToken: string): Promise<string | null> {
   const convex = convexServer();
-  const auth = await convex.query(api.users.xAuthForSession, { sessionToken });
+  const serverSecret = process.env.CONVEX_SERVER_TOKEN_ACCESS_SECRET;
+  if (!serverSecret) return null;
+  const auth = await convex.query(api.users.xAuthForServerSession, {
+    sessionToken,
+    serverSecret,
+  });
   if (!auth || auth.isDemo || auth.expiresAt === 0) return null;
 
   if (auth.expiresAt > Date.now()) {

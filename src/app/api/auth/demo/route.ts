@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "../../../../../convex/_generated/api";
+import { guardAuthRoute } from "@/lib/authSecurity";
 import { convexServer } from "@/lib/convex";
 import { ensureDefaults, postLoginPath } from "@/lib/onboarding";
 import { newSessionToken, setSessionCookie } from "@/lib/session";
@@ -9,6 +10,9 @@ import { newSessionToken, setSessionCookie } from "@/lib/session";
  * product be exercised before X API credentials are configured.
  */
 export async function GET(request: NextRequest) {
+  const blocked = guardAuthRoute(request, "demo");
+  if (blocked) return blocked;
+
   try {
     const sessionToken = newSessionToken();
     await convexServer().mutation(api.users.upsertAndCreateSession, {

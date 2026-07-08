@@ -52,6 +52,9 @@ jobs:
       - name: Regression eval gate (voice fidelity + guardrails)
         run: npm run evals
 
+      - name: Security audit
+        run: npm run security:audit
+
       - name: Production build
         run: npm run build
 

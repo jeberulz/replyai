@@ -45,6 +45,7 @@ export const createCheckoutSession = action({
     returnUrl: v.string(),
   },
   handler: async (ctx, { sessionToken, returnUrl }) => {
+    // Auth is enforced in internal.billing.viewerForSession via requireUser(sessionToken).
     const viewer: BillingViewer = await ctx.runQuery(
       internal.billing.viewerForSession,
       { sessionToken }
@@ -101,6 +102,7 @@ export const createPortalSession = action({
     returnUrl: v.string(),
   },
   handler: async (ctx, { sessionToken, returnUrl }) => {
+    // Auth is enforced in internal.billing.viewerForSession via requireUser(sessionToken).
     const viewer: BillingViewer = await ctx.runQuery(
       internal.billing.viewerForSession,
       { sessionToken }

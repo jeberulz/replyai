@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { requireUser } from "./helpers";
+import { readStoredXTokens } from "./tokenSecurity";
 import { learnFromSentText } from "./voiceProfiles";
 
 const publishModeValidator = v.optional(
@@ -158,6 +159,7 @@ export const getForPublish = internalQuery({
       .query("xTokens")
       .withIndex("by_user", (q) => q.eq("userId", draft.userId))
       .unique();
+    const tokens = await readStoredXTokens(tokenRow);
     // Best-effort edit-extent metadata for the `published` funnel event
     // (docs/observability.md) — whether the option this draft came from was
     // ever manually edited. Not available for drafts with no linked reply
@@ -167,8 +169,8 @@ export const getForPublish = internalQuery({
       draft,
       isDemo: user.isDemo,
       userId: user._id,
-      accessToken: tokenRow?.accessToken ?? null,
-      refreshToken: tokenRow?.refreshToken ?? null,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       expiresAt: tokenRow?.expiresAt ?? 0,
       scope: tokenRow?.scope ?? "",
       // Coerce: a reply that's never been edited stores this field as

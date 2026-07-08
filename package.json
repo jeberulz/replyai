@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "security:audit": "node scripts/security-audit.mjs",
     "evals": "vitest run tests/evals.test.ts tests/evals.fixtures.test.ts",
     "evals:llm": "vitest run tests/evals.llm.test.ts"
   },
