@@ -74,3 +74,20 @@
 - Verification: `npm run typecheck`, focused auth/header tests, full
   `npm test`, `npm run lint` (0 errors; pre-existing generated/component
   warnings only), and `npm run build` all passed.
+
+## 2026-07-08 - S4 CI security audit
+
+- Added `scripts/security-audit.mjs` and `npm run security:audit`.
+- The audit checks every exported public Convex query/mutation/action and fails
+  unless the function body uses `requireUser`, `userBySessionToken`,
+  `sessionByToken`, or the vetted `requireOwnedAnalysis` wrapper. Three public
+  functions are explicitly allow-listed with reasons: `cache.get`, `cache.put`,
+  and `users.upsertAndCreateSession`.
+- The same script also fails plaintext token schema regressions, direct token
+  logging patterns, and high/critical `npm audit` findings. Moderate PostCSS
+  advisories remain noted from read-in; the high/critical gate is green.
+- CI now runs `npm run security:audit` after the eval gate and before the
+  production build.
+- Added a Vitest smoke test for the audit script.
+- Verification: `npm run typecheck`, `npm run lint` (0 errors; pre-existing
+  warnings only), full `npm test`, and `npm run security:audit` all passed.

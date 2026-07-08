@@ -38,11 +38,11 @@ WP1 scope: `convex/helpers.ts`, `sessions`/`xTokens` auth and token handling,
 
 ## Story S4 - Add CI security audit gates
 
-- [ ] Add a `requireUser` surface audit script that fails on any exported public
+- [x] Add a `requireUser` surface audit script that fails on any exported public
   Convex query/mutation/action unless it calls `requireUser`/`userBySessionToken`
   or is explicitly allow-listed.
-- [ ] Add secret/logging/dependency hygiene checks that fail on token logging,
+- [x] Add secret/logging/dependency hygiene checks that fail on token logging,
   plaintext token schema regressions, or high/critical `npm audit` findings.
-- [ ] Wire the security checks into CI before the production build.
-- [ ] Run the full required suite:
+- [x] Wire the security checks into CI before the production build.
+- [x] Run the full required suite:
   `npm run typecheck && npm run lint && npm test && npm run build`.
