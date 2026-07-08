@@ -21,6 +21,7 @@ import type * as http from "../http.js";
 import type * as lib_analytics from "../lib/analytics.js";
 import type * as lib_sentry from "../lib/sentry.js";
 import type * as opportunities from "../opportunities.js";
+import type * as outcomes from "../outcomes.js";
 import type * as projects from "../projects.js";
 import type * as publish from "../publish.js";
 import type * as ranking from "../ranking.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   "lib/analytics": typeof lib_analytics;
   "lib/sentry": typeof lib_sentry;
   opportunities: typeof opportunities;
+  outcomes: typeof outcomes;
   projects: typeof projects;
   publish: typeof publish;
   ranking: typeof ranking;
