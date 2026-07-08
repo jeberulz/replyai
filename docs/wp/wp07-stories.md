@@ -15,7 +15,7 @@ Definition of done from `docs/PRODUCT_STRATEGY.md` §14: `responded` populated i
   - Classify observed responses into stable outcome labels, marking matching opportunities as `responded`.
   - Add focused tests for outcome classification/backoff behavior.
 
-- [ ] **WP7-S3 — Cron wiring**
+- [x] **WP7-S3 — Cron wiring**
   - Wire a Convex cron that regularly runs the outcome poller.
   - Keep the cron internal-only and safe when no rows are eligible.
 

@@ -7,6 +7,10 @@ const crons = cronJobs();
 // Suggestions only — publishing always requires an explicit human click.
 crons.interval("scan feeds", { minutes: 15 }, internal.scannerActions.scanAll, {});
 
+// Reply-back tracker: observe replies to published drafts during their 48h
+// outcome window. Suggestions/publishing remain human-approved only.
+crons.interval("poll reply outcomes", { minutes: 15 }, internal.outcomes.pollDue, {});
+
 // Drop expired AI response cache entries daily.
 crons.interval("prune cache", { hours: 24 }, internal.cache.prune, {});
 

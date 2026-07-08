@@ -16,3 +16,9 @@
 - Outcome classification is deterministic in `shared/outcomes.ts`: target author reply wins, high-reply/low-like posts classify as `got_ratioed`, any observed reply or public reply count becomes `conversation_continued`.
 - Search strategy: fetch public metrics for the published tweet, and search recent replies in `conversation_id:${targetTweetId ?? publishedTweetId}` filtered to `referenced_tweets.replied_to === publishedTweetId`. Public metrics provide a fallback when recent search is unavailable.
 - Story checks passed: `npm run typecheck && npm test`.
+
+## 2026-07-08 — WP7-S3
+
+- Wired `convex/crons.ts` with `crons.interval("poll reply outcomes", { minutes: 15 }, internal.outcomes.pollDue, {})`.
+- Left existing unrelated cron definitions unchanged to preserve scope.
+- Story checks passed: `npm run typecheck && npm test`.
