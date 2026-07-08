@@ -3,7 +3,7 @@
  * Shared by Convex scanner actions and unit tests.
  */
 
-import { isPoliticalContent, type OpportunitySource } from "./scoring";
+import type { OpportunitySource } from "./scoring";
 
 export const SATURATED_REPLY_THRESHOLD = 150;
 export const DISMISSED_AUTHOR_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
@@ -99,6 +99,5 @@ export function shouldExcludeCandidate(
   }
   if (tweet.isReply) return true;
   if (isRetweetText(tweet.text)) return true;
-  if (isPoliticalContent(tweet.text)) return true;
   return false;
 }

@@ -18,12 +18,14 @@ export type EngagementInput = {
   quotes: number;
   /** Minutes since the tweet was posted. */
   ageMinutes: number;
-  /** 0..1 how well the topic matches the user's interests. Defaults to 0.5 when omitted (manual analyze). */
+  /** 0..1 how well the topic matches the user's interests. */
   topicRelevance?: number;
-  /** Where this conversation was discovered. Curated sources get a scoring bonus. */
+  /** Where this conversation was discovered. Used for internal ranking only. */
   source?: OpportunitySource;
   /** Onboarding goal — shifts factor weights (relevance stays weighted highest). */
   goal?: GoalId;
+  /** Optional brand-safety verdict from the semantic classifier. */
+  brandSafety?: "safe" | "unsafe";
 };
 
 export type ScoreFactors = {
@@ -39,8 +41,40 @@ export type ConversationScore = {
   factors: ScoreFactors;
 };
 
+type VelocityFollowerBand = "micro" | "small" | "medium" | "large";
+
+const VELOCITY_SATURATION_PER_MINUTE: Record<VelocityFollowerBand, number> = {
+  micro: 0.4,
+  small: 1.2,
+  medium: 4,
+  large: 12,
+};
+
 function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
+}
+
+function velocityFollowerBand(followers: number): VelocityFollowerBand {
+  if (followers < 1_000) return "micro";
+  if (followers < 10_000) return "small";
+  if (followers < 100_000) return "medium";
+  return "large";
+}
+
+function normalizedGrowthVelocity(input: {
+  followers: number;
+  likes: number;
+  retweets: number;
+  replies: number;
+  quotes: number;
+  ageMinutes: number;
+}): number {
+  const engagement =
+    input.likes + input.retweets * 2 + input.replies * 3 + input.quotes * 2;
+  const perMinute = engagement / Math.max(1, input.ageMinutes);
+  const saturation =
+    VELOCITY_SATURATION_PER_MINUTE[velocityFollowerBand(input.followers)];
+  return clamp01(perMinute / saturation);
 }
 
 /**
@@ -87,8 +121,6 @@ export const SCORE_WEIGHTS: Record<
 
 export function scoreConversation(input: EngagementInput): ConversationScore {
   const ageMinutes = Math.max(1, input.ageMinutes);
-  const engagement =
-    input.likes + input.retweets * 2 + input.replies * 3 + input.quotes * 2;
 
   // Reach: log scale, 10M followers ≈ 1.0.
   const audienceSize = clamp01(Math.log10(Math.max(1, input.followers)) / 7);
@@ -98,8 +130,16 @@ export function scoreConversation(input: EngagementInput): ConversationScore {
   const replyTiming =
     ageMinutes <= 120 ? 1 : clamp01(1 - (ageMinutes - 120) / 360);
 
-  // Engagement per minute; ~5/min saturates.
-  const growthVelocity = clamp01(engagement / ageMinutes / 5);
+  // Engagement per minute, normalized by author follower band so small
+  // accounts can still show meaningful momentum.
+  const growthVelocity = normalizedGrowthVelocity({
+    followers: input.followers,
+    likes: input.likes,
+    retweets: input.retweets,
+    replies: input.replies,
+    quotes: input.quotes,
+    ageMinutes,
+  });
 
   const topicRelevance = clamp01(input.topicRelevance ?? 0.5);
 
@@ -111,25 +151,25 @@ export function scoreConversation(input: EngagementInput): ConversationScore {
   };
 
   const weights = SCORE_WEIGHTS[input.goal ?? "default"];
-  let value =
+  const value =
     100 *
     (weights.audienceSize * audienceSize +
       weights.replyTiming * replyTiming +
       weights.growthVelocity * growthVelocity +
       weights.topicRelevance * topicRelevance);
 
-  // Curated sources (an explicit list or a handle the user chose to watch) are
-  // an intentional signal beyond the raw home-feed firehose — worth a flat bonus.
-  if (input.source === "list" || input.source === "watched") {
-    value += 10;
-  }
-
-  value = Math.round(Math.min(100, value));
-
-  return { value, reason: describeScore(factors, ageMinutes), factors };
+  return {
+    value: Math.round(Math.min(100, value)),
+    reason: describeScore(factors, ageMinutes, input.brandSafety),
+    factors,
+  };
 }
 
-function describeScore(factors: ScoreFactors, ageMinutes: number): string {
+function describeScore(
+  factors: ScoreFactors,
+  ageMinutes: number,
+  brandSafety?: "safe" | "unsafe"
+): string {
   const parts: string[] = [];
 
   if (factors.replyTiming >= 0.9) {
@@ -143,9 +183,9 @@ function describeScore(factors: ScoreFactors, ageMinutes: number): string {
   }
 
   if (factors.growthVelocity >= 0.6) {
-    parts.push("engagement is accelerating fast");
+    parts.push("engagement is moving fast for this audience size");
   } else if (factors.growthVelocity >= 0.25) {
-    parts.push("engagement is growing steadily");
+    parts.push("engagement is growing steadily for this audience size");
   }
 
   if (factors.audienceSize >= 0.7) {
@@ -154,10 +194,14 @@ function describeScore(factors: ScoreFactors, ageMinutes: number): string {
     parts.push("the author has a solid audience");
   }
 
-  if (factors.topicRelevance >= 0.7) {
+  if (brandSafety === "unsafe") {
+    parts.push("the conversation looks risky for your brand right now");
+  } else if (factors.topicRelevance >= 0.7) {
     parts.push("the topic closely matches your focus areas");
   } else if (factors.topicRelevance >= 0.4) {
     parts.push("the topic matches one of your focus areas");
+  } else {
+    parts.push("the topic looks off-niche for your focus areas");
   }
 
   const sentence = parts.join(", ");
@@ -218,8 +262,6 @@ export function topicRelevanceForKeywords(
   text: string,
   keywords: string[]
 ): number {
-  if (isPoliticalContent(text)) return 0;
-
   const normalized = keywords
     .map((k) => k.trim().toLowerCase())
     .filter((k) => k.length > 0);

@@ -14,7 +14,28 @@ export type VoiceStyle = {
   commonPhrases: string[];
 };
 
+export type VoiceNegativeConstraints = {
+  bannedPhrases: string[];
+  antiPatterns: string[];
+};
+
 const EMOJI_RE = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu;
+const HASHTAG_RE = /(^|\s)#[\p{L}\p{N}_]+/u;
+const WORD_RE = /[a-z0-9']+/g;
+
+export const VOICE_PROMPT_EXAMPLES_MIN = 8;
+export const VOICE_PROMPT_EXAMPLES_MAX = 10;
+
+const STOCK_AI_OPENERS = [
+  "Great point!",
+  "Great point",
+  "Love this",
+  "This is huge",
+  "Game changer",
+  "Couldn't agree more",
+];
+
+const DEFAULT_EMOJI_BANS = ["🚀", "🔥", "💯", "🙌", "👏"];
 
 export function buildVoiceStyleFromTweets(tweets: string[]): VoiceStyle {
   const cleaned = tweets.map((t) => t.trim()).filter((t) => t.length > 0);
@@ -31,10 +52,7 @@ export function buildVoiceStyleFromTweets(tweets: string[]): VoiceStyle {
   }
 
   const allText = cleaned.join(" ");
-  const sentences = allText
-    .split(/[.!?]+\s/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const sentences = splitSentences(cleaned);
   const words = allText.split(/\s+/).filter(Boolean);
   const avgSentenceWords =
     sentences.length === 0 ? words.length : words.length / sentences.length;
@@ -78,6 +96,22 @@ export function buildVoiceStyleFromTweets(tweets: string[]): VoiceStyle {
     readingLevel: avgWordLength > 5.4 ? "technical" : "accessible",
     commonPhrases: topPhrases(cleaned),
   };
+}
+
+function splitSentences(texts: string[]): string[] {
+  const sentences: string[] = [];
+  for (const text of texts) {
+    const parts = text
+      .split(/(?<=[.!?])\s+|\n+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (parts.length === 0 && text.trim()) {
+      sentences.push(text.trim());
+    } else {
+      sentences.push(...parts);
+    }
+  }
+  return sentences;
 }
 
 function inferTone(
@@ -140,6 +174,8 @@ const STOP_WORDS = new Set([
   "the", "a", "an", "of", "to", "in", "on", "is", "it", "and", "or", "for",
   "at", "by", "be", "as", "this", "that", "was", "are", "with", "you", "your",
   "i", "my", "we", "our", "but", "not", "if", "so", "do", "did", "have", "has",
+  "should", "would", "could", "can", "will", "just", "from", "about", "into",
+  "than", "then",
 ]);
 
 function isStopPhrase(phrase: string): boolean {
@@ -171,4 +207,118 @@ export function mergeVoiceExamples(
     merged.push(example);
   }
   return merged.slice(0, cap);
+}
+
+export function selectVoiceExamplesForTarget(
+  examples: string[],
+  targetText: string,
+  max: number = VOICE_PROMPT_EXAMPLES_MAX
+): string[] {
+  const cleaned = examples.map((e) => e.trim()).filter(Boolean);
+  if (cleaned.length <= max) return cleaned;
+
+  const scored = cleaned.map((example, index) => ({
+    example,
+    index,
+    score: similarityScore(example, targetText),
+  }));
+
+  return scored
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, max)
+    .map((entry) => entry.example);
+}
+
+function similarityScore(example: string, targetText: string): number {
+  const exampleTokens = tokenizeForSimilarity(example);
+  const targetTokens = tokenizeForSimilarity(targetText);
+  if (exampleTokens.size === 0 || targetTokens.size === 0) return 0;
+
+  let overlap = 0;
+  for (const token of exampleTokens) {
+    if (targetTokens.has(token)) overlap++;
+  }
+  if (overlap === 0) return 0;
+  const union = new Set([...exampleTokens, ...targetTokens]).size;
+  const jaccard = union === 0 ? 0 : overlap / union;
+
+  const exampleLength = example.split(/\s+/).filter(Boolean).length;
+  const targetLength = targetText.split(/\s+/).filter(Boolean).length;
+  const lengthPenalty =
+    Math.abs(exampleLength - targetLength) / Math.max(exampleLength, targetLength, 1);
+
+  return jaccard * 2 + (1 - lengthPenalty) * 0.15;
+}
+
+function tokenizeForSimilarity(text: string): Set<string> {
+  const words = text.toLowerCase().match(WORD_RE) ?? [];
+  return new Set(
+    words.filter((word) => word.length > 2 && !STOP_WORDS.has(word))
+  );
+}
+
+export function buildVoiceNegativeConstraints(
+  examples: string[],
+  style: VoiceStyle = buildVoiceStyleFromTweets(examples)
+): VoiceNegativeConstraints {
+  const allText = examples.join("\n");
+  const lower = allText.toLowerCase();
+  const bannedPhrases = STOCK_AI_OPENERS.filter(
+    (phrase) => !lower.includes(phrase.toLowerCase())
+  );
+  if (style.emojiUse === "none") {
+    bannedPhrases.push(...DEFAULT_EMOJI_BANS);
+  }
+
+  const antiPatterns: string[] = [];
+  if (!HASHTAG_RE.test(allText)) {
+    antiPatterns.push("Do not use hashtags.");
+  }
+  if (style.emojiUse === "none") {
+    antiPatterns.push("Do not add emoji.");
+  } else if (style.emojiUse === "occasional") {
+    antiPatterns.push("Use emoji only if it feels natural; never stack emoji.");
+  }
+  if (!style.punctuation.includes("exclamation")) {
+    antiPatterns.push("Do not add hype punctuation or multiple exclamation marks.");
+  }
+  antiPatterns.push(
+    'Do not open with stock praise like "Great point" or "Love this" unless it appears in the examples.'
+  );
+
+  return normalizeNegativeConstraints({ bannedPhrases, antiPatterns });
+}
+
+export function normalizeNegativeConstraints(
+  constraints: Partial<VoiceNegativeConstraints> | null | undefined
+): VoiceNegativeConstraints {
+  return {
+    bannedPhrases: uniqueClean(constraints?.bannedPhrases ?? []),
+    antiPatterns: uniqueClean(constraints?.antiPatterns ?? []),
+  };
+}
+
+function uniqueClean(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const cleaned = value.trim();
+    const key = cleaned.toLowerCase();
+    if (!cleaned || seen.has(key)) continue;
+    seen.add(key);
+    result.push(cleaned);
+  }
+  return result;
+}
+
+export function applyVoiceLabelRefinement(
+  measured: VoiceStyle,
+  refinement: { tone?: string | null } | null | undefined
+): VoiceStyle {
+  const tone = refinement?.tone?.trim();
+  if (!tone) return measured;
+  return {
+    ...measured,
+    tone,
+  };
 }
