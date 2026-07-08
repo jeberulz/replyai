@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { hasXCredentials } from "@/lib/env";
+import { guardAuthRoute } from "@/lib/authSecurity";
 import { oauthCallbackUrl } from "@/lib/oauth";
 import { buildAuthorizeUrl, generatePkcePair } from "@/lib/x";
 
 export async function GET(request: NextRequest) {
+  const blocked = guardAuthRoute(request, "login");
+  if (blocked) return blocked;
+
   if (!hasXCredentials()) {
     // No X app configured — use the demo login path.
     return NextResponse.redirect(new URL("/api/auth/demo", request.url));
