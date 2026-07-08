@@ -1,0 +1,4 @@
+# WP11 Progress
+
+- 2026-07-08: Read `PRD.md`, `AGENTS.md`, `docs/AGENT_PLAYBOOK.md`, `docs/PRODUCT_STRATEGY.md` (§4, §5.4, and §14 WP11), `convex/_generated/ai/guidelines.md`, the relevant Next.js App Router docs in `node_modules/next/dist/docs/01-app/`, and `design.md` before editing. Confirmed the WP11 worktree was on `feat/wp11-personal-analytics-v1` at the requested base.
+- 2026-07-08: Completed `WP11-S1`. Added `shared/personalAnalytics.ts` to deterministically attribute observed reply outcomes to categories, angles, and local publish hours, preferring scanner angles when present and otherwise matching against analysis missing angles. Added focused unit coverage in `tests/personalAnalytics.test.ts` for category aggregation, angle attribution, local-hour bucketing, and honest empty/sparse handling.

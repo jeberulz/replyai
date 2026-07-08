@@ -1,6 +1,6 @@
 # WP11 Stories — Personal analytics v1
 
-- [ ] `WP11-S1` Shared outcome aggregation and angle attribution
+- [x] `WP11-S1` Shared outcome aggregation and angle attribution
   - Add shared helpers that derive personal-analytics cohorts from completed reply outcomes only, with deterministic grouping for category, chosen angle, and local publish hour.
   - Keep the analytics grounded in observed data already in the repo: WP7 reply outcomes, generated reply categories, analysis missing angles / scanner suggested angles, and WP20 edit-bucket metadata where useful for supporting context.
   - Add focused tests for category, angle, and time-of-day aggregation, including sparse-data behavior and honest null-rate handling.
