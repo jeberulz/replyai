@@ -8,8 +8,21 @@ import {
   SESSION_SLIDING_TTL_MS,
   userBySessionToken,
 } from "./helpers";
+import {
+  encryptedXTokenFields,
+  encryptedXTokenPatch,
+  readStoredXTokens,
+} from "./tokenSecurity";
 
 const SESSION_TTL_MS = SESSION_SLIDING_TTL_MS;
+const TOKEN_ACCESS_SECRET_ENV = "CONVEX_SERVER_TOKEN_ACCESS_SECRET";
+
+function requireServerTokenAccess(secret: string) {
+  const expected = process.env[TOKEN_ACCESS_SECRET_ENV]?.trim();
+  if (!expected || secret !== expected) {
+    throw new Error("Unauthorized");
+  }
+}
 
 /**
  * Upsert a user after X OAuth (or demo login) and open a session.
@@ -66,9 +79,26 @@ export const upsertAndCreateSession = mutation({
         .withIndex("by_user", (q) => q.eq("userId", userId))
         .unique();
       if (tokenRow) {
-        await ctx.db.patch(tokenRow._id, { ...args.xAuth });
+        await ctx.db.patch(tokenRow._id, {
+          ...(await encryptedXTokenPatch({
+            accessToken: args.xAuth.accessToken,
+            refreshToken: args.xAuth.refreshToken,
+            existingRefreshToken: tokenRow.refreshToken,
+            existingEncryptedRefreshToken: tokenRow.encryptedRefreshToken,
+          })),
+          expiresAt: args.xAuth.expiresAt,
+          scope: args.xAuth.scope,
+        });
       } else {
-        await ctx.db.insert("xTokens", { userId, ...args.xAuth });
+        await ctx.db.insert("xTokens", {
+          userId,
+          ...(await encryptedXTokenFields({
+            accessToken: args.xAuth.accessToken,
+            refreshToken: args.xAuth.refreshToken,
+          })),
+          expiresAt: args.xAuth.expiresAt,
+          scope: args.xAuth.scope,
+        });
       }
     }
 
@@ -155,8 +185,8 @@ export const setDefaultModel = mutation({
 });
 
 /**
- * X identity + access token for the current session. Only callable with a
- * valid session token; used by server actions that talk to the X API.
+ * X identity metadata for the current session. This is safe for the browser:
+ * it never returns stored X OAuth token material.
  */
 export const xAuthForSession = query({
   args: { sessionToken: v.string() },
@@ -170,9 +200,34 @@ export const xAuthForSession = query({
     return {
       xUserId: user.xUserId,
       isDemo: user.isDemo,
+      expiresAt: tokenRow?.expiresAt ?? 0,
+      scope: tokenRow?.scope ?? "",
+    };
+  },
+});
+
+/**
+ * X identity + decrypted access token for server-only Next paths. Convex public
+ * functions are Internet-callable, so a separate server secret is required in
+ * addition to the user's session token.
+ */
+export const xAuthForServerSession = query({
+  args: { sessionToken: v.string(), serverSecret: v.string() },
+  handler: async (ctx, { sessionToken, serverSecret }) => {
+    requireServerTokenAccess(serverSecret);
+    const user = await userBySessionToken(ctx, sessionToken);
+    if (!user) return null;
+    const tokenRow = await ctx.db
+      .query("xTokens")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    const tokens = await readStoredXTokens(tokenRow);
+    return {
+      xUserId: user.xUserId,
+      isDemo: user.isDemo,
       accessToken:
-        tokenRow && tokenRow.expiresAt > Date.now() ? tokenRow.accessToken : null,
-      refreshToken: tokenRow?.refreshToken,
+        tokenRow && tokenRow.expiresAt > Date.now() ? tokens.accessToken : null,
+      refreshToken: tokens.refreshToken,
       expiresAt: tokenRow?.expiresAt ?? 0,
       scope: tokenRow?.scope ?? "",
     };
@@ -197,8 +252,12 @@ export const persistXTokensFromSession = mutation({
     if (!tokenRow) return;
 
     await ctx.db.patch(tokenRow._id, {
-      accessToken: args.accessToken,
-      refreshToken: args.refreshToken ?? tokenRow.refreshToken,
+      ...(await encryptedXTokenPatch({
+        accessToken: args.accessToken,
+        refreshToken: args.refreshToken,
+        existingRefreshToken: tokenRow.refreshToken,
+        existingEncryptedRefreshToken: tokenRow.encryptedRefreshToken,
+      })),
       expiresAt: args.expiresAt,
       scope: args.scope || tokenRow.scope,
     });

@@ -33,3 +33,23 @@
 - `logout` now deletes via the hashed lookup with the same legacy fallback.
 - Verification: `npm run typecheck`, `npm test -- tests/sessionSecurity.test.ts`,
   and full `npm test` all passed.
+
+## 2026-07-08 - S2 X token encryption
+
+- Added `convex/tokenSecurity.ts` with AES-GCM token encryption. The key is
+  derived from `X_TOKEN_ENCRYPTION_KEY` in Convex env; missing key fails real
+  token writes but does not affect demo login because demo users have no X token
+  row.
+- Added optional encrypted token fields to `xTokens`; plaintext `accessToken`
+  and `refreshToken` are now optional deprecated migration fallbacks.
+- New OAuth/token-refresh writes encrypt tokens and clear/migrate plaintext
+  fields on patch. New inserts write only encrypted fields.
+- Public `users.xAuthForSession` now returns X identity metadata only, never
+  token material. Token-bearing reads moved to `users.xAuthForServerSession`,
+  which requires `CONVEX_SERVER_TOKEN_ACCESS_SECRET` in addition to a valid
+  session. Next server actions use that server-only path; browser-accessible
+  Convex calls cannot read plaintext or ciphertext tokens.
+- Internal scanner/research/publish token paths decrypt stored tokens via the
+  shared helper and keep legacy plaintext fallback for existing rows.
+- Verification: `npm run typecheck`, `npm test -- tests/xTokenSecurity.test.ts`,
+  and full `npm test` all passed.

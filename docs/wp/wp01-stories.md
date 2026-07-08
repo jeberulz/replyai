@@ -16,13 +16,13 @@ WP1 scope: `convex/helpers.ts`, `sessions`/`xTokens` auth and token handling,
 
 ## Story S2 - Encrypt X OAuth tokens
 
-- [ ] Encrypt newly stored X access and refresh tokens at rest with AES-GCM
+- [x] Encrypt newly stored X access and refresh tokens at rest with AES-GCM
   using a Convex environment key.
-- [ ] Decrypt tokens only in server/internal token resolution paths; public
+- [x] Decrypt tokens only in server/internal token resolution paths; public
   Convex queries must never return token ciphertext or plaintext.
-- [ ] Preserve deterministic demo mode when the encryption key or X credentials
+- [x] Preserve deterministic demo mode when the encryption key or X credentials
   are missing.
-- [ ] Add focused tests proving encrypted storage, decrypt-on-read behavior,
+- [x] Add focused tests proving encrypted storage, decrypt-on-read behavior,
   legacy plaintext fallback, and refresh persistence.
 
 ## Story S3 - Harden route handlers and platform headers

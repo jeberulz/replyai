@@ -67,8 +67,12 @@ export default defineSchema({
   // returned to the client by user queries.
   xTokens: defineTable({
     userId: v.id("users"),
-    accessToken: v.string(),
+    // Deprecated plaintext fields. New writes use encryptedAccessToken and
+    // encryptedRefreshToken; plaintext is read only as a migration fallback.
+    accessToken: v.optional(v.string()),
     refreshToken: v.optional(v.string()),
+    encryptedAccessToken: v.optional(v.string()),
+    encryptedRefreshToken: v.optional(v.string()),
     expiresAt: v.number(),
     scope: v.string(),
   }).index("by_user", ["userId"]),
