@@ -13,11 +13,13 @@ import {
   type RewriteDirection,
 } from "@/lib/ai";
 import { estimateCostUsd, isKnownModel, MODELS } from "../../shared/models";
+import { hasProAccess } from "../../shared/billing";
 import {
   captureServerException,
   trackServer,
 } from "@/lib/analytics/server";
 import { convexServer } from "@/lib/convex";
+import { env } from "@/lib/env";
 import { getSessionUser } from "@/lib/session";
 import {
   fetchOwnedLists,
@@ -821,6 +823,27 @@ export async function scanNowAction() {
   revalidatePath("/feed");
 }
 
+export async function startProCheckoutAction() {
+  const { sessionToken } = await requireSession();
+  const result = await convexServer().action(
+    api.billingNode.createCheckoutSession,
+    {
+      sessionToken,
+      returnUrl: env.appUrl,
+    }
+  );
+  redirect(result.url);
+}
+
+export async function openBillingPortalAction() {
+  const { sessionToken } = await requireSession();
+  const result = await convexServer().action(api.billingNode.createPortalSession, {
+    sessionToken,
+    returnUrl: env.appUrl,
+  });
+  redirect(result.url);
+}
+
 export async function dismissOpportunityAction(opportunityId: string) {
   const { sessionToken } = await requireSession();
   await convexServer().mutation(api.opportunities.dismiss, {
@@ -930,14 +953,14 @@ export async function setGoalAction(goal: string) {
 }
 
 export async function saveOnboardingNicheAction(keywords: string[]) {
-  const { sessionToken } = await requireSession();
+  const { user, sessionToken } = await requireSession();
   const cleaned = [
     ...new Set(keywords.map((k) => k.trim().toLowerCase()).filter(Boolean)),
   ].slice(0, 12);
   if (cleaned.length === 0) return;
   await convexServer().mutation(api.scanner.updateSettings, {
     sessionToken,
-    enabled: true,
+    enabled: hasProAccess(user),
     keywords: cleaned,
   });
 }
@@ -996,7 +1019,9 @@ export async function buildWritingModelAction(args: {
     sessionToken,
     profileId,
   });
-  await convex.mutation(api.scanner.scanNow, { sessionToken });
+  if (hasProAccess(user)) {
+    await convex.mutation(api.scanner.scanNow, { sessionToken });
+  }
   await convex.mutation(api.users.completeOnboarding, { sessionToken });
   // No revalidatePath here: it would re-render /onboarding mid-wizard, and the
   // page guard (onboarding now complete) would yank the user to /dashboard
