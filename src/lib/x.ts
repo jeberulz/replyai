@@ -120,6 +120,25 @@ export async function fetchAuthenticatedUser(accessToken: string): Promise<XUser
 // Tweet data
 // ---------------------------------------------------------------------------
 
+const THREAD_ANCESTOR_LIMIT = 4;
+const TWEET_FIELDS = [
+  "public_metrics",
+  "created_at",
+  "author_id",
+  "conversation_id",
+  "attachments",
+  "reply_settings",
+  "referenced_tweets",
+].join(",");
+
+export type TweetAncestor = {
+  tweetId: string;
+  authorName: string;
+  authorHandle: string;
+  text: string;
+  postedAt: number;
+};
+
 export type TweetBundle = {
   tweetId: string;
   authorName: string;
@@ -135,6 +154,7 @@ export type TweetBundle = {
   quotes: number;
   views?: number;
   mediaText?: string;
+  threadAncestors: TweetAncestor[];
   topReplies: { authorHandle: string; text: string; likes: number }[];
   isDemoData: boolean;
   replySettings?: string;
@@ -157,10 +177,7 @@ export async function fetchTweetBundle(
   }
 
   const url = new URL(`${X_API_BASE}/tweets/${tweetId}`);
-  url.searchParams.set(
-    "tweet.fields",
-    "public_metrics,created_at,author_id,conversation_id,attachments,reply_settings"
-  );
+  url.searchParams.set("tweet.fields", TWEET_FIELDS);
   url.searchParams.set("expansions", "author_id,attachments.media_keys");
   url.searchParams.set(
     "user.fields",
@@ -191,6 +208,7 @@ export async function fetchTweetBundle(
         impression_count?: number;
       };
       reply_settings?: string;
+      referenced_tweets?: Array<{ type: string; id: string }>;
     };
     includes?: {
       users?: Array<{
@@ -212,6 +230,10 @@ export async function fetchTweetBundle(
     .join("\n");
 
   const topReplies = await fetchTopReplies(json.data.id, accessToken);
+  const threadAncestors = await fetchThreadAncestors(
+    repliedToId(json.data.referenced_tweets),
+    accessToken
+  );
 
   return {
     tweetId: json.data.id,
@@ -228,6 +250,7 @@ export async function fetchTweetBundle(
     quotes: json.data.public_metrics.quote_count,
     views: json.data.public_metrics.impression_count,
     mediaText: mediaText || undefined,
+    threadAncestors,
     topReplies,
     isDemoData: false,
     replySettings: json.data.reply_settings,
@@ -288,6 +311,76 @@ async function fetchTopReplies(
     .slice(0, 5);
 }
 
+function repliedToId(
+  refs: Array<{ type: string; id: string }> | undefined
+): string | null {
+  return refs?.find((ref) => ref.type === "replied_to")?.id ?? null;
+}
+
+async function fetchThreadAncestors(
+  firstParentId: string | null,
+  accessToken: string
+): Promise<TweetAncestor[]> {
+  const ancestors: TweetAncestor[] = [];
+  const seen = new Set<string>();
+  let parentId = firstParentId;
+
+  while (
+    parentId &&
+    ancestors.length < THREAD_ANCESTOR_LIMIT &&
+    !seen.has(parentId)
+  ) {
+    seen.add(parentId);
+    const row = await fetchAncestorTweet(parentId, accessToken);
+    if (!row) break;
+    ancestors.push(row.ancestor);
+    parentId = row.parentId;
+  }
+
+  return ancestors.reverse();
+}
+
+async function fetchAncestorTweet(
+  tweetId: string,
+  accessToken: string
+): Promise<{ ancestor: TweetAncestor; parentId: string | null } | null> {
+  const url = new URL(`${X_API_BASE}/tweets/${tweetId}`);
+  url.searchParams.set("tweet.fields", "created_at,author_id,referenced_tweets");
+  url.searchParams.set("expansions", "author_id");
+  url.searchParams.set("user.fields", "username,name");
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return null;
+
+  const json = (await res.json()) as {
+    data?: {
+      id: string;
+      text: string;
+      created_at?: string;
+      author_id?: string;
+      referenced_tweets?: Array<{ type: string; id: string }>;
+    };
+    includes?: {
+      users?: Array<{ id: string; username: string; name: string }>;
+    };
+  };
+  if (!json.data) return null;
+
+  const author = json.includes?.users?.find((u) => u.id === json.data?.author_id);
+  return {
+    ancestor: {
+      tweetId: json.data.id,
+      authorName: author?.name ?? "Unknown",
+      authorHandle: author?.username ?? "unknown",
+      text: json.data.text,
+      postedAt: json.data.created_at ? Date.parse(json.data.created_at) : Date.now(),
+    },
+    parentId: repliedToId(json.data.referenced_tweets),
+  };
+}
+
 /**
  * Build a TweetBundle from text the user pasted directly, bypassing the X
  * read API (reads require a paid tier). Metrics we don't have default to 0 and
@@ -316,6 +409,7 @@ export function manualTweetBundle(input: {
     retweets: 0,
     replies: 0,
     quotes: 0,
+    threadAncestors: [],
     topReplies: [],
     isDemoData: false,
   };
@@ -337,6 +431,13 @@ function demoBundle(tweetId: string): TweetBundle {
     replies: demo.replies,
     quotes: demo.quotes,
     views: demo.views,
+    threadAncestors: (demo.threadAncestors ?? []).map((ancestor) => ({
+      tweetId: ancestor.id,
+      authorName: ancestor.authorName,
+      authorHandle: ancestor.authorHandle,
+      text: ancestor.text,
+      postedAt: Date.now() - ancestor.minutesAgo * 60_000,
+    })),
     topReplies: demo.topReplies,
     isDemoData: true,
   };
