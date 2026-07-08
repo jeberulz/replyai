@@ -13,7 +13,7 @@ Thread-ancestor context in analysis; weighted 280-char validation + category-dis
     - The analysis prompt includes ancestors as delimited conversation context before the target tweet.
     - Existing single-tweet analyses continue to work when no ancestors are present.
 
-- [ ] WP16-S2 - Post-parse generation guardrails
+- [x] WP16-S2 - Post-parse generation guardrails
   - Acceptance criteria:
     - `generateOptions` enforces distinct categories after parsing, using the valid category set for the requested kind.
     - `generateOptions` enforces the X weighted 280-character budget after parsing.

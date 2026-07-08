@@ -11,6 +11,10 @@ import {
   REPLY_CATEGORIES,
   type GoalId,
 } from "../../shared/onboarding";
+import {
+  MAX_WEIGHTED_LENGTH,
+  weightedLength,
+} from "../../shared/evals";
 
 let anthropic: Anthropic | null = null;
 function client(): Anthropic {
@@ -179,6 +183,134 @@ export type GeneratedOption = {
   reason: string;
 };
 
+type GeneratedKind = "reply" | "quote";
+
+function categoriesForKind(kind: GeneratedKind): readonly string[] {
+  return kind === "quote" ? QUOTE_CATEGORIES : REPLY_CATEGORIES;
+}
+
+function canonicalCategory(
+  category: string,
+  categories: readonly string[]
+): string | null {
+  const normalized = category.trim().toLowerCase();
+  return categories.find((c) => c.toLowerCase() === normalized) ?? null;
+}
+
+export function enforceGeneratedOptionGuardrails(args: {
+  kind: GeneratedKind;
+  count: number;
+  options: GeneratedOption[];
+}): GeneratedOption[] {
+  const categories = categoriesForKind(args.kind);
+  const seen = new Set<string>();
+  const normalized: GeneratedOption[] = [];
+  const violations: string[] = [];
+
+  if (args.options.length !== args.count) {
+    violations.push(`expected ${args.count} options, got ${args.options.length}`);
+  }
+
+  for (const [index, option] of args.options.entries()) {
+    const category = canonicalCategory(option.category, categories);
+    if (!category) {
+      violations.push(`option ${index + 1} has invalid category "${option.category}"`);
+      continue;
+    }
+    const categoryKey = category.toLowerCase();
+    if (seen.has(categoryKey)) {
+      violations.push(`option ${index + 1} repeats category "${category}"`);
+      continue;
+    }
+    seen.add(categoryKey);
+
+    const content = option.content.trim();
+    const length = weightedLength(content);
+    if (length > MAX_WEIGHTED_LENGTH) {
+      violations.push(
+        `option ${index + 1} exceeds ${MAX_WEIGHTED_LENGTH} weighted chars (${length})`
+      );
+      continue;
+    }
+
+    normalized.push({
+      category,
+      content,
+      reason: option.reason.trim(),
+    });
+  }
+
+  if (normalized.length !== args.count) {
+    violations.push(
+      `expected ${args.count} valid distinct options, got ${normalized.length}`
+    );
+  }
+
+  if (violations.length > 0) {
+    throw new Error(`Generation guardrail violation: ${violations.join("; ")}`);
+  }
+
+  return normalized;
+}
+
+async function repairGeneratedOptions(args: {
+  kind: GeneratedKind;
+  bundle: TweetBundle;
+  analysis: Analysis;
+  voice: VoiceStyle | null;
+  voiceExamples: string[];
+  goalBlock: string;
+  count: number;
+  invalidOptions: GeneratedOption[];
+  violation: string;
+  model: string;
+}): Promise<{ options: GeneratedOption[]; usage: Usage }> {
+  const categories = categoriesForKind(args.kind);
+  const response = await client().messages.parse({
+    model: args.model,
+    max_tokens: 2048,
+    system: [
+      { type: "text", text: ANALYST_SYSTEM },
+      tweetContextBlock(args.bundle),
+    ],
+    messages: [
+      {
+        role: "user",
+        content: `The previous generation failed ReplyPilot's post-parse guardrails:
+${args.violation}
+
+Invalid options:
+${JSON.stringify(args.invalidOptions, null, 2)}
+
+Conversation analysis:
+- Topic: ${args.analysis.topic}
+- Author stance: ${args.analysis.stance}
+- Missing angles: ${args.analysis.missingAngles.join(" | ")}
+
+${voiceInstructions(args.voice, args.voiceExamples)}
+${args.goalBlock}
+Regenerate exactly ${args.count} ${args.kind === "quote" ? "quote tweets" : "replies"}.
+Requirements:
+- Each option must use a different category from: ${categories.join(", ")}.
+- Category values must be written exactly as listed above.
+- Each content must be within X's ${MAX_WEIGHTED_LENGTH} weighted-character limit. URLs count as 23 characters and emoji count as 2.
+- Preserve the strongest ideas from the invalid options when they fit, but rewrite shorter where needed.
+- Include a short grounded reason for each option. Do not include scores or engagement predictions.`,
+      },
+    ],
+    output_config: { format: zodOutputFormat(OptionsSchema) },
+  });
+  const parsed = response.parsed_output;
+  if (!parsed) throw new Error("Generation repair parsing failed");
+  return {
+    options: parsed.options,
+    usage: {
+      tokensIn: response.usage.input_tokens,
+      tokensOut: response.usage.output_tokens,
+    },
+  };
+}
+
 export async function generateOptions(args: {
   kind: "reply" | "quote";
   bundle: TweetBundle;
@@ -237,11 +369,39 @@ Generate exactly ${count} ${args.kind === "quote" ? "quote tweets" : "replies"},
   });
   const parsed = response.parsed_output;
   if (!parsed) throw new Error("Generation parsing failed");
+  let options = parsed.options;
+  let repairUsage: Usage = { tokensIn: 0, tokensOut: 0 };
+  try {
+    options = enforceGeneratedOptionGuardrails({
+      kind: args.kind,
+      count,
+      options,
+    });
+  } catch (error) {
+    const repair = await repairGeneratedOptions({
+      kind: args.kind,
+      bundle: args.bundle,
+      analysis: args.analysis,
+      voice: args.voice,
+      voiceExamples: args.voiceExamples,
+      goalBlock,
+      count,
+      invalidOptions: options,
+      violation: error instanceof Error ? error.message : String(error),
+      model: args.model ?? env.anthropicGenerateModel,
+    });
+    repairUsage = repair.usage;
+    options = enforceGeneratedOptionGuardrails({
+      kind: args.kind,
+      count,
+      options: repair.options,
+    });
+  }
   return {
-    options: parsed.options.slice(0, count),
+    options,
     usage: {
-      tokensIn: response.usage.input_tokens,
-      tokensOut: response.usage.output_tokens,
+      tokensIn: response.usage.input_tokens + repairUsage.tokensIn,
+      tokensOut: response.usage.output_tokens + repairUsage.tokensOut,
     },
   };
 }

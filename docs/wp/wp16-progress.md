@@ -15,3 +15,10 @@ Append-only progress log. New entries go at the bottom.
 - Added bounded `threadAncestors` to `TweetBundle`, live X fetching for reply parent chains, deterministic demo ancestors, additive `tweetAnalyses.threadAncestors` persistence, and analysis bundle restoration from saved rows.
 - Included ancestor context in the cached AI context block before the target tweet, while keeping existing rows and manual text analyses valid with an empty ancestor list.
 - Verification: `npm run typecheck && npm test` passed.
+
+## 2026-07-08 - WP16-S2
+
+- Added `enforceGeneratedOptionGuardrails` to normalize valid categories and reject post-parse model output with duplicate/invalid categories or content over X's weighted 280-character budget.
+- Wired `generateOptions` to run the guardrail after parsing, make one strict model repair pass when needed, and reject the output if repair still violates the guardrail. Usage accounting includes repair tokens.
+- Added focused unit tests for duplicate categories, invalid categories, weighted length, and category normalization.
+- Verification: `npm run typecheck && npm test` passed.
