@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "../../../../../convex/_generated/api";
+import { guardAuthRoute } from "@/lib/authSecurity";
 import { convexServer } from "@/lib/convex";
 import { clearSessionCookie, getSessionToken } from "@/lib/session";
 
 export async function POST(request: NextRequest) {
+  const blocked = guardAuthRoute(request, "logout", { requireOrigin: true });
+  if (blocked) return blocked;
+
   const token = await getSessionToken();
   if (token) {
     try {
