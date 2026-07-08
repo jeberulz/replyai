@@ -9,11 +9,14 @@
  */
 
 import type * as analyses from "../analyses.js";
+import type * as billing from "../billing.js";
+import type * as billingNode from "../billingNode.js";
 import type * as cache from "../cache.js";
 import type * as crons from "../crons.js";
 import type * as drafts from "../drafts.js";
 import type * as evals from "../evals.js";
 import type * as helpers from "../helpers.js";
+import type * as http from "../http.js";
 import type * as lib_analytics from "../lib/analytics.js";
 import type * as lib_sentry from "../lib/sentry.js";
 import type * as opportunities from "../opportunities.js";
@@ -40,11 +43,14 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   analyses: typeof analyses;
+  billing: typeof billing;
+  billingNode: typeof billingNode;
   cache: typeof cache;
   crons: typeof crons;
   drafts: typeof drafts;
   evals: typeof evals;
   helpers: typeof helpers;
+  http: typeof http;
   "lib/analytics": typeof lib_analytics;
   "lib/sentry": typeof lib_sentry;
   opportunities: typeof opportunities;

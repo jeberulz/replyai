@@ -19,6 +19,7 @@ describe("security headers", () => {
   it("allows only expected script/connect origins in CSP", () => {
     expect(contentSecurityPolicy).toContain("script-src 'self' 'unsafe-inline'");
     expect(contentSecurityPolicy).toContain("https://*.convex.cloud");
+    expect(contentSecurityPolicy).toContain("wss://*.convex.cloud");
     expect(contentSecurityPolicy).toContain("https://api.x.com");
     expect(contentSecurityPolicy).toContain("frame-ancestors 'none'");
   });

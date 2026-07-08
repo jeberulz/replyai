@@ -7,6 +7,7 @@ import {
   query,
 } from "./_generated/server";
 import { requireUser } from "./helpers";
+import { hasProAccess, paidFeatureGateMessage } from "../shared/billing";
 import { readStoredXTokens } from "./tokenSecurity";
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
@@ -44,7 +45,7 @@ export const settings = query({
       needsListScope = !!tokenRow && !tokenRow.scope.includes("list.read");
     }
 
-    return { ...row, needsListScope };
+    return { ...row, needsListScope, scannerLocked: !hasProAccess(user) };
   },
 });
 
@@ -73,6 +74,9 @@ export const updateSettings = mutation({
     }
   ) => {
     const user = await requireUser(ctx, sessionToken);
+    if (enabled && !hasProAccess(user)) {
+      throw new Error(paidFeatureGateMessage("scanner"));
+    }
 
     if (engageListIds && engageListIds.length > 5) {
       throw new Error("You can engage with at most 5 lists.");
@@ -187,6 +191,9 @@ export const scanNow = mutation({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
     const user = await requireUser(ctx, sessionToken);
+    if (!hasProAccess(user)) {
+      throw new Error(paidFeatureGateMessage("scanner"));
+    }
     await ctx.scheduler.runAfter(0, internal.scannerActions.scanUser, {
       userId: user._id,
     });
@@ -197,7 +204,18 @@ export const enabledSettings = internalQuery({
   args: {},
   handler: async (ctx) => {
     const all = await ctx.db.query("scannerSettings").collect();
-    return all.filter((s) => s.enabled).map((s) => ({ userId: s.userId }));
+    const enabled = all.filter((s) => s.enabled);
+    const users = await Promise.all(enabled.map((s) => ctx.db.get(s.userId)));
+    return enabled.flatMap((settings, index) => {
+      const user = users[index];
+      if (!user || !hasProAccess(user)) return [];
+      return [{
+        userId: settings.userId,
+        plan: user.plan,
+        lastScanAt: settings.lastScanAt,
+        lastScanCount: settings.lastScanCount,
+      }];
+    });
   },
 });
 
@@ -218,16 +236,19 @@ export const scanContext = internalQuery({
     return {
       xUserId: user.xUserId,
       isDemo: user.isDemo,
+      plan: user.plan,
       goal: user.goal,
-    keywords: settingsRow?.keywords ?? [],
-    searchKeywords: settingsRow?.searchKeywords ?? [],
-    accessToken: tokens.accessToken,
+      keywords: settingsRow?.keywords ?? [],
+      searchKeywords: settingsRow?.searchKeywords ?? [],
+      accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresAt: tokenRow?.expiresAt ?? 0,
       scope: tokenRow?.scope ?? "",
       engageListIds: settingsRow?.engageListIds ?? [],
       engageListNames: settingsRow?.engageListNames ?? [],
       watchedHandles: settingsRow?.watchedHandles ?? [],
+      lastScanAt: settingsRow?.lastScanAt,
+      lastScanCount: settingsRow?.lastScanCount,
       // Untouched users have no enabledSources row yet — default to
       // ["following"] so today's single-source behavior is unchanged.
       enabledSources: (settingsRow?.enabledSources && settingsRow.enabledSources.length > 0
