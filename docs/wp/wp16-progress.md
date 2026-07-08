@@ -29,3 +29,11 @@ Append-only progress log. New entries go at the bottom.
 - Added bounded internal stale-pipeline sweep logic for rows stuck in `analyzing` or `generating`, marking them failed with a retryable message.
 - Scheduled the sweep every five minutes from `convex/crons.ts`.
 - Verification: `npm run typecheck && npm test` passed.
+
+## 2026-07-08 - WP16-S4
+
+- Added retry classification for X publish status 429 and 5xx only, with two scheduled retries and jittered exponential delay. 403/policy failures still fail immediately through the existing parsed X error path.
+- Kept retry state in scheduler args (`attempt`) instead of adding draft schema, so retries are tied to the originally approved draft text and do not create a new user-facing publish path.
+- Added weighted-length validation before all publish sends and weighted-safe URL quote composition before appending a permalink.
+- Added focused unit tests for retryability, jitter delay, and weighted URL quote composition.
+- Verification: `npm run typecheck && npm test` passed.

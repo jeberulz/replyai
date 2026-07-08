@@ -26,7 +26,7 @@ Thread-ancestor context in analysis; weighted 280-char validation + category-dis
     - The sweep is bounded and scheduled from `convex/crons.ts`.
     - The implementation uses Convex indexes or bounded reads and does not require user credentials.
 
-- [ ] WP16-S4 - Publish retry with jitter
+- [x] WP16-S4 - Publish retry with jitter
   - Acceptance criteria:
     - X publish responses with status 429 or 5xx schedule one or two retries with jitter instead of immediately failing.
     - Non-retryable policy/auth failures, including 403 reply/quote restrictions, still fail with the parsed X error and preserve the standalone fallback behavior.
