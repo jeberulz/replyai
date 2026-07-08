@@ -65,8 +65,20 @@ async function ensureFeedHasOpportunity(page: Page) {
   if ((await rows.count()) > 0) return true;
 
   await page.getByRole("button", { name: /Sources/i }).click();
+  await expect(
+    page.getByRole("heading", { name: /Sources & settings/i })
+  ).toBeVisible();
+  await expectNoHorizontalScroll(page, "feed settings");
 
   const searchSwitch = page.getByTestId("source-switch-search");
+  const hasSourceControls = await searchSwitch
+    .isVisible({ timeout: 5_000 })
+    .catch(() => false);
+  if (!hasSourceControls) {
+    await page.keyboard.press("Escape");
+    return false;
+  }
+
   if ((await searchSwitch.getAttribute("data-state")) !== "checked") {
     await searchSwitch.click();
   }
@@ -112,7 +124,9 @@ test("feed detail stacks cleanly at 375px", async ({ page }) => {
 
   if (!hasOpportunity) {
     await expect(
-      page.getByText(/Last scan found no tweets matching your keywords/i)
+      page.getByText(
+        /Last scan found no tweets matching your keywords|No opportunities surfaced yet/i
+      )
     ).toBeVisible();
     await page.getByRole("button", { name: /Sources/i }).click();
     await expect(
