@@ -7,6 +7,7 @@ import {
   query,
 } from "./_generated/server";
 import { requireUser } from "./helpers";
+import { readStoredXTokens } from "./tokenSecurity";
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
 
@@ -224,6 +225,7 @@ export const scanContext = internalQuery({
       .query("xTokens")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
+    const tokens = await readStoredXTokens(tokenRow);
     return {
       xUserId: user.xUserId,
       isDemo: user.isDemo,
@@ -231,8 +233,8 @@ export const scanContext = internalQuery({
       goal: user.goal,
       keywords: settingsRow?.keywords ?? [],
       searchKeywords: settingsRow?.searchKeywords ?? [],
-      accessToken: tokenRow?.accessToken ?? null,
-      refreshToken: tokenRow?.refreshToken ?? null,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       expiresAt: tokenRow?.expiresAt ?? 0,
       scope: tokenRow?.scope ?? "",
       engageListIds: settingsRow?.engageListIds ?? [],

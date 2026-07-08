@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "../../../../../convex/_generated/api";
+import { guardAuthRoute } from "@/lib/authSecurity";
 import { env } from "@/lib/env";
 import { convexServer } from "@/lib/convex";
 import { ensureDefaults, postLoginPath } from "@/lib/onboarding";
@@ -18,6 +19,9 @@ function redirectHome(request: NextRequest, error: string) {
 }
 
 export async function GET(request: NextRequest) {
+  const blocked = guardAuthRoute(request, "callback");
+  if (blocked) return blocked;
+
   const params = request.nextUrl.searchParams;
   const code = params.get("code");
   const state = params.get("state");
