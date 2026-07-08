@@ -34,6 +34,7 @@ import {
 import { refreshAccessToken } from "../shared/xOAuth";
 
 const MIN_OPPORTUNITY_SCORE = 30;
+const SCAN_FAN_OUT_STAGGER_MS = 250;
 
 /** Max watched handles fetched per scan; see selectWatchedHandlesForScan. */
 const MAX_WATCHED_HANDLES_PER_SCAN = 15;
@@ -125,8 +126,10 @@ export const scanAll = internalAction({
   args: {},
   handler: async (ctx) => {
     const users = await ctx.runQuery(internal.scanner.enabledSettings, {});
-    for (const { userId } of users) {
-      await ctx.runAction(internal.scannerActions.scanUser, { userId });
+    for (let i = 0; i < users.length; i++) {
+      await ctx.scheduler.runAfter(i * SCAN_FAN_OUT_STAGGER_MS, internal.scannerActions.scanUser, {
+        userId: users[i].userId,
+      });
     }
   },
 });
