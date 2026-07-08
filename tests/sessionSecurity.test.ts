@@ -199,4 +199,46 @@ describe("session token hashing", () => {
     expect(ctx.patches[0].patch.lastSeenAt).toBe(now);
     vi.useRealTimers();
   });
+
+  it("backfills tokenHash for a legacy plaintext session on first mutation-context access, even far from expiry", async () => {
+    // Without this, a user already logged in when hashing shipped keeps a
+    // raw bearer token sitting in the sessions table — renewed indefinitely
+    // via the by_token fallback — for up to the full absolute lifetime.
+    const now = Date.now();
+    vi.setSystemTime(now);
+    const token = "legacy_active_token";
+    const ctx = fakeCtx({
+      sessions: [
+        {
+          _id: "legacy1",
+          _creationTime: 1,
+          userId: "user1",
+          token,
+          createdAt: now - 1000,
+          expiresAt: now + SESSION_SLIDING_TTL_MS, // nowhere near expiry
+        },
+      ],
+      users: [
+        {
+          _id: "user1",
+          _creationTime: 1,
+          xUserId: "x1",
+          username: "demo",
+          displayName: "Demo",
+          plan: "free",
+          isDemo: true,
+          createdAt: now,
+        },
+      ],
+    });
+
+    await expect(userBySessionToken(ctx as never, token)).resolves.toMatchObject({
+      _id: "user1",
+    });
+
+    expect(ctx.patches).toHaveLength(1);
+    expect(ctx.patches[0].patch.tokenHash).toBe(await hashSessionToken(token));
+    expect(ctx.patches[0].patch.token).toBeUndefined();
+    vi.useRealTimers();
+  });
 });

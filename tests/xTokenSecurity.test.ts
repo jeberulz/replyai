@@ -105,4 +105,39 @@ describe("X token encryption", () => {
       "new-refresh"
     );
   });
+
+  it("fails safe (never throws) when a stored ciphertext can't be decrypted", async () => {
+    // Corrupted rows, a rotated/misconfigured key, or an unsupported format
+    // must resolve to "no usable token" — a throw here would abort the scan
+    // cron for every remaining user, wedge a scheduled publish forever, or
+    // 500 a server action, instead of the graceful "reconnect X" UX every
+    // other missing-token path already gives.
+    vi.stubEnv("X_TOKEN_ENCRYPTION_KEY", "test-key");
+
+    await expect(
+      readStoredXTokens({
+        _id: "token1",
+        _creationTime: 1,
+        userId: "user1",
+        encryptedAccessToken: "not-a-valid-ciphertext",
+        expiresAt: Date.now() + 1000,
+        scope: "tweet.read users.read",
+      } as never)
+    ).resolves.toEqual({ accessToken: null, refreshToken: null });
+  });
+
+  it("fails safe when the encryption key is missing but a row has encrypted fields", async () => {
+    vi.stubEnv("X_TOKEN_ENCRYPTION_KEY", "");
+
+    await expect(
+      readStoredXTokens({
+        _id: "token1",
+        _creationTime: 1,
+        userId: "user1",
+        encryptedAccessToken: "v1.deadbeefdeadbeefdeadbeef.deadbeef",
+        expiresAt: Date.now() + 1000,
+        scope: "tweet.read users.read",
+      } as never)
+    ).resolves.toEqual({ accessToken: null, refreshToken: null });
+  });
 });

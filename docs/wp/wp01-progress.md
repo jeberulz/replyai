@@ -102,3 +102,63 @@
   and Convex.
 - Documented that demo mode still works without these secrets, while live X
   OAuth/publish paths fail closed until configured.
+
+## 2026-07-08 - Orchestrator review pass (code-review + security-review)
+
+Ran /security-review (no HIGH/MEDIUM findings) and /code-review at high
+effort (8 finder angles + verification). Fixed:
+
+- **Security-audit script couldn't see WP2's auth pattern.** `billingNode.ts`'s
+  checkout/portal actions authorize by calling
+  `ctx.runQuery(internal.billing.viewerForSession, ...)`, which itself calls
+  `requireUser` — but `auditRequireUser`'s same-body string match can't see
+  auth that happens in a called function, so both actions would fail CI once
+  WP1 and WP2 merge together. Added transitive resolution: a function
+  authorizes if it or any `internal.mod.fn` it calls (bounded depth + visited
+  set) does. Covered by new tests in `tests/securityAudit.test.ts`.
+- **Decrypt failures now propagate where a plain field read never could.**
+  `readStoredXTokens` threw on a corrupted ciphertext, a rotated/misconfigured
+  `X_TOKEN_ENCRYPTION_KEY`, or an unsupported format — unhandled, this could
+  abort the scan cron for every remaining user (`scanContext` runs before
+  `scanUser`'s own try/catch), wedge a scheduled publish forever
+  (`getForPublish`), or 500 a server action (`xAuthForServerSession`). Now
+  catches, reports via `captureConvexException`, and returns null tokens so
+  the existing "reconnect X" UX takes over instead.
+- **Legacy plaintext sessions never got upgraded.** `maybeRenewSession` only
+  patched `expiresAt`/`lastSeenAt`, so a user already logged in when hashing
+  shipped kept a raw bearer token in `sessions.token`, resolved via the
+  `by_token` fallback, for up to the full 90-day absolute lifetime. Now
+  backfills `tokenHash` (and clears `token`) the moment a legacy session is
+  seen in a mutation context, independent of TTL proximity.
+- **Timing-unsafe secret comparison.** `requireServerTokenAccess` (the only
+  gate in front of `xAuthForServerSession`, an Internet-callable query that
+  can return decrypted X tokens) used `!==`, leaking match progress via
+  response timing. Now hashes both sides to a fixed-length digest and
+  compares without short-circuiting.
+- **Audit script hardening.** `auditRequireUser`'s string match could be
+  satisfied by a comment (`// requireUser(...)`) with no real call; now
+  strips comments/strings before matching. `auditTokenSchema`'s per-table
+  field checks used an unbounded `[\s\S]*` that could be satisfied by an
+  unrelated later table; now bounded to each table's own brace-matched block.
+- **Efficiency**: the AES key was re-derived (hash + import) on every single
+  encrypt/decrypt call — cached per-secret at module scope now. Independent
+  access/refresh token encrypt/decrypt pairs now run via `Promise.all`
+  instead of serially. `bytesToHex` was duplicated between `helpers.ts` and
+  the new `tokenSecurity.ts` — the latter now imports it.
+- **Rate-limiter map growth**: `authRateLimits` entries were never evicted;
+  sweeps once the map crosses 5,000 entries.
+
+Verified: `npm run typecheck && npm run lint && npm test && npm run build &&
+npm run security:audit` all pass; 186 tests (up from 174), all new fixes
+covered by regression tests.
+
+**Documented, not code-fixed** (in the PR under "Found, not fixed"):
+sliding session renewal only fires from mutation contexts (Convex queries
+can't write) — a purely read-only user could still expire at the original
+30-day mark; given nearly every meaningful interaction in this app is a
+mutation (save/generate/dismiss), judged a narrow edge case. `authClientIp`
+trusts `X-Forwarded-For` per the deployment's actual proxy trust model —
+documented as a best-effort limitation rather than "fixed" by guessing at
+proxy topology. Two `process.env` reads in this diff should move to the
+typed Convex `env` pattern, deferred until WP2 merges (it introduces
+`convex/convex.config.ts`; creating it here first would collide).

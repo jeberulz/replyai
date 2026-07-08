@@ -1,15 +1,11 @@
 import type { Doc } from "./_generated/dataModel";
+import { bytesToHex } from "./helpers";
+import { captureConvexException } from "./lib/sentry";
 
 const TOKEN_CIPHER_PREFIX = "v1";
 const TOKEN_KEY_ENV = "X_TOKEN_ENCRYPTION_KEY";
 
 type XTokenRow = Doc<"xTokens">;
-
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
-    ""
-  );
-}
 
 function hexToBytes(hex: string): Uint8Array {
   if (!/^[a-f0-9]+$/i.test(hex) || hex.length % 2 !== 0) {
@@ -22,17 +18,34 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
+// Derived once per secret value and reused for the isolate's lifetime — the
+// key material never changes between calls, so re-hashing and re-importing
+// it on every single encrypt/decrypt (this runs on every scan, publish, and
+// token refresh) would be pure waste. Keyed by the secret string itself so a
+// rotated env var can't serve stale key material within a long-lived isolate.
+let cachedKey: { secret: string; key: CryptoKey } | null = null;
+
+// SHA-256 of an operator-generated, high-entropy secret (README/`.env.example`
+// specify `openssl rand -base64 32`) is used directly as AES-256 key material
+// rather than HKDF: there is no second derived key sharing this secret today,
+// so HKDF's domain-separation benefit doesn't apply yet. If a future purpose
+// needs a second key from the same secret, derive both via HKDF-Expand with
+// distinct `info` labels instead of hashing this secret again ad hoc.
 async function tokenEncryptionKey(): Promise<CryptoKey> {
   const secret = process.env[TOKEN_KEY_ENV]?.trim();
   if (!secret) throw new Error(`${TOKEN_KEY_ENV} is not configured.`);
+  if (cachedKey && cachedKey.secret === secret) return cachedKey.key;
+
   const material = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(secret)
   );
-  return await crypto.subtle.importKey("raw", material, "AES-GCM", false, [
+  const key = await crypto.subtle.importKey("raw", material, "AES-GCM", false, [
     "encrypt",
     "decrypt",
   ]);
+  cachedKey = { secret, key };
+  return key;
 }
 
 export async function encryptToken(plaintext: string): Promise<string> {
@@ -64,14 +77,30 @@ export async function readStoredXTokens(
   tokenRow: XTokenRow | null
 ): Promise<{ accessToken: string | null; refreshToken: string | null }> {
   if (!tokenRow) return { accessToken: null, refreshToken: null };
-  return {
-    accessToken: tokenRow.encryptedAccessToken
-      ? await decryptToken(tokenRow.encryptedAccessToken)
-      : (tokenRow.accessToken ?? null),
-    refreshToken: tokenRow.encryptedRefreshToken
-      ? await decryptToken(tokenRow.encryptedRefreshToken)
-      : (tokenRow.refreshToken ?? null),
-  };
+  try {
+    const [accessToken, refreshToken] = await Promise.all([
+      tokenRow.encryptedAccessToken
+        ? decryptToken(tokenRow.encryptedAccessToken)
+        : Promise.resolve(tokenRow.accessToken ?? null),
+      tokenRow.encryptedRefreshToken
+        ? decryptToken(tokenRow.encryptedRefreshToken)
+        : Promise.resolve(tokenRow.refreshToken ?? null),
+    ]);
+    return { accessToken, refreshToken };
+  } catch (error) {
+    // A corrupted ciphertext, a rotated/misconfigured key, or an unsupported
+    // format must not throw into callers that never expected a plain field
+    // read to fail (the scan cron, publish, the server-token query) — treat
+    // it as "no usable token" so the existing missing-token UX (reconnect
+    // prompt, standalone-publish fallback) takes over, and capture the
+    // failure so a systemic key problem stays operationally visible instead
+    // of silently aborting a whole scan cycle or wedging a draft forever.
+    await captureConvexException(error, {
+      scope: "tokenSecurity.readStoredXTokens",
+      xTokenRowId: tokenRow._id,
+    });
+    return { accessToken: null, refreshToken: null };
+  }
 }
 
 export async function encryptedXTokenPatch(args: {
@@ -85,25 +114,27 @@ export async function encryptedXTokenPatch(args: {
   encryptedRefreshToken?: string;
   refreshToken?: undefined;
 }> {
-  const patch: {
-    encryptedAccessToken: string;
-    accessToken: undefined;
-    encryptedRefreshToken?: string;
-    refreshToken?: undefined;
-  } = {
-    encryptedAccessToken: await encryptToken(args.accessToken),
+  const refreshTokenToEncrypt =
+    args.refreshToken !== undefined
+      ? args.refreshToken
+      : !args.existingEncryptedRefreshToken && args.existingRefreshToken
+        ? args.existingRefreshToken
+        : undefined;
+
+  const [encryptedAccessToken, encryptedRefreshToken] = await Promise.all([
+    encryptToken(args.accessToken),
+    refreshTokenToEncrypt !== undefined
+      ? encryptToken(refreshTokenToEncrypt)
+      : Promise.resolve(undefined),
+  ]);
+
+  return {
+    encryptedAccessToken,
     accessToken: undefined,
+    ...(encryptedRefreshToken !== undefined
+      ? { encryptedRefreshToken, refreshToken: undefined }
+      : {}),
   };
-
-  if (args.refreshToken !== undefined) {
-    patch.encryptedRefreshToken = await encryptToken(args.refreshToken);
-    patch.refreshToken = undefined;
-  } else if (!args.existingEncryptedRefreshToken && args.existingRefreshToken) {
-    patch.encryptedRefreshToken = await encryptToken(args.existingRefreshToken);
-    patch.refreshToken = undefined;
-  }
-
-  return patch;
 }
 
 export async function encryptedXTokenFields(args: {
@@ -113,10 +144,14 @@ export async function encryptedXTokenFields(args: {
   encryptedAccessToken: string;
   encryptedRefreshToken?: string;
 }> {
+  const [encryptedAccessToken, encryptedRefreshToken] = await Promise.all([
+    encryptToken(args.accessToken),
+    args.refreshToken !== undefined
+      ? encryptToken(args.refreshToken)
+      : Promise.resolve(undefined),
+  ]);
   return {
-    encryptedAccessToken: await encryptToken(args.accessToken),
-    ...(args.refreshToken !== undefined
-      ? { encryptedRefreshToken: await encryptToken(args.refreshToken) }
-      : {}),
+    encryptedAccessToken,
+    ...(encryptedRefreshToken !== undefined ? { encryptedRefreshToken } : {}),
   };
 }

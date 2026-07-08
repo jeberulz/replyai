@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  authRateLimitMapSizeForTests,
   consumeAuthRateLimit,
   hasAllowedOrigin,
   resetAuthRateLimitsForTests,
@@ -92,5 +93,26 @@ describe("auth route rate limiting", () => {
         windowMs: 1000,
       }).allowed
     ).toBe(true);
+  });
+
+  it("sweeps expired buckets once the map grows large, bounding memory growth", () => {
+    // Simulates a client rotating a fake IP-bearing header on every request:
+    // each distinct value creates a permanent entry unless swept.
+    const now = 1_000_000;
+    for (let i = 0; i < 5_000; i += 1) {
+      consumeAuthRateLimit(
+        request({ "x-forwarded-for": `10.0.0.${i}` }),
+        "login",
+        { now: now - 120_000, windowMs: 60_000 } // already expired by `now`
+      );
+    }
+    expect(authRateLimitMapSizeForTests()).toBe(5_000);
+
+    consumeAuthRateLimit(request({ "x-forwarded-for": "10.0.0.new" }), "login", {
+      now,
+      windowMs: 60_000,
+    });
+
+    expect(authRateLimitMapSizeForTests()).toBeLessThan(10);
   });
 });

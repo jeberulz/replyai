@@ -17,9 +17,28 @@ import {
 const SESSION_TTL_MS = SESSION_SLIDING_TTL_MS;
 const TOKEN_ACCESS_SECRET_ENV = "CONVEX_SERVER_TOKEN_ACCESS_SECRET";
 
-function requireServerTokenAccess(secret: string) {
+export async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+  // Hash both sides to a fixed-length digest before comparing: a raw
+  // `===`/`!==` string compare short-circuits at the first mismatched byte,
+  // leaking via response timing how many leading characters of the secret a
+  // guess got right. This is the only thing gating decrypted X OAuth tokens
+  // behind an Internet-callable Convex query, so it's worth the extra hash.
+  const [digestA, digestB] = await Promise.all([
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(a)),
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(b)),
+  ]);
+  const bytesA = new Uint8Array(digestA);
+  const bytesB = new Uint8Array(digestB);
+  let diff = 0;
+  for (let i = 0; i < bytesA.length; i += 1) {
+    diff |= bytesA[i] ^ bytesB[i];
+  }
+  return diff === 0;
+}
+
+async function requireServerTokenAccess(secret: string) {
   const expected = process.env[TOKEN_ACCESS_SECRET_ENV]?.trim();
-  if (!expected || secret !== expected) {
+  if (!expected || !(await timingSafeEqual(secret, expected))) {
     throw new Error("Unauthorized");
   }
 }
@@ -214,7 +233,7 @@ export const xAuthForSession = query({
 export const xAuthForServerSession = query({
   args: { sessionToken: v.string(), serverSecret: v.string() },
   handler: async (ctx, { sessionToken, serverSecret }) => {
-    requireServerTokenAccess(serverSecret);
+    await requireServerTokenAccess(serverSecret);
     const user = await userBySessionToken(ctx, sessionToken);
     if (!user) return null;
     const tokenRow = await ctx.db

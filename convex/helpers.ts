@@ -8,7 +8,7 @@ export const SESSION_RENEW_WITHIN_MS = 1000 * 60 * 60 * 24 * 7;
 type SessionDoc = Doc<"sessions">;
 type SessionCtx = QueryCtx | MutationCtx;
 
-function bytesToHex(bytes: Uint8Array): string {
+export function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
     ""
   );
@@ -33,20 +33,41 @@ function canPatchSession(ctx: SessionCtx): ctx is MutationCtx {
 async function maybeRenewSession(
   ctx: SessionCtx,
   session: SessionDoc,
-  now: number
+  now: number,
+  token: string
 ) {
   if (!canPatchSession(ctx)) return;
   const absoluteExpiresAt = absoluteExpiry(session);
-  const currentExpiresAt = Math.min(session.expiresAt, absoluteExpiresAt);
-  if (currentExpiresAt - now > SESSION_RENEW_WITHIN_MS) return;
 
-  const expiresAt = Math.min(now + SESSION_SLIDING_TTL_MS, absoluteExpiresAt);
-  if (expiresAt <= session.expiresAt && session.absoluteExpiresAt) return;
+  // Opportunistically upgrade a legacy plaintext-bearer session the moment
+  // it's seen in a writable context, regardless of TTL — an already-logged-in
+  // user would otherwise keep a raw token sitting in the table (and being
+  // renewed indefinitely via the by_token fallback) for up to the full
+  // absolute lifetime after this hardening deploys.
+  const needsHashBackfill = !session.tokenHash;
+
+  const currentExpiresAt = Math.min(session.expiresAt, absoluteExpiresAt);
+  const needsRenewal = currentExpiresAt - now <= SESSION_RENEW_WITHIN_MS;
+  if (!needsHashBackfill && !needsRenewal) return;
+
+  const expiresAt = needsRenewal
+    ? Math.min(now + SESSION_SLIDING_TTL_MS, absoluteExpiresAt)
+    : session.expiresAt;
+  if (
+    !needsHashBackfill &&
+    expiresAt <= session.expiresAt &&
+    session.absoluteExpiresAt
+  ) {
+    return;
+  }
 
   await ctx.db.patch(session._id, {
     expiresAt,
     absoluteExpiresAt,
     lastSeenAt: now,
+    ...(needsHashBackfill
+      ? { tokenHash: await hashSessionToken(token), token: undefined }
+      : {}),
   });
 }
 
@@ -77,7 +98,7 @@ export async function userBySessionToken(
   const now = Date.now();
   if (!session) return null;
   if (session.expiresAt < now || absoluteExpiry(session) < now) return null;
-  await maybeRenewSession(ctx, session, now);
+  await maybeRenewSession(ctx, session, now, token);
   return await ctx.db.get(session.userId);
 }
 
