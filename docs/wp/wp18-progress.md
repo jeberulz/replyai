@@ -89,3 +89,21 @@ Append-only progress log. New entries go at the bottom.
 - Verification for S4:
   - `npm run typecheck` passed
   - `npm test -- tests/semanticRelevance.test.ts tests/scoring.test.ts tests/feedFilters.test.ts` passed
+
+## 2026-07-08 - WP18-S5
+
+- Final required verification completed in the WP18 worktree:
+  - `npm run typecheck` passed
+  - `npm run lint` passed with warnings only, all in checked-in
+    `convex/_generated/*` files (`Unused eslint-disable directive`); no
+    WP18-authored lint warnings remain
+  - `npm test` passed (`25` files passed, `1` skipped; `211` tests passed,
+    `1` skipped)
+  - `npm run evals` passed (`43` tests)
+  - `npm run build` passed on Next.js `16.2.10`
+- The last code adjustment before the final pass was a small scanner-upsert
+  cleanup so the internal `rankingScore` / `semanticScreen` strip step does not
+  create lint noise.
+- Branch state remains WP18-scoped: scoring, semantic relevance, manual
+  analysis scoring, scanner ranking/safety wiring, focused tests, and the
+  working `docs/wp` artifacts only.

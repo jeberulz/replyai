@@ -449,10 +449,12 @@ export const scanUser = internalAction({
 
       const { inserted } = await ctx.runMutation(internal.opportunities.upsertMany, {
         userId,
-        items: worthSurfacing.map(
-          ({ rankingScore: _rankingScore, semanticScreen: _semanticScreen, ...item }) =>
-            item
-        ),
+        items: worthSurfacing.map((item) => {
+          const { rankingScore, semanticScreen, ...persisted } = item;
+          void rankingScore;
+          void semanticScreen;
+          return persisted;
+        }),
       });
       if (inserted > 0) {
         await trackConvexEvent("opportunity_surfaced", userId, { count: inserted });

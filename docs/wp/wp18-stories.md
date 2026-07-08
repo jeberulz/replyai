@@ -44,7 +44,7 @@ classifier-based brand-safety screen.
     - Focused tests cover political tangents, non-political tragedy/outrage
       content, and allowed niche-relevant edge cases.
 
-- [ ] WP18-S5 - Final verification and reviewer map
+- [x] WP18-S5 - Final verification and reviewer map
   - Acceptance criteria:
     - `docs/wp/wp18-stories.md` is fully checked and
       `docs/wp/wp18-progress.md` records the implementation decisions and
