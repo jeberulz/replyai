@@ -1,0 +1,4 @@
+# WP22 Progress
+
+- 2026-07-08: Read `PRD.md`, `AGENTS.md`, `docs/AGENT_PLAYBOOK.md`, `docs/PRODUCT_STRATEGY.md` (§4, §5.5, and §14 WP22), `convex/_generated/ai/guidelines.md`, the relevant Next.js App Router docs in `node_modules/next/dist/docs/01-app/`, and `design.md` before editing. Confirmed the WP22 worktree was clean on `feat/wp22-reply-budget-pacing-coach`.
+- 2026-07-08: Completed `WP22-S1`. Added `shared/replyPacing.ts` for daily sent-reply counting, target/warning derivation, and deterministic best-window ranking/fallback; wired a dedicated `convex/usage.pacingCoach` query on top of existing published-draft and opportunity data so the feature does not depend on unmerged WP7 outcomes; added focused tests for local-day counting, warning thresholds, and best-window fallback behavior.

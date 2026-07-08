@@ -6,6 +6,7 @@ import {
   type OpportunityFunnelRow,
 } from "../shared/rankingWeights";
 import { countObservedEditBuckets } from "../shared/editDistance";
+import { summarizeReplyPacing } from "../shared/replyPacing";
 
 export const record = mutation({
   args: {
@@ -122,6 +123,48 @@ export const stats = query({
       opportunityToAnalyzeRate: opportunityToAnalyzeRate(monthOpportunities),
       opportunitiesSurfaced: monthOpportunities.length,
     };
+  },
+});
+
+export const pacingCoach = query({
+  args: {
+    sessionToken: v.string(),
+    timezoneOffsetMinutes: v.number(),
+  },
+  handler: async (ctx, { sessionToken, timezoneOffsetMinutes }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const nowMs = Date.now();
+
+    const publishedDrafts = await ctx.db
+      .query("savedDrafts")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", user._id).eq("status", "published")
+      )
+      .order("desc")
+      .take(200);
+
+    const opportunities = await ctx.db
+      .query("opportunities")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(200);
+
+    return summarizeReplyPacing({
+      nowMs,
+      timezoneOffsetMinutes,
+      publishedReplies: publishedDrafts
+        .filter((draft) => draft.kind === "reply" && Boolean(draft.publishedAt))
+        .map((draft) => ({
+          publishedAt: draft.publishedAt!,
+          editBucket: draft.editBucket,
+        })),
+      liveOpportunities: opportunities.map((opportunity) => ({
+        postedAt: opportunity.postedAt,
+        scannedAt: opportunity.scannedAt,
+        score: opportunity.score,
+        status: opportunity.status,
+      })),
+    });
   },
 });
 

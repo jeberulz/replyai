@@ -1,6 +1,6 @@
 # WP22 Stories — Reply budget & pacing coach
 
-- [ ] `WP22-S1` Daily pacing derivations and usage query shape
+- [x] `WP22-S1` Daily pacing derivations and usage query shape
   - Extend the existing usage/dashboard query surface with additively derived daily reply-budget data built from observed published drafts, without depending on unmerged WP7 outcome data.
   - Report today's sent-reply count, target framing around 15–20 replies/day, escalating warning levels as the count approaches or exceeds ~50/day, and a deterministic "best windows" dataset with a safe fallback when live opportunity data is thin.
   - Add focused tests for daily sent counts, warning-threshold behavior, and best-window derivation/fallback logic.
