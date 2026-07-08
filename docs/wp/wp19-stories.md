@@ -3,7 +3,7 @@
   - `convex/crons.ts` triggers a dispatcher cadence that can enqueue per-user scan jobs without changing publish behavior or demo mode.
   - The implementation stays inside `convex/scannerActions.ts` and `convex/crons.ts`.
 
-- [ ] WP19-S2: Add text-fingerprint dedupe across sources
+- [x] WP19-S2: Add text-fingerprint dedupe across sources
   - Candidate merging drops near-identical tweets that differ only by tweet id or discovery source by using the existing text fingerprint.
   - Deduping preserves source-priority ordering so watched/list/search/following precedence still holds.
   - Demo-mode candidate collection follows the same dedupe behavior.

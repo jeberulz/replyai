@@ -15,3 +15,8 @@
   - `scanAll` now enqueues per-user `scanUser` jobs through `ctx.scheduler.runAfter(...)` instead of running each scan inline in one action.
   - Added a small deterministic stagger (`250ms`) between enqueued jobs to avoid firing every scheduled scan at the exact same instant.
   - Story checks passed: `npm run typecheck`, `npm test`.
+- WP19-S2 complete:
+  - Candidate merge now dedupes on both `tweetId` and `fingerprintText(text)`, so reposted or re-discovered duplicate text cannot occupy multiple feed slots.
+  - Source priority is preserved because the merge still processes candidates in watched -> list -> search -> following order.
+  - Added focused regression coverage in `tests/scannerActions.test.ts`.
+  - Story checks passed: `npm run typecheck`, `npm test -- tests/scannerActions.test.ts`.

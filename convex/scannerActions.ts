@@ -45,7 +45,7 @@ const MAX_CANDIDATES = 150;
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
 
-type TimelineTweet = {
+export type TimelineTweet = {
   tweetId: string;
   authorHandle: string;
   authorName: string;
@@ -108,17 +108,31 @@ function selectWatchedHandlesForScan(handles: string[]): string[] {
 
 /**
  * Merge candidate lists giving priority to the highest-intent source when the
- * same tweet appears in more than one (watched > list > search > following),
- * then cap at MAX_CANDIDATES total.
+ * same tweet or same text fingerprint appears in more than one source
+ * (watched > list > search > following), then cap at MAX_CANDIDATES total.
  */
-function dedupeCandidates(bySourcePriority: TimelineTweet[][]): TimelineTweet[] {
-  const merged = new Map<string, TimelineTweet>();
+export function dedupeCandidates(bySourcePriority: TimelineTweet[][]): TimelineTweet[] {
+  const merged: TimelineTweet[] = [];
+  const seenTweetIds = new Set<string>();
+  const seenFingerprints = new Set<string>();
   for (const tweets of bySourcePriority) {
     for (const t of tweets) {
-      if (!merged.has(t.tweetId)) merged.set(t.tweetId, t);
+      const textFingerprint = fingerprintText(t.text);
+      if (
+        seenTweetIds.has(t.tweetId) ||
+        seenFingerprints.has(textFingerprint)
+      ) {
+        continue;
+      }
+      seenTweetIds.add(t.tweetId);
+      seenFingerprints.add(textFingerprint);
+      merged.push(t);
+      if (merged.length >= MAX_CANDIDATES) {
+        return merged;
+      }
     }
   }
-  return Array.from(merged.values()).slice(0, MAX_CANDIDATES);
+  return merged;
 }
 
 /** Cron entry point: scan every user who has the feed scanner enabled. */
