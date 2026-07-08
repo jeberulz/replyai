@@ -177,8 +177,13 @@ export function DraftDetail({
                     rows={4}
                     autoFocus
                   />
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={save} disabled={pending}>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      size="sm"
+                      onClick={save}
+                      disabled={pending}
+                      className="w-full sm:w-auto"
+                    >
                       <Check /> Save
                     </Button>
                     <Button
@@ -188,6 +193,7 @@ export function DraftDetail({
                         setText(draft.text);
                         setEditing(false);
                       }}
+                      className="w-full sm:w-auto"
                     >
                       Cancel
                     </Button>
@@ -271,6 +277,7 @@ export function DraftDetail({
       >
         {canReplyOnX && (
           <Button
+            className="w-full sm:w-auto"
             onClick={() =>
               window.open(
                 buildXIntentUrl({
@@ -291,12 +298,13 @@ export function DraftDetail({
             variant={canReplyOnX ? "outline" : "default"}
             onClick={retryStandalone}
             disabled={pending}
+            className="w-full sm:w-auto"
           >
             Post as tweet
           </Button>
         )}
         {draft.status === "published" && draft.publishedTweetId && (
-          <Button asChild>
+          <Button asChild className="w-full sm:w-auto">
             <a
               href={`https://x.com/i/web/status/${draft.publishedTweetId}`}
               target="_blank"
@@ -307,12 +315,21 @@ export function DraftDetail({
           </Button>
         )}
         {editable && !editing && (
-          <Button variant="outline" onClick={() => setEditing(true)}>
+          <Button
+            variant="outline"
+            onClick={() => setEditing(true)}
+            className="w-full sm:w-auto"
+          >
             <Pencil /> Edit
           </Button>
         )}
         {editable && (
-          <Button variant="outline" onClick={remove} disabled={pending}>
+          <Button
+            variant="outline"
+            onClick={remove}
+            disabled={pending}
+            className="w-full sm:w-auto"
+          >
             <Trash2 /> Delete
           </Button>
         )}

@@ -283,7 +283,7 @@ export function AnalysisThread({
 
   // ---- Mobile / narrow: stacked single column ----
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden pb-4">
       {userBubble}
       <div className="space-y-4">
         {progress}

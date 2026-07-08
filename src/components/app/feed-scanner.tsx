@@ -319,7 +319,7 @@ export function FeedScanner() {
   const list = (
     <div className="flex h-full min-h-0 flex-col bg-background">
       {/* Top bar */}
-      <div className="flex items-center justify-between gap-2 border-b border-border px-6 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
         <div className="flex items-center gap-3">
           <h2 className="text-[15px] font-semibold">Feed scanner</h2>
           <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground">
@@ -331,12 +331,13 @@ export function FeedScanner() {
             {scanning ? "Scanning…" : scannerOn ? "Live" : "Paused"}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <Button
             variant="outline"
             size="sm"
             onClick={scanNow}
             disabled={busy}
+            className="w-full sm:w-auto"
           >
             {scanning ? (
               <Loader2 className="animate-spin" />
@@ -349,6 +350,7 @@ export function FeedScanner() {
             variant="outline"
             size="sm"
             onClick={() => setSettingsOpen(true)}
+            className="w-full sm:w-auto"
           >
             <SlidersHorizontal />
             Sources
@@ -357,7 +359,7 @@ export function FeedScanner() {
       </div>
 
       {/* Scroll body */}
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
         {opportunities && opportunities.length > 0 && (
           <FilterChips
             value={quickFilter}
@@ -471,7 +473,7 @@ export function FeedScanner() {
 
             <div className="space-y-2">
               <Label htmlFor="keywords">Topics you care about</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   id="keywords"
                   value={keywords}
@@ -483,6 +485,7 @@ export function FeedScanner() {
                   variant="outline"
                   onClick={saveKeywords}
                   disabled={busy || !keywordsDirty}
+                  className="w-full sm:w-auto"
                 >
                   Save
                 </Button>
@@ -496,7 +499,7 @@ export function FeedScanner() {
 
             <div className="space-y-2">
               <Label htmlFor="search-keywords">Discovery search terms</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   id="search-keywords"
                   value={searchKeywords}
@@ -508,6 +511,7 @@ export function FeedScanner() {
                   variant="outline"
                   onClick={saveSearchKeywords}
                   disabled={busy || !searchKeywordsDirty}
+                  className="w-full sm:w-auto"
                 >
                   Save
                 </Button>
@@ -533,6 +537,7 @@ export function FeedScanner() {
                   ) : (
                     <Switch
                       id={`source-${row.source}`}
+                      data-testid={`source-switch-${row.source}`}
                       checked={enabledSources.includes(row.source)}
                       onCheckedChange={(checked) =>
                         toggleSource(row.source, checked)

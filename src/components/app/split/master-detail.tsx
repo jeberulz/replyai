@@ -42,9 +42,14 @@ export function MasterDetail({
     // detail with a back affordance.
     if (hasSelection) {
       return (
-        <div className="flex h-full min-h-0 flex-col">
-          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-            <Button variant="ghost" size="sm" onClick={onBack}>
+        <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+          <div className="shrink-0 border-b border-border bg-background px-4 py-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              className="h-11 justify-start px-0 text-sm"
+            >
               <ArrowLeft className="size-4" />
               {backLabel}
             </Button>
@@ -53,7 +58,7 @@ export function MasterDetail({
         </div>
       );
     }
-    return <div className="h-full min-h-0">{list}</div>;
+    return <div className="h-full min-h-0 overflow-hidden">{list}</div>;
   }
 
   return (

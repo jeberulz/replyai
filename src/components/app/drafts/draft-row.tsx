@@ -84,61 +84,70 @@ export function DraftRow({
   return (
     <div
       onClick={onSelect}
+      data-testid={`draft-row-${draft._id}`}
       className={cn(
-        "flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-muted-foreground/30",
+        "flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-muted-foreground/30 sm:flex-row sm:items-center",
         selected && "border-primary/60 ring-1 ring-primary/40",
         pending && "opacity-50"
       )}
     >
-      <Badge variant={meta.variant} className="shrink-0">
-        <meta.icon className="size-3" />
-        {meta.label}
-      </Badge>
-      <div className="min-w-0 flex-1">
-        <div className="line-clamp-1 text-sm font-medium">{draft.text}</div>
-        <div className="line-clamp-1 text-xs text-muted-foreground">
-          {draftKindLabel(draft)} · {draftSubline(draft)}
+      <div className="flex w-full items-start gap-3 sm:min-w-0 sm:flex-1 sm:items-center">
+        <Badge variant={meta.variant} className="shrink-0">
+          <meta.icon className="size-3" />
+          {meta.label}
+        </Badge>
+        <div className="min-w-0 flex-1">
+          <div className="line-clamp-1 text-sm font-medium">{draft.text}</div>
+          <div className="line-clamp-1 text-xs text-muted-foreground">
+            {draftKindLabel(draft)} · {draftSubline(draft)}
+          </div>
         </div>
       </div>
-      {canReplyOnX && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            window.open(
-              buildXIntentUrl({
-                text: draft.text,
-                inReplyTo: draft.targetTweetId,
-              }),
-              "_blank",
-              "noopener,noreferrer"
-            );
-          }}
-        >
-          <XLogo className="size-3.5" />
-          Reply on X
-        </Button>
-      )}
-      {canRetryStandalone && (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={pending}
-          onClick={(e) => {
-            e.stopPropagation();
-            startTransition(async () => {
-              try {
-                await retryDraftAsStandaloneAction(draft._id);
-                toast.success("Retrying as standalone tweet…");
-              } catch {
-                toast.error("Retry failed");
-              }
-            });
-          }}
-        >
-          Post as tweet
-        </Button>
+      {(canReplyOnX || canRetryStandalone) && (
+        <div className="grid w-full gap-2 sm:w-auto sm:flex sm:flex-wrap sm:justify-end">
+          {canReplyOnX && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(
+                  buildXIntentUrl({
+                    text: draft.text,
+                    inReplyTo: draft.targetTweetId,
+                  }),
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+            >
+              <XLogo className="size-3.5" />
+              Reply on X
+            </Button>
+          )}
+          {canRetryStandalone && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              className="w-full sm:w-auto"
+              onClick={(e) => {
+                e.stopPropagation();
+                startTransition(async () => {
+                  try {
+                    await retryDraftAsStandaloneAction(draft._id);
+                    toast.success("Retrying as standalone tweet…");
+                  } catch {
+                    toast.error("Retry failed");
+                  }
+                });
+              }}
+            >
+              Post as tweet
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );
