@@ -53,12 +53,12 @@ Settings — without looking like a stock Meta/Astryx demo.
 | PR #19 `fix/ci-lockfile-sync` | `package-lock.json` | **Gate 0:** merge CI fix before any Astryx install PR |
 | Uncommitted research UI on `main` (`src/components/app/research/*`, deleted `profile-suggestion-card`) | research components | Finish or park that WIP on its own branch before WP27 touches research rows |
 | WP10 extension (open PR) | mostly `extension/` | No collision if we stay out of `extension/` |
-| WP2 / WP3 settings UI | `src/app/(app)/settings`, account controls | **WP25–26 avoid settings call sites** until those WPs are merged or idle; Field migration of settings is WP27+ or a dedicated follow-up |
+| WP2 / WP3 settings UI | `src/app/(app)/settings`, account controls | **Cleared 2026-07-09** — WP30 migrates settings onto `ds/` after WP29 merges |
 | WP6 mobile split | `src/components/app/split/*` | **Do not reopen** stacked-nav behavior; WP26/27 may *consume* pane chrome, not redesign breakpoints |
 | WP11 analytics card | `chat-home`, personal-analytics | WP28 only; after WP11 merges |
 | WP21 research scoring/UI | research components | WP27 research pass waits for WP21 |
 | WP22 pacing coach | dashboard / drafts / warnings | Avoid `reply-pacing*` and dashboard pacing modules until merged |
-| WP17 voice studio | `voice-studio.tsx` | Out of scope until wave C |
+| WP17 voice studio | `voice-studio.tsx` | **Cleared 2026-07-09** — WP29 migrates Voice onto `ds/` |
 
 ### Soft freeze zones (workers escalate if they need these)
 
@@ -67,7 +67,8 @@ src/app/page.tsx                          # landing — NEVER
 src/app/globals.css                       # WP24 only (dual-token bridge)
 package.json / package-lock.json          # WP24 only
 src/components/app/split/*                # WP6 ownership — read-only unless ruling
-src/app/(app)/settings/**                 # WP2/WP3 — freeze until clear
+src/app/(app)/settings/**                 # WP30 — after WP29 merges
+src/components/app/voice-studio.tsx       # WP29
 src/components/app/research/**            # WP21 / current WIP — freeze until clear
 src/components/app/reply-pacing/**        # WP22
 src/components/app/chat/personal-analytics*  # WP11
@@ -334,6 +335,23 @@ WP11 merges; composer, suggestion chips, analysis thread chrome.
 
 **Definition of done:** Chat/Tokenizer/Progress used where they reduce
 custom CSS without changing pipeline semantics; ReplyPreview untouched.
+
+### WP29 — Voice Studio onto `ds/`  
+**Wave:** E (after WP24–28 gate)  
+**Key files:** `src/components/app/voice-studio.tsx`  
+**Forbidden:** settings, chat, feed/drafts, landing, Convex/schema.
+
+**Definition of done:** Voice tab on ds Card/Badge/Button/TextInput/TextArea;
+Dialog stays ui/; train/CRUD/default unchanged; checks green.
+
+### WP30 — Settings onto `ds/`  
+**Wave:** E (after WP29 merges)  
+**Key files:** `settings/page.tsx`, `account-data-controls.tsx`,
+`default-model-card.tsx`  
+**Forbidden:** voice-studio, chat, landing, Convex/schema.
+
+**Definition of done:** Settings on ds primitives; Dialog stays ui/ for delete;
+billing/export/delete/model default unchanged; checks green.
 
 ---
 

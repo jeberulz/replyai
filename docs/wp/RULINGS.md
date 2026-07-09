@@ -39,3 +39,15 @@ Ruling:
 Question: Does WP27 DoD require OptionCard to use Astryx `SelectableCard` literally?
 
 Ruling: No. `SelectableCard` is a checkbox-selection pattern. OptionCard is multi-action publish chrome (edit/rewrite/schedule/publish). **`ds/Card` is the accepted equivalent.** Keep 3 options + reason + explicit publish click. Do not force SelectableCard onto OptionCard.
+
+## 2026-07-09 - WP29–WP30 - Voice & Settings Astryx migration
+
+Question: WP24 plan froze `settings/**` until WP2/WP3 cleared and deferred `voice-studio.tsx` to wave C. When may we migrate these tabs onto `ds/`?
+
+Ruling:
+
+1. **Freeze lifted** after WP24–WP28 landed on `main`. Settings and Voice are no longer frozen zones.
+2. **Sequential packaging:** WP29 Voice Studio first; WP30 Settings after WP29 merges (separate branch/PR).
+3. **Adapter path unchanged:** `ds/` strangler; `ui/` stays. **Dialog/Select stay on `ui/`** for WP29–30 (same as WP27 OptionCard ruling).
+4. **No behavior changes:** voice train/CRUD/default, billing checkout/portal, export/delete, model default — UI swap only.
+5. **Landing + Theme scope:** unchanged (`page.tsx` off Astryx; Theme on `(app)`/`(onboarding)` only).
