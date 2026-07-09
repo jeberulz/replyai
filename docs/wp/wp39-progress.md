@@ -13,3 +13,13 @@
   `heuristicOnboardingProposal`, parse helper. Static `suggestedKeywordsForGoal`
   remains pad/fallback.
 - Tests: 10 passing in `tests/onboardingConcierge.test.ts`.
+
+## 2026-07-09 — WP39-S2
+
+- Additive `onboardingConciergeRuns` table + Convex validators.
+- Public API: `latest`, `startRun`, `skipRun`, `acceptProposal`, `acceptWatch`
+  (per-handle only). Internal: `completeRun` / `failRun`.
+- Fair-use: one concierge run = one **analysis** bucket (same as voice-drift).
+- Account delete/export: `onboardingConciergeRuns` in `ACCOUNT_USER_TABLES`
+  + `convex/account.ts` switch arms.
+- Action stub in `onboardingConciergeActions.ts` (demo proposal) — filled in S3.

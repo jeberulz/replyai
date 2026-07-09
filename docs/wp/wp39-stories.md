@@ -51,7 +51,7 @@ groundwork" — this WP ships the MVP agent path.
   - Proposal validator + demo fixture from static onboarding data.
   - Vitest: demo shape, fallback when empty input.
 
-- [ ] **WP39-S2 — Schema + Convex run API**
+- [x] **WP39-S2 — Schema + Convex run API**
   - Additive run table; get latest run for session user.
   - `requireUser` on all public functions; account delete/export.
 

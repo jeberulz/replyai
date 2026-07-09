@@ -63,6 +63,30 @@ export const voiceDriftSuggestion = v.object({
   demo: v.boolean(),
 });
 
+/** WP39 — onboarding concierge proposal (propose-only until user confirms). */
+export const onboardingConciergeProposal = v.object({
+  goalId: v.union(
+    v.literal("audience"),
+    v.literal("leads"),
+    v.literal("authority")
+  ),
+  goalReason: v.string(),
+  keywords: v.array(v.string()),
+  watches: v.array(
+    v.object({
+      handle: v.string(),
+      displayName: v.string(),
+      reason: v.string(),
+    })
+  ),
+  voiceExamples: v.array(v.string()),
+  source: v.union(
+    v.literal("llm"),
+    v.literal("heuristic"),
+    v.literal("demo")
+  ),
+});
+
 export default defineSchema({
   users: defineTable({
     xUserId: v.string(),
@@ -848,4 +872,25 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"])
     .index("by_profile", ["profileId"]),
+
+  // WP39 — onboarding concierge runs (propose-only; never auto-apply).
+  onboardingConciergeRuns: defineTable({
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("running"),
+      v.literal("complete"),
+      v.literal("failed"),
+      v.literal("skipped"),
+      v.literal("accepted")
+    ),
+    error: v.optional(v.string()),
+    proposal: v.optional(onboardingConciergeProposal),
+    /** Handles the user explicitly accepted from the proposal (per-handle). */
+    acceptedHandles: v.optional(v.array(v.string())),
+    demo: v.boolean(),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_created", ["userId", "createdAt"]),
 });
