@@ -341,6 +341,12 @@ Applied to:
 - `src/app/globals.css` — Dark Chrome token set (OKLCH), `--radius: 0.5rem`,
   `--font-sans` → Inter, `--font-serif` → Instrument Serif, `--font-mono` →
   Geist Mono, oatmeal ramp, `fade-rise` animation, `liner` utility.
+  **WP24:** also imports Astryx `astryx.css`, built `dark-chrome.css`, and
+  `tailwind-theme.css` (no Astryx reset — Tailwind preflight stays).
+- `src/theme/dark-chrome.source.ts` — `defineTheme` brand lock; rebuild with
+  `npm run astryx:theme` → `dark-chrome.css` / `.js` / `.d.ts`.
+- `src/components/app/astryx-theme-provider.tsx` — `<Theme mode="dark">` on
+  `(app)` and `(onboarding)` only. Landing never mounts Theme.
 - `src/app/layout.tsx` — loads Inter, Instrument Serif (weight 400, italic),
   and Geist Mono via `next/font/google`; `dark` class + black `themeColor` on
   `<html>`.
@@ -348,8 +354,29 @@ Applied to:
   centered `1180px` charcoal canvas, full-width `1080px` content rail, split
   hero, white pill CTAs, product mockup panels, star proof rows, diagonal
   stripe dividers, large Instrument Serif headings, readable Inter body copy.
+  **Out of scope for Astryx migration.**
 - `src/components/ui/*` — button hover → `--accent` fill, no shadows, 40px
-  default height; card shadow removed.
+  default height; card shadow removed. (WP25+ moves call sites to
+  `src/components/ds/`.)
+
+### Astryx ↔ Dark Chrome mapping (WP24+)
+
+| Dark Chrome | Astryx |
+|---|---|
+| `--primary` `#ff4400` | `--color-accent` |
+| `--background` `#181818` | `--color-background-body` |
+| `--canvas` `#1a1a1a` | `--color-background-surface` |
+| `--card` `#232323` | `--color-background-card` |
+| `--popover` `#2e2e2e` | `--color-background-popover` |
+| `--border` `#353535` | `--color-border` |
+| `--foreground` `#fafafa` | `--color-text-primary` |
+| `--muted-foreground` | `--color-text-secondary` |
+| Instrument Serif | `--font-family-heading` |
+| Inter | `--font-family-body` |
+| Geist Mono | `--font-family-code` |
+| Card elevation | borders; `--shadow-low: none` |
+
+Program brief: `docs/wp/WP24-ASTRYX-ADOPTION-PLAN.md`.
 
 Licensing note: do **not** hotlink or copy Ghostbase's woff2 assets (Tiempos,
 STK Bureau, Inter Display are commercially licensed). Inter (OFL), Instrument

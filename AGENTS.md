@@ -76,3 +76,44 @@ Convex agent skills for common tasks can be installed by running
 `npx convex ai-files install`.
 
 <!-- convex-ai-end -->
+
+<!-- ASTRYX:START -->
+Astryx v0.1.4 · foundation only. **Dark Chrome owns the brand** (`design.md`,
+`src/theme/dark-chrome.ts`). Do not ship stock Neutral/Butter/Gothic looks.
+Program: `docs/wp/WP24-ASTRYX-ADOPTION-PLAN.md`. Landing (`src/app/page.tsx`)
+stays off Astryx.
+
+CLI needs Node >=22.13 (`nvm use 24`). App/CI may stay on Node 20 — commit
+built theme artifacts from `npm run astryx:theme`. Prefer:
+  npm run astryx -- <cmd>
+over bare `npx astryx` when the shell Node is <22.
+
+SETUP (app/onboarding only — see `src/app/globals.css` + Theme providers):
+  import "@astryxdesign/core/astryx.css";
+  import "@/theme/dark-chrome.css";  // built Dark Chrome, not Neutral
+  import "@astryxdesign/core/tailwind-theme.css";
+  <Theme theme={darkChromeTheme} mode="dark"> … </Theme>
+
+Adapters live in `src/components/ds/` (WP25+). Leave `src/components/ui/`
+until call sites move.
+
+WORKFLOW — discover, don't guess. Before writing UI:
+1. `npm run astryx -- build "<idea>"` — kit (page + blocks + components).
+2. `npm run astryx -- component <Name>` — props + examples.
+3. Map visuals to Dark Chrome tokens — never invent hex outside `design.md`.
+
+RULES (ReplyPilot overrides):
+- Brand lock: accent `#ff4400`, charcoal surfaces, Instrument Serif headings,
+  Inter body, Geist Mono code, 1px borders over card shadows.
+- Dense data = rows (Table, List/Item) — Card for widgets/settings groups only.
+- Status → StatusDot/Token; Badge for counts/enumerated states only.
+- Primary mobile actions ≥44px (PRODUCT_STRATEGY §9) even if Astryx density
+  defaults are 28–36px.
+- No auto-publish; 3 options + reasons; no fake engagement scores.
+
+MORE CLI:
+  search "<query>"   find component / hook / doc / template / block
+  component --list   components by category
+  docs <topic>       tokens, theme, styling, layout, …
+  theme build …      rebuild Dark Chrome (`npm run astryx:theme`)
+<!-- ASTRYX:END -->

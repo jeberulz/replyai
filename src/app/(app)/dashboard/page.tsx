@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { AstryxBrandProof } from "@/components/app/astryx-brand-proof";
 import { ChatHome } from "@/components/app/chat/chat-home";
 import { getSessionUser } from "@/lib/session";
 
@@ -12,10 +13,13 @@ export default async function DashboardPage({
   const { url } = await searchParams;
 
   return (
-    <ChatHome
-      displayName={session.user.displayName}
-      isDemo={session.user.isDemo}
-      initialUrl={url}
-    />
+    <>
+      <AstryxBrandProof />
+      <ChatHome
+        displayName={session.user.displayName}
+        isDemo={session.user.isDemo}
+        initialUrl={url}
+      />
+    </>
   );
 }

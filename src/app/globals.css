@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/*
+ * Astryx foundation (WP24) — component styles + Dark Chrome built theme.
+ * Do NOT import @astryxdesign/core/reset.css here: Tailwind preflight already
+ * resets, and a second reset would hit the marketing landing.
+ * Theme provider mounts only under (app)/(onboarding); landing stays on the
+ * Dark Chrome :root tokens below.
+ */
+@import "@astryxdesign/core/astryx.css";
+@import "../theme/dark-chrome.css";
+@import "@astryxdesign/core/tailwind-theme.css";
+
 @custom-variant dark (&:is(.dark *));
 
 /*

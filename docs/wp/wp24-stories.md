@@ -12,7 +12,7 @@ for the branch state that includes it (or the subset warranted by the story).
 
 ---
 
-- [ ] **S1 — Program docs + §14 registration**
+- [x] **S1 — Program docs + §14 registration**
   Land the adoption plan, rulings, and strategy table rows so workers can
   resume without chat context.
   - `docs/wp/WP24-ASTRYX-ADOPTION-PLAN.md` present.
@@ -20,23 +20,23 @@ for the branch state that includes it (or the subset warranted by the story).
   - `docs/PRODUCT_STRATEGY.md` §14 lists WP24–WP28.
   - **Acceptance:** docs-only; no runtime change; `src/app/page.tsx` untouched.
 
-- [ ] **S2 — Install Astryx packages + CLI script**
+- [x] **S2 — Install Astryx packages + CLI script**
   Add `@astryxdesign/core`, `@astryxdesign/theme-neutral`, `@astryxdesign/cli`
   and the `astryx` npm script from the getting-started guide.
   - Lockfile updated via npm install.
   - `npm run astryx -- docs tokens` (or `npx astryx docs tokens`) runs.
   - **Acceptance:** packages resolve; no app visual change yet.
 
-- [ ] **S3 — `darkChromeTheme` + built SSR artifacts**
+- [x] **S3 — `darkChromeTheme` + built SSR artifacts**
   `defineTheme` extending Neutral with Dark Chrome brand lock; run
   `astryx theme build` for SSR-safe CSS/JS.
-  - Source: `src/theme/dark-chrome.ts` (or equivalent).
-  - Built outputs committed or generated in a documented path.
+  - Source: `src/theme/dark-chrome.source.ts`.
+  - Built outputs: `dark-chrome.css` / `.js` / `.d.ts` (committed for Node 20 CI).
   - Accent `#ff4400`, charcoal surfaces, Instrument Serif heading / Inter body /
     Geist Mono code, card shadows suppressed.
   - **Acceptance:** theme builds; stock Neutral blue is not the accent.
 
-- [ ] **S4 — CSS bridge + Theme providers (app/onboarding only)**
+- [x] **S4 — CSS bridge + Theme providers (app/onboarding only)**
   Wire Tailwind/Astryx CSS layers without theming the landing page.
   - `globals.css` keeps existing Dark Chrome `:root` for marketing.
   - `<Theme theme={darkChromeTheme} mode="dark">` wraps `(app)` and
@@ -45,17 +45,17 @@ for the branch state that includes it (or the subset warranted by the story).
   - **Acceptance:** `git diff main -- src/app/page.tsx` empty for this WP;
     app routes hydrate with Dark Chrome tokens.
 
-- [ ] **S5 — Brand-lock proof component in app shell**
+- [x] **S5 — Brand-lock proof component in app shell**
   Render one low-risk Astryx control inside the app (not landing) that
   demonstrates accent, surfaces, and heading font.
-  - Prefer a small banner/status in dashboard empty/chrome, or a ds proof
-    strip that does not change product flows.
-  - **Acceptance:** proof visible in app; orange accent; no card drop shadow;
+  - Dev-only Banner on dashboard (`AstryxBrandProof`).
+  - **Acceptance:** proof visible in app (dev); orange accent theme wired;
     Instrument Serif still available for pane titles.
 
-- [ ] **S6 — design.md mapping + WP24 PR pass**
+- [x] **S6 — design.md mapping + WP24 PR pass**
   Document Astryx↔Dark Chrome mapping; full checks; progress notes.
   - `design.md` updated with mapping section.
+  - `AGENTS.md` Astryx block brand-locked (not stock Neutral rules).
   - `docs/wp/wp24-progress.md` append-only learnings.
   - `npm run typecheck && npm run lint && npm test && npm run build` green.
   - Demo mode boots with zero external keys.

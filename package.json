@@ -12,10 +12,18 @@
     "typecheck": "tsc --noEmit",
     "security:audit": "node scripts/security-audit.mjs",
     "evals": "vitest run tests/evals.test.ts tests/evals.fixtures.test.ts",
-    "evals:llm": "vitest run tests/evals.llm.test.ts"
+    "evals:llm": "vitest run tests/evals.llm.test.ts",
+    "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs",
+    "astryx:theme": "node node_modules/@astryxdesign/cli/bin/astryx.mjs theme build src/theme/dark-chrome.source.ts -o src/theme/dark-chrome.css"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
+    "@astryxdesign/cli": "^0.1.4",
+    "@astryxdesign/core": "^0.1.4",
+    "@astryxdesign/theme-neutral": "^0.1.4",
     "@radix-ui/react-dialog": "^1.1.18",
     "@radix-ui/react-dropdown-menu": "^2.1.19",
     "@radix-ui/react-label": "^2.1.11",
