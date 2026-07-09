@@ -52,28 +52,28 @@ WP14 until WP23 merges or draft schema is additive-only.
     pick unused missing-angles; vitest with fixture rows.
   - Demo path returns deterministic compose bundles when no AI key.
 
-- [ ] **WP23-S2 — Schema + Convex compose API**
+- [x] **WP23-S2 — Schema + Convex compose API**
   - Additive schema for compose run records (status, error, input summary, outputs).
   - `convex/compose.ts`: list sources (eligible winning replies), start compose
     mutation, get run; all public fns use `requireUser`.
   - Account delete/export includes compose tables if persisted.
 
-- [ ] **WP23-S3 — Generation action (standalone + thread + long-form)**
+- [x] **WP23-S3 — Generation action (standalone + thread + long-form)**
   - Server action + Convex action pattern mirroring analysis pipeline.
   - Zod-validated outputs; 3 options per requested format; voice block from default profile.
   - Record usage; demo never throws.
 
-- [ ] **WP23-S4 — Compose UI surface**
+- [x] **WP23-S4 — Compose UI surface**
   - User selects topic cluster → format → reviews options → save draft or publish standalone.
   - Dark Chrome / `ds/` components; mobile primary actions ≥44px.
   - Long-form/Article: copy-to-clipboard CTA only.
 
-- [ ] **WP23-S5 — Draft + publish integration**
+- [x] **WP23-S5 — Draft + publish integration**
   - Thread drafts saved as multi-part or sequenced drafts (document choice in progress.md).
   - Standalone publish reuses existing publish mutation; reply restriction N/A.
   - Pacing + duplicate-reply warnings on publish path.
 
-- [ ] **WP23-S6 — Tests + verification**
+- [x] **WP23-S6 — Tests + verification**
   - Unit tests for clustering; smoke test compose demo path.
   - Manual: demo mode end-to-end; Pro fair-use unaffected.
   - PR checklist: every DoD bullet mapped.
