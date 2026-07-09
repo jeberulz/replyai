@@ -69,3 +69,12 @@ export type { HeadingProps } from "./heading";
 
 export { Text } from "./text";
 export type { TextProps } from "./text";
+
+export { Card } from "./card";
+export type { CardProps } from "./card";
+
+export { Item } from "./item";
+export type { ItemProps } from "./item";
+
+export { SelectableCard } from "./selectable-card";
+export type { SelectableCardProps } from "./selectable-card";
