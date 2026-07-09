@@ -36,21 +36,21 @@ same-table edits — WP13 owns `authors` table.
 
 ## Stories
 
-- [ ] **WP13-S1 — Schema + upsert from outcomes**
+- [x] **WP13-S1 — Schema + upsert from outcomes**
   - Additive author table; internal mutation or outcome pipeline patch to upsert on responded.
   - Index by user + handle.
 
-- [ ] **WP13-S2 — Queries for dossier**
+- [x] **WP13-S2 — Queries for dossier**
   - getByHandle, list top relationships (by response count / recency).
   - requireUser on all public functions.
 
-- [ ] **WP13-S3 — Feed/workbench dossier UI**
+- [x] **WP13-S3 — Feed/workbench dossier UI**
   - Show dossier snippet when viewing opportunity from known author.
   - Dark Chrome; demo fixtures render.
 
-- [ ] **WP13-S4 — Account cascade + tests**
+- [x] **WP13-S4 — Account cascade + tests**
   - Delete/export includes author rows.
   - Unit tests for upsert merge logic.
 
-- [ ] **WP13-S5 — Verification**
+- [x] **WP13-S5 — Verification**
   - Manual demo path; checks green; DoD checklist in PR.

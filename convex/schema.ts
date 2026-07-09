@@ -647,6 +647,36 @@ export default defineSchema({
     .index("by_user_created", ["userId", "createdAt"])
     .index("by_user_local_day", ["userId", "localDay"]),
 
+  // WP13 — per-author relationship memory (observed interactions only).
+  authors: defineTable({
+    userId: v.id("users"),
+    /** Normalized handle (lowercase, no @). */
+    authorHandle: v.string(),
+    authorName: v.optional(v.string()),
+    authorXUserId: v.optional(v.string()),
+    interactionCount: v.number(),
+    sentCount: v.number(),
+    responseCount: v.number(),
+    lastInteractedAt: v.optional(v.number()),
+    lastRespondedAt: v.optional(v.number()),
+    lastSentAt: v.optional(v.number()),
+    topicsResponded: v.array(v.string()),
+    replySettingsHistory: v.array(
+      v.object({
+        settings: v.string(),
+        seenAt: v.number(),
+      })
+    ),
+    /** Length-24 UTC hour-of-day counts from observed target post times. */
+    postHourCounts: v.array(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_handle", ["userId", "authorHandle"])
+    .index("by_user_responseCount", ["userId", "responseCount"])
+    .index("by_user_lastRespondedAt", ["userId", "lastRespondedAt"]),
+
   // WP37 — optional cache of last on-demand trend-radar run (topic clusters).
   // Separate from WP13 author dossiers. Additive; MVP may compute without writing.
   trendRuns: defineTable({
