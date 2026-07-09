@@ -78,3 +78,28 @@ export type { ItemProps } from "./item";
 
 export { SelectableCard } from "./selectable-card";
 export type { SelectableCardProps } from "./selectable-card";
+
+export {
+  ChatComposer,
+  ChatComposerDrawer,
+  ChatSendButton,
+} from "./chat-composer";
+export type {
+  ChatComposerProps,
+  ChatComposerStatus,
+  ChatComposerDensity,
+  ChatComposerDrawerProps,
+  ChatSendButtonProps,
+} from "./chat-composer";
+
+export { ProgressBar } from "./progress-bar";
+export type { ProgressBarProps, ProgressBarVariant } from "./progress-bar";
+
+export { Tokenizer } from "./tokenizer";
+export type {
+  TokenizerProps,
+  TokenizerSize,
+  TokenizerChange,
+  TokenizerHandle,
+  TokenizerStatus,
+} from "./tokenizer";

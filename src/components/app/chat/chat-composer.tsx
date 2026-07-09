@@ -1,11 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { ArrowUp, Loader2, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+
+import { Button } from "@/components/ds/button";
+import {
+  ChatComposer as AstryxChatComposer,
+  ChatComposerDrawer,
+} from "@/components/ds/chat-composer";
+import { TextInput } from "@/components/ds/text-input";
 import { parseTweetUrl } from "../../../../shared/scoring";
 import type { AnalyzeInput } from "./use-analysis-pipeline";
 
@@ -27,10 +30,9 @@ export function ChatComposer({
   const [url, setUrl] = useState("");
   const [authorHandle, setAuthorHandle] = useState("");
   const [followers, setFollowers] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const submit = () => {
-    const main = value.trim();
+  const submitFromValue = (mainRaw: string) => {
+    const main = mainRaw.trim();
     if (!main || pending) return;
     // A bare URL in the main box is the URL path; anything else is the
     // recommended paste-text path (no paid X read tier needed).
@@ -40,116 +42,134 @@ export function ChatComposer({
       text: mainIsUrl ? undefined : main,
       url: mainIsUrl ? main : url.trim() || undefined,
       authorHandle: authorHandle.trim() || undefined,
-      authorFollowers: Number.isFinite(followersNum) && followersNum > 0
-        ? followersNum
-        : undefined,
+      authorFollowers:
+        Number.isFinite(followersNum) && followersNum > 0
+          ? followersNum
+          : undefined,
     });
   };
 
+  const contextCount =
+    (url.trim() ? 1 : 0) +
+    (authorHandle.trim() ? 1 : 0) +
+    (followers.trim() ? 1 : 0);
+
   return (
     <div className="w-full space-y-2">
-      <div
-        className={cn(
-          "rounded-xl border border-input bg-card transition-[border-color,box-shadow]",
-          "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50"
-        )}
-      >
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey)) {
-              e.preventDefault();
-              submit();
-            }
-          }}
-          rows={Math.min(8, Math.max(2, value.split("\n").length))}
-          placeholder={placeholder}
-          disabled={pending}
-          className="w-full resize-none bg-transparent px-4 pt-3.5 text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-        />
-        <div className="flex items-center justify-between gap-2 px-2.5 pb-2.5">
+      <AstryxChatComposer
+        value={value}
+        onChange={setValue}
+        onSubmit={submitFromValue}
+        placeholder={placeholder}
+        isDisabled={pending}
+        density="balanced"
+        status={
+          error
+            ? { type: "error", message: error }
+            : pending
+              ? {
+                  type: "warning",
+                  message: "Capturing the tweet and scoring the conversation…",
+                }
+              : undefined
+        }
+        // Real textarea keeps HTML placeholder + mobile e2e selectors.
+        // Default Astryx input is contenteditable (no placeholder attr).
+        input={
+          <textarea
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey)) {
+                e.preventDefault();
+                submitFromValue(value);
+              }
+            }}
+            rows={Math.min(8, Math.max(2, value.split("\n").length))}
+            placeholder={placeholder}
+            disabled={pending}
+            className="w-full resize-none bg-transparent px-1 pt-1 text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        }
+        footerActions={
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="text-muted-foreground"
+            label="Add context"
+            icon={
+              <Plus
+                className={
+                  showContext
+                    ? "size-3.5 rotate-45 transition-transform"
+                    : "size-3.5"
+                }
+              />
+            }
             onClick={() => setShowContext((s) => !s)}
-            disabled={pending}
-          >
-            <Plus
-              className={cn("transition-transform", showContext && "rotate-45")}
-            />
-            Add context
-          </Button>
+            isDisabled={pending}
+          />
+        }
+        sendButton={
           <Button
             type="button"
-            size="icon"
+            size="sm"
+            variant="primary"
+            label="Analyze"
+            isIconOnly
+            icon={
+              pending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <ArrowUp className="size-4" />
+              )
+            }
+            onClick={() => submitFromValue(value)}
+            isDisabled={pending || !value.trim()}
             className="rounded-full"
-            onClick={submit}
-            disabled={pending || !value.trim()}
-            aria-label="Analyze"
-          >
-            {pending ? <Loader2 className="animate-spin" /> : <ArrowUp />}
-          </Button>
-        </div>
-        {showContext && (
-          <div className="grid gap-3 border-t border-border px-4 py-3 sm:grid-cols-[1fr_auto_auto]">
-            <div className="space-y-1.5">
-              <Label htmlFor="composer-url" className="text-xs">
-                Tweet URL (optional)
-              </Label>
-              <Input
-                id="composer-url"
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://x.com/username/status/…"
-                disabled={pending}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="composer-handle" className="text-xs">
-                Author (optional)
-              </Label>
-              <Input
-                id="composer-handle"
-                value={authorHandle}
-                onChange={(e) => setAuthorHandle(e.target.value)}
-                placeholder="@handle"
-                className="sm:w-32"
-                disabled={pending}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="composer-followers" className="text-xs">
-                Followers (optional)
-              </Label>
-              <Input
-                id="composer-followers"
-                inputMode="numeric"
-                value={followers}
-                onChange={(e) => setFollowers(e.target.value)}
-                placeholder="12000"
-                className="sm:w-28"
-                disabled={pending}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground sm:col-span-3">
-              Pasting the text analyzes the real tweet without a paid X API
-              tier. Adding the URL lets you publish the reply threaded to the
-              original.
-            </p>
-          </div>
-        )}
-      </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {pending && (
-        <p className="text-xs text-muted-foreground">
-          Capturing the tweet and scoring the conversation…
-        </p>
-      )}
+          />
+        }
+        drawer={
+          showContext ? (
+            <ChatComposerDrawer
+              count={contextCount || undefined}
+              label="Context"
+              defaultIsCollapsed={false}
+            >
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+                <TextInput
+                  label="Tweet URL (optional)"
+                  value={url}
+                  onChange={setUrl}
+                  placeholder="https://x.com/username/status/…"
+                  isDisabled={pending}
+                />
+                <TextInput
+                  label="Author (optional)"
+                  value={authorHandle}
+                  onChange={setAuthorHandle}
+                  placeholder="@handle"
+                  isDisabled={pending}
+                  className="sm:w-32"
+                />
+                <TextInput
+                  label="Followers (optional)"
+                  value={followers}
+                  onChange={setFollowers}
+                  placeholder="12000"
+                  isDisabled={pending}
+                  className="sm:w-28"
+                />
+                <p className="text-xs text-muted-foreground sm:col-span-3">
+                  Pasting the text analyzes the real tweet without a paid X API
+                  tier. Adding the URL lets you publish the reply threaded to the
+                  original.
+                </p>
+              </div>
+            </ChatComposerDrawer>
+          ) : undefined
+        }
+      />
     </div>
   );
 }
