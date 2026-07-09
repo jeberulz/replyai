@@ -38,8 +38,13 @@ export function ProfileDetail({
 
   const watch = () =>
     startTransition(async () => {
-      await watchResearchProfileAction(profile._id);
-      toast.success(`@${profile.handle} added to watched accounts`);
+      const result = await watchResearchProfileAction(profile._id);
+      const seededKeywords = result?.seededKeywords ?? [];
+      toast.success(
+        seededKeywords.length > 0
+          ? `@${profile.handle} added to watched accounts and seeded ${seededKeywords.join(", ")}`
+          : `@${profile.handle} added to watched accounts`
+      );
     });
 
   const pass = () =>
@@ -113,15 +118,22 @@ export function ProfileDetail({
             <PaneEyebrow>Why this account</PaneEyebrow>
             <p className="text-[15px] leading-normal">{profile.reason}</p>
             {profile.topicTags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {profile.topicTags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="neutral"
-                    label={tag}
-                    className="font-mono text-[0.65rem]"
-                  />
-                ))}
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {profile.topicTags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="neutral"
+                      label={tag}
+                      className="font-mono text-[0.65rem]"
+                    />
+                  ))}
+                </div>
+                {profile.status === "suggested" && (
+                  <p className="text-xs text-muted-foreground">
+                    Watching also adds these tags to your scanner topics.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -148,7 +160,7 @@ export function ProfileDetail({
       <PaneActionBar note="Suggest only — watching never follows or posts anything on your behalf.">
         {profile.status === "suggested" && (
           <Button
-            label="Watch"
+            label="Watch + seed topics"
             icon={<Eye className="size-3.5" />}
             onClick={watch}
             isDisabled={pending}

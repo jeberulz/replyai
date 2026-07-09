@@ -1,0 +1,100 @@
+/* ReplyPilot badge — Dark Chrome tokens, isolated from X styles */
+.rp-ext-root {
+  all: initial;
+  position: fixed;
+  z-index: 2147483646;
+  right: 16px;
+  bottom: 16px;
+  font-family: ui-monospace, "Geist Mono", Menlo, monospace;
+}
+
+.rp-ext-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #353535;
+  background: #111111;
+  color: #fafafa;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  max-width: min(320px, calc(100vw - 32px));
+}
+
+.rp-ext-brand {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ff4400;
+  margin: 0 0 2px;
+}
+
+.rp-ext-score {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.rp-ext-score[data-tier="high"] {
+  color: #4ade80;
+}
+.rp-ext-score[data-tier="mid"] {
+  color: #fbbf24;
+}
+.rp-ext-score[data-tier="low"] {
+  color: #a1a1aa;
+}
+
+.rp-ext-reason {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #a1a1aa;
+  max-width: 200px;
+}
+
+.rp-ext-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rp-ext-btn {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #ff4400;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.rp-ext-btn:hover {
+  filter: brightness(1.08);
+}
+
+.rp-ext-btn:focus-visible {
+  outline: 2px solid #fafafa;
+  outline-offset: 2px;
+}
+
+.rp-ext-dismiss {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  text-align: center;
+  font-size: 10px;
+  color: #a1a1aa;
+  padding: 2px 4px;
+}
+
+.rp-ext-dismiss:hover {
+  color: #fafafa;
+}

@@ -14,7 +14,9 @@
     "evals": "vitest run tests/evals.test.ts tests/evals.fixtures.test.ts",
     "evals:llm": "vitest run tests/evals.llm.test.ts",
     "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs",
-    "astryx:theme": "node node_modules/@astryxdesign/cli/bin/astryx.mjs theme build src/theme/dark-chrome.source.ts -o src/theme/dark-chrome.css"
+    "astryx:theme": "node node_modules/@astryxdesign/cli/bin/astryx.mjs theme build src/theme/dark-chrome.source.ts -o src/theme/dark-chrome.css",
+    "extension:build": "npm --prefix extension install && npm --prefix extension run build",
+    "extension:typecheck": "npm --prefix extension run typecheck"
   },
   "engines": {
     "node": ">=20"

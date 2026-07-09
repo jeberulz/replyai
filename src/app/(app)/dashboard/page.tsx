@@ -6,11 +6,11 @@ import { getSessionUser } from "@/lib/session";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ url?: string }>;
+  searchParams: Promise<{ url?: string; auto?: string }>;
 }) {
   const session = await getSessionUser();
   if (!session) redirect("/");
-  const { url } = await searchParams;
+  const { url, auto } = await searchParams;
 
   return (
     <>
@@ -19,6 +19,7 @@ export default async function DashboardPage({
         displayName={session.user.displayName}
         isDemo={session.user.isDemo}
         initialUrl={url}
+        autoStart={auto === "1" || auto === "true"}
       />
     </>
   );

@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import { useSidebar } from "@/components/app/sidebar/sidebar-provider";
+import { parseTweetUrl } from "../../../../shared/scoring";
 import { AnalysisThread } from "./analysis-thread";
 import { ChatComposer } from "./chat-composer";
 import { PersonalAnalyticsCard } from "./personal-analytics-card";
@@ -19,11 +21,14 @@ export function ChatHome({
   isDemo,
   initialUrl,
   initialAnalysisId,
+  autoStart = false,
 }: {
   displayName: string;
   isDemo: boolean;
   initialUrl?: string;
   initialAnalysisId?: string;
+  /** When true with a valid initialUrl, start analysis once (extension deep link). */
+  autoStart?: boolean;
 }) {
   const { selectedProjectId } = useSidebar();
   const { activeAnalysisId, starting, startError, start, retry } =
@@ -35,6 +40,28 @@ export function ChatHome({
       projectId: selectedProjectId ?? undefined,
     });
   };
+
+  // Browser extension (WP10): /dashboard?url=…&auto=1 opens the workbench
+  // without a second Analyze click. Strip `auto` from the URL before starting
+  // so React Strict Mode remounts / refresh cannot double-fire. Never publishes.
+  useEffect(() => {
+    if (!autoStart || !initialUrl || initialAnalysisId) return;
+    if (!parseTweetUrl(initialUrl)) return;
+    const params = new URLSearchParams(window.location.search);
+    const auto = params.get("auto");
+    if (auto !== "1" && auto !== "true") return;
+    params.delete("auto");
+    const qs = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname
+    );
+    void start({
+      url: initialUrl,
+      projectId: selectedProjectId ?? undefined,
+    });
+  }, [autoStart, initialUrl, initialAnalysisId, selectedProjectId, start]);
 
   if (!activeAnalysisId) {
     return (

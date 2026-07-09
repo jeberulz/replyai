@@ -51,3 +51,14 @@ Ruling:
 3. **Adapter path unchanged:** `ds/` strangler; `ui/` stays. **Dialog/Select stay on `ui/`** for WP29–30 (same as WP27 OptionCard ruling).
 4. **No behavior changes:** voice train/CRUD/default, billing checkout/portal, export/delete, model default — UI swap only.
 5. **Landing + Theme scope:** unchanged (`page.tsx` off Astryx; Theme on `(app)`/`(onboarding)` only).
+
+## 2026-07-09 - WP10 - App deep-link for pre-analyze
+
+- Question: WP10's §14 key-files column lists only `extension/`, but the DoD
+  requires a deep link that opens the workbench pre-analyzed. Today
+  `/dashboard?url=` only prefills the composer.
+- Ruling: WP10 may make the minimum app-side change to honor `auto=1` with a
+  valid tweet `url` on `/dashboard` and `/analyze` (pass-through redirect),
+  starting the existing analyze pipeline once. No new Convex APIs, no
+  publish paths, no cookie/token access from the extension. All other work
+  stays in `extension/` (+ shared scoring helpers/tests as needed).
