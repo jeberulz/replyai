@@ -442,3 +442,27 @@ export function trendRadarSentence(topic: TrendTopic): string {
   const noun = n === 1 ? "conversation" : "conversations";
   return `${n} ${noun} forming around ${topic.label}`;
 }
+
+/**
+ * Whether an opportunity belongs in a topic-filtered feed view.
+ * Prefers known opportunity ids, then matched niche keywords, then slug token.
+ */
+export function opportunityMatchesTopic(
+  text: string,
+  topic: Pick<
+    TrendTopic,
+    "slug" | "label" | "matchedKeywords" | "opportunityIds"
+  >,
+  opportunityId?: string
+): boolean {
+  if (opportunityId && topic.opportunityIds.includes(opportunityId)) {
+    return true;
+  }
+  const haystack = text.toLowerCase();
+  if (topic.matchedKeywords.some((k) => keywordMatches(haystack, k))) {
+    return true;
+  }
+  const slugToken = topic.slug.replace(/-/g, " ").trim();
+  if (slugToken && keywordMatches(haystack, slugToken)) return true;
+  return false;
+}

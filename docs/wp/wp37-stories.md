@@ -39,7 +39,7 @@ clusters, WP13 is **author** dossiers.
   - Query returns clusters for session user; bounded pagination.
   - Optional internal mutation to cache last run (orchestrator decides in implementation).
 
-- [ ] **WP37-S3 — Radar UI**
+- [x] **WP37-S3 — Radar UI**
   - Compact Dark Chrome strip: “3 conversations forming around …”
   - Link into feed filtered view or opportunity list.
 

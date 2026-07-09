@@ -23,3 +23,11 @@
 - Optional `recordRun` internalMutation for future cache/cron — MVP path is
   on-demand only.
 - Codegen + typecheck green.
+
+## 2026-07-09 — WP37-S3
+
+- Surface: `/feed` only (one surface). `TrendRadarStrip` above the opportunity
+  list; links to `/feed?topic=<slug>` and clears when re-clicked.
+- Feed filters by `opportunityMatchesTopic` (id → keyword → slug token).
+- No fake engagement %; copy is observed conversation counts only.
+- Typecheck + trends tests green.

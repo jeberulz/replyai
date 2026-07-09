@@ -4,6 +4,7 @@ import {
   clusterTrends,
   demoTrendTopics,
   formatTopicLabel,
+  opportunityMatchesTopic,
   primaryClusterKey,
   topicSlug,
   trendRadarSentence,
@@ -146,6 +147,27 @@ describe("demoTrendTopics", () => {
     expect(a.topics.map((t) => t.conversationCount)).toEqual(
       b.topics.map((t) => t.conversationCount)
     );
+  });
+});
+
+describe("opportunityMatchesTopic", () => {
+  it("matches by opportunity id or keyword", () => {
+    const topic = {
+      slug: "ai",
+      label: "AI",
+      conversationCount: 2,
+      opportunityIds: ["opp-1"],
+      matchedKeywords: ["ai"],
+    };
+    expect(
+      opportunityMatchesTopic("unrelated text", topic, "opp-1")
+    ).toBe(true);
+    expect(
+      opportunityMatchesTopic("Hot take on AI wrappers", topic, "other")
+    ).toBe(true);
+    expect(
+      opportunityMatchesTopic("Shipping SaaS weekly", topic, "other")
+    ).toBe(false);
   });
 });
 
