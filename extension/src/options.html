@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ReplyPilot extension</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 14px 16px 18px;
+        width: 280px;
+        background: #181818;
+        color: #fafafa;
+      }
+      h1 {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0 0 4px;
+      }
+      p {
+        margin: 0 0 12px;
+        font-size: 11px;
+        line-height: 1.4;
+        color: #a1a1aa;
+      }
+      label {
+        display: block;
+        font-size: 11px;
+        margin-bottom: 4px;
+        color: #a1a1aa;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #353535;
+        background: #232323;
+        color: #fafafa;
+        border-radius: 6px;
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+      button {
+        margin-top: 10px;
+        width: 100%;
+        border: 0;
+        border-radius: 999px;
+        background: #ff4400;
+        color: #fff;
+        font-weight: 600;
+        font-size: 12px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .status {
+        margin-top: 8px;
+        font-size: 11px;
+        color: #4ade80;
+        min-height: 1.2em;
+      }
+      .note {
+        margin-top: 12px;
+        font-size: 10px;
+        color: #a1a1aa;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ReplyPilot</h1>
+    <p>Read-only score badge on X. Opens your ReplyPilot app — never posts.</p>
+    <label for="appOrigin">App origin</label>
+    <input
+      id="appOrigin"
+      type="url"
+      placeholder="http://localhost:3000"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <button id="save" type="button">Save</button>
+    <div class="status" id="status" aria-live="polite"></div>
+    <p class="note">
+      Tip: use your deployed URL in production. Deep links open
+      <code>/dashboard?url=…&amp;auto=1</code>.
+    </p>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
