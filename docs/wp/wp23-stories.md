@@ -47,7 +47,7 @@ WP14 until WP23 merges or draft schema is additive-only.
 
 ## Stories
 
-- [ ] **WP23-S1 — Shared clustering + demo fixtures**
+- [x] **WP23-S1 — Shared clustering + demo fixtures**
   - `shared/compose.ts`: pure functions to cluster winning reply rows by topic;
     pick unused missing-angles; vitest with fixture rows.
   - Demo path returns deterministic compose bundles when no AI key.
