@@ -65,7 +65,7 @@ scanner keyword graph auto-rewrite, daily curator cadence.
     - Record usage if LLM/X called (same pattern as manual research).
   - Demo path returns fixed profiles when keys missing.
 
-- [ ] **WP33-S4 — Cron dispatcher**
+- [x] **WP33-S4 — Cron dispatcher**
   - Append `convex/crons.ts`: monthly (e.g. 1st of month 05:00 UTC) →
     `internal.research.dispatchMonthlyCuratorAll` fan-out per eligible user.
   - Hourly alternative acceptable if documented — prefer true monthly +

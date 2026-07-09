@@ -13,8 +13,10 @@ import {
 import {
   MAX_REPLACEMENT_SUGGESTIONS,
   QUIET_REASON,
+  curatorMonthKey,
   isProfileQuiet,
 } from "../shared/researchCurator";
+import { hasProAccess } from "../shared/billing";
 
 const MAX_RUNS_PER_DAY = 3;
 
@@ -338,6 +340,58 @@ export const markRunFailed = internalMutation({
   },
   handler: async (ctx, { runId, error }) => {
     await ctx.db.patch(runId, { status: "failed", error, resultCount: 0 });
+  },
+});
+
+/**
+ * WP33 monthly cron entry. Iterates users with a scanner-settings row, and for
+ * each eligible (Pro or demo) user who has not had a curator run this UTC
+ * month, claims the month (sets `lastCuratorRunMonth`), opens a
+ * `monthly_curator` run, and schedules the discovery action. Idempotent: at
+ * most one curator run per user per calendar month.
+ */
+export const dispatchMonthlyCuratorAll = internalMutation({
+  args: { nowMs: v.optional(v.number()) },
+  returns: v.object({
+    enqueued: v.number(),
+    month: v.string(),
+    runIds: v.array(v.id("researchRuns")),
+  }),
+  handler: async (ctx, { nowMs }) => {
+    const now = nowMs ?? Date.now();
+    const month = curatorMonthKey(now);
+    const settingsRows = await ctx.db.query("scannerSettings").collect();
+    const runIds: Id<"researchRuns">[] = [];
+
+    for (const settings of settingsRows) {
+      if (settings.lastCuratorRunMonth === month) continue;
+
+      const user = await ctx.db.get(settings.userId);
+      if (!user) continue;
+      if (!hasProAccess({ plan: user.plan, isDemo: user.isDemo })) continue;
+
+      // Claim the month first so a retrying/overlapping cron cannot double-run.
+      await ctx.db.patch(settings._id, { lastCuratorRunMonth: month });
+
+      const runId = await ctx.db.insert("researchRuns", {
+        userId: settings.userId,
+        query: "Monthly curator",
+        seedHandles: [],
+        resultCount: 0,
+        status: "running",
+        runKind: "monthly_curator",
+        createdAt: now,
+      });
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.researchActions.runMonthlyCurator,
+        { userId: settings.userId, runId, month, nowMs: now }
+      );
+      runIds.push(runId);
+    }
+
+    return { enqueued: runIds.length, month, runIds };
   },
 });
 

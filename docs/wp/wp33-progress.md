@@ -51,3 +51,17 @@ Append-only. Newest entries at the bottom.
 - Run row is created by the S4 dispatcher; the action receives runId only.
 - `npx convex codegen` did not change checked-in `_generated` files; typecheck +
   full suite (324 pass) green.
+
+## 2026-07-09 — S4 cron dispatcher
+
+- `internal.research.dispatchMonthlyCuratorAll`: iterates `scannerSettings`
+  rows (same pattern as WP12 briefings iterating `briefingSettings`), gates on
+  `hasProAccess({plan, isDemo})`, and skips users whose `lastCuratorRunMonth`
+  already equals the current UTC month. Claims the month *before* scheduling so
+  an overlapping/retrying cron cannot double-run (idempotent).
+- Users without a `scannerSettings` row are not dispatched — they have no
+  keywords/watched handles to curate. Documented tradeoff; acceptable for MVP.
+- `convex/crons.ts`: appended true monthly cron (day 1, 05:00 UTC). Did not
+  reorder existing crons. WP31 archive cron already present on `main` (branched
+  after PR #35), so no rebase conflict.
+- Typecheck green.
