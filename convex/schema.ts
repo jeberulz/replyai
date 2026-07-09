@@ -60,6 +60,8 @@ export default defineSchema({
     // When the dashboard "finish setting up" card was dismissed.
     setupDismissedAt: v.optional(v.number()),
     isDemo: v.boolean(),
+    // Optional override for notification digest emails (falls back to account email when unset).
+    notificationEmail: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_x_user_id", ["xUserId"])
@@ -481,4 +483,82 @@ export default defineSchema({
     .index("by_user_status", ["userId", "status"])
     .index("by_run", ["runId"])
     .index("by_user_handle", ["userId", "handle"]),
+
+  notificationSettings: defineTable({
+    userId: v.id("users"),
+    masterEnabled: v.boolean(),
+    pushEnabled: v.boolean(),
+    digestEnabled: v.boolean(),
+    scoreThreshold: v.number(),
+    dailyCap: v.number(),
+    quietHoursStart: v.string(),
+    quietHoursEnd: v.string(),
+    timezone: v.string(),
+    youngWindowHours: v.number(),
+    enabledSources: v.array(
+      v.union(
+        v.literal("following"),
+        v.literal("lists"),
+        v.literal("watched"),
+        v.literal("search")
+      )
+    ),
+    optedInAt: v.optional(v.number()),
+    permissionGrantedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  pushSubscriptions: defineTable({
+    userId: v.id("users"),
+    endpoint: v.string(),
+    p256dh: v.string(),
+    authKey: v.string(),
+    userAgent: v.optional(v.string()),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_endpoint", ["endpoint"]),
+
+  notificationAlerts: defineTable({
+    userId: v.id("users"),
+    opportunityId: v.id("opportunities"),
+    tier: v.union(v.literal("golden15"), v.literal("hot")),
+    channel: v.union(v.literal("push"), v.literal("digest")),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("delivered"),
+      v.literal("suppressed"),
+      v.literal("opened"),
+      v.literal("sent"),
+      v.literal("expired")
+    ),
+    title: v.string(),
+    body: v.string(),
+    deepLink: v.string(),
+    score: v.number(),
+    source: v.optional(
+      v.union(
+        v.literal("following"),
+        v.literal("list"),
+        v.literal("watched"),
+        v.literal("search")
+      )
+    ),
+    suppressedReason: v.optional(v.string()),
+    createdAt: v.number(),
+    deliveredAt: v.optional(v.number()),
+    openedAt: v.optional(v.number()),
+    sentAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_opportunity", ["opportunityId"]),
+
+  notificationDailyCounts: defineTable({
+    userId: v.id("users"),
+    dateKey: v.string(),
+    deliveredCount: v.number(),
+  }).index("by_user_date", ["userId", "dateKey"]),
 });
