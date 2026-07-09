@@ -21,6 +21,34 @@ export const ACCOUNT_USER_TABLES = [
     deletionOrder: 30,
   },
   {
+    table: "pushSubscriptions",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "endpoint"],
+    deletionOrder: 35,
+  },
+  {
+    table: "notificationSettings",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId"],
+    deletionOrder: 36,
+  },
+  {
+    table: "notificationDailyCounts",
+    ownershipField: "userId",
+    indexName: "by_user_date",
+    relationshipFields: ["userId", "dateKey"],
+    deletionOrder: 37,
+  },
+  {
+    table: "notificationAlerts",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "opportunityId"],
+    deletionOrder: 45,
+  },
+  {
     table: "usage",
     ownershipField: "userId",
     indexName: "by_user_month",
@@ -248,6 +276,15 @@ export function sanitizeAccountExportRow(
       ...safeRow,
       hasLegacyToken: Boolean(token),
       hasTokenHash: Boolean(tokenHash),
+    });
+  }
+
+  if (table === "pushSubscriptions") {
+    const { p256dh, authKey, endpoint, ...safeRow } = row;
+    return jsonSafeObject({
+      ...safeRow,
+      hasEndpoint: Boolean(endpoint),
+      hasKeys: Boolean(p256dh && authKey),
     });
   }
 

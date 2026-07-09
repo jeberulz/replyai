@@ -1281,3 +1281,66 @@ export async function deleteAccountAction(
   await clearSessionCookie();
   redirect("/");
 }
+
+// ---------------------------------------------------------------------------
+// Notifications (WP8)
+// ---------------------------------------------------------------------------
+
+export async function saveNotificationSettingsAction(
+  patch: Record<string, unknown>
+) {
+  const { sessionToken } = await requireSession();
+  return convexServer().mutation(api.notifications.updateSettings, {
+    sessionToken,
+    masterEnabled:
+      typeof patch.masterEnabled === "boolean" ? patch.masterEnabled : undefined,
+    pushEnabled:
+      typeof patch.pushEnabled === "boolean" ? patch.pushEnabled : undefined,
+    digestEnabled:
+      typeof patch.digestEnabled === "boolean" ? patch.digestEnabled : undefined,
+    scoreThreshold:
+      typeof patch.scoreThreshold === "number" ? patch.scoreThreshold : undefined,
+    dailyCap: typeof patch.dailyCap === "number" ? patch.dailyCap : undefined,
+    quietHoursStart:
+      typeof patch.quietHoursStart === "string"
+        ? patch.quietHoursStart
+        : undefined,
+    quietHoursEnd:
+      typeof patch.quietHoursEnd === "string" ? patch.quietHoursEnd : undefined,
+    timezone: typeof patch.timezone === "string" ? patch.timezone : undefined,
+    youngWindowHours:
+      typeof patch.youngWindowHours === "number"
+        ? patch.youngWindowHours
+        : undefined,
+    enabledSources: Array.isArray(patch.enabledSources)
+      ? (patch.enabledSources as Array<
+          "following" | "lists" | "watched" | "search"
+        >)
+      : undefined,
+    notificationEmail:
+      typeof patch.notificationEmail === "string"
+        ? patch.notificationEmail
+        : undefined,
+  });
+}
+
+export async function savePushSubscriptionAction(args: {
+  endpoint: string;
+  p256dh: string;
+  authKey: string;
+  userAgent?: string;
+}) {
+  const { sessionToken } = await requireSession();
+  return convexServer().mutation(api.notifications.savePushSubscription, {
+    sessionToken,
+    ...args,
+  });
+}
+
+export async function markNotificationAlertOpenedAction(alertId: string) {
+  const { sessionToken } = await requireSession();
+  return convexServer().mutation(api.notifications.markAlertOpened, {
+    sessionToken,
+    alertId: alertId as Id<"notificationAlerts">,
+  });
+}

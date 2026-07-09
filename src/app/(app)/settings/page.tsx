@@ -12,6 +12,7 @@ import { Heading } from "@/components/ds/heading";
 import { Text } from "@/components/ds/text";
 import { DefaultModelCard } from "@/components/app/default-model-card";
 import { AccountDataControls } from "@/components/app/account-data-controls";
+import { NotificationSettingsCard } from "@/components/app/notification-settings-card";
 import { PageHeader } from "@/components/app/page-header";
 import { convexServer } from "@/lib/convex";
 import { hasAnthropicKey, hasXCredentials } from "@/lib/env";
@@ -202,6 +203,13 @@ export default async function SettingsPage() {
             </form>
           )}
         </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Hot-window notifications"
+        description="Capped, quiet-hours-aware alerts when a young opportunity crosses your threshold. Golden-15 covers watched/list authors in the first ~15 minutes."
+      >
+        <NotificationSettingsCard hasProAccess={billing.hasProAccess} />
       </SettingsSection>
 
       <SettingsSection

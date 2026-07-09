@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import {
@@ -204,6 +205,7 @@ export const upsertMany = internalMutation({
   handler: async (ctx, { userId, items }) => {
     const now = Date.now();
     let inserted = 0;
+    const insertedIds: Id<"opportunities">[] = [];
     for (const item of items) {
       const existing = await ctx.db
         .query("opportunities")
@@ -231,14 +233,21 @@ export const upsertMany = internalMutation({
           textFingerprint: item.textFingerprint,
         });
       } else {
-        await ctx.db.insert("opportunities", {
+        const newId = await ctx.db.insert("opportunities", {
           userId,
           ...item,
           scannedAt: now,
           status: "new",
         });
         inserted += 1;
+        insertedIds.push(newId);
       }
+    }
+    for (const opportunityId of insertedIds) {
+      await ctx.scheduler.runAfter(0, internal.notifications.evaluateOpportunity, {
+        userId,
+        opportunityId,
+      });
     }
     // Reported by the calling action as the opportunity_surfaced funnel
     // event (docs/observability.md) — this mutation itself can't call
@@ -252,8 +261,9 @@ export const markSentByTweet = internalMutation({
   args: {
     userId: v.id("users"),
     tweetId: v.string(),
+    draftId: v.optional(v.id("savedDrafts")),
   },
-  handler: async (ctx, { userId, tweetId }) => {
+  handler: async (ctx, { userId, tweetId, draftId }) => {
     const opp = await ctx.db
       .query("opportunities")
       .withIndex("by_user_tweet", (q) =>
@@ -266,6 +276,11 @@ export const markSentByTweet = internalMutation({
       outcome: "sent",
       sentAt: now,
       analyzedAt: opp.analyzedAt ?? now,
+    });
+    await ctx.scheduler.runAfter(0, internal.notifications.markAlertSent, {
+      userId,
+      opportunityId: opp._id,
+      draftId,
     });
   },
 });

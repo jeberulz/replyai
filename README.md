@@ -30,6 +30,11 @@ always.
   surfaces scored opportunities with author, reply count, velocity, and a
   suggested angle. Suggestions only: publishing always requires an explicit
   click on that specific text.
+- **Hot-window notifications (Pro)** — capped web push + optional email digest
+  when young opportunities cross your threshold, including a golden-15 lane for
+  watched/list authors. Quiet hours (default 22:00–08:00 UTC) and a 5/day cap.
+  No auto-publish; no fake engagement percentages. Optional Convex env:
+  `VAPID_*` (all three), `APP_URL` (digest absolute links), `RESEND_*`.
 - **Publishing & scheduling** — publish now or schedule for later via Convex
   scheduled functions. Statuses update live on the dashboard (Convex
   reactivity, no polling).

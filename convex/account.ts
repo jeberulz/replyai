@@ -44,6 +44,34 @@ async function countByUser(
         if (row._id) count += 1;
       }
       return count;
+    case "pushSubscriptions":
+      for await (const row of ctx.db
+        .query("pushSubscriptions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
+    case "notificationSettings":
+      for await (const row of ctx.db
+        .query("notificationSettings")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
+    case "notificationDailyCounts":
+      for await (const row of ctx.db
+        .query("notificationDailyCounts")
+        .withIndex("by_user_date", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
+    case "notificationAlerts":
+      for await (const row of ctx.db
+        .query("notificationAlerts")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
     case "usage":
       for await (const row of ctx.db
         .query("usage")
@@ -146,6 +174,34 @@ async function listByUser(
         rows.push(row as unknown as Record<string, unknown>);
       }
       return rows;
+    case "pushSubscriptions":
+      for await (const row of ctx.db
+        .query("pushSubscriptions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
+    case "notificationSettings":
+      for await (const row of ctx.db
+        .query("notificationSettings")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
+    case "notificationDailyCounts":
+      for await (const row of ctx.db
+        .query("notificationDailyCounts")
+        .withIndex("by_user_date", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
+    case "notificationAlerts":
+      for await (const row of ctx.db
+        .query("notificationAlerts")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
     case "usage":
       for await (const row of ctx.db
         .query("usage")
@@ -243,6 +299,34 @@ async function takeDeletionBatch(
       return (
         await ctx.db
           .query("scannerSettings")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "pushSubscriptions":
+      return (
+        await ctx.db
+          .query("pushSubscriptions")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "notificationSettings":
+      return (
+        await ctx.db
+          .query("notificationSettings")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "notificationDailyCounts":
+      return (
+        await ctx.db
+          .query("notificationDailyCounts")
+          .withIndex("by_user_date", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "notificationAlerts":
+      return (
+        await ctx.db
+          .query("notificationAlerts")
           .withIndex("by_user", (q) => q.eq("userId", userId))
           .take(ACCOUNT_DELETION_BATCH_SIZE)
       ).map((row) => row._id);

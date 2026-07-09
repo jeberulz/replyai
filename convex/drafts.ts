@@ -238,6 +238,7 @@ export const markResult = internalMutation({
         await ctx.runMutation(internal.opportunities.markSentByTweet, {
           userId: draft.userId,
           tweetId: draft.targetTweetId,
+          draftId,
         });
       }
       await ctx.runMutation(internal.outcomes.seedPublishedDraft, {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import {
   Download,
@@ -25,6 +26,7 @@ import {
   updateScannerAction,
   updateSearchKeywordsAction,
   updateWatchedHandlesAction,
+  markNotificationAlertOpenedAction,
 } from "@/app/actions";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { FeedScanProgress } from "@/components/app/feed-scan-progress";
@@ -78,6 +80,7 @@ const QUICK_FILTERS: { value: QuickFilter; label: string }[] = [
 
 export function FeedScanner() {
   const sessionToken = useSessionToken();
+  const searchParams = useSearchParams();
   const settings = useQuery(
     api.scanner.settings,
     sessionToken ? { sessionToken } : "skip"
@@ -99,6 +102,19 @@ export function FeedScanner() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [pending, startTransition] = useTransition();
   const scanBaselineRef = useRef<number>(0);
+  const deepLinkHandledRef = useRef(false);
+
+  useEffect(() => {
+    const opportunityId = searchParams.get("opportunity");
+    const alertId = searchParams.get("alert");
+    if (!opportunityId || deepLinkHandledRef.current) return;
+    deepLinkHandledRef.current = true;
+    setSelectedId(opportunityId);
+    if (alertId) {
+      // Server mutation schedules notification_alert_opened — don't double-fire client.
+      void markNotificationAlertOpenedAction(alertId);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 30_000);

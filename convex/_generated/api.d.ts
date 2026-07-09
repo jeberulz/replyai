@@ -20,6 +20,8 @@ import type * as helpers from "../helpers.js";
 import type * as http from "../http.js";
 import type * as lib_analytics from "../lib/analytics.js";
 import type * as lib_sentry from "../lib/sentry.js";
+import type * as notifications from "../notifications.js";
+import type * as notificationsActions from "../notificationsActions.js";
 import type * as opportunities from "../opportunities.js";
 import type * as outcomes from "../outcomes.js";
 import type * as projects from "../projects.js";
@@ -56,6 +58,8 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/analytics": typeof lib_analytics;
   "lib/sentry": typeof lib_sentry;
+  notifications: typeof notifications;
+  notificationsActions: typeof notificationsActions;
   opportunities: typeof opportunities;
   outcomes: typeof outcomes;
   projects: typeof projects;

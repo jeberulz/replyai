@@ -7,6 +7,30 @@ const crons = cronJobs();
 // Suggestions only — publishing always requires an explicit human click.
 crons.interval("scan feeds", { minutes: 15 }, internal.scannerActions.scanAll, {});
 
+// Hot-window notifications: deliver queued push alerts every few minutes.
+crons.interval(
+  "deliver notification alerts",
+  { minutes: 5 },
+  internal.notificationsActions.deliverAllQueuedAlerts,
+  {}
+);
+
+// Expire queued alerts older than 24h (quiet hours / transient push failures).
+crons.interval(
+  "expire stale notification alerts",
+  { hours: 6 },
+  internal.notificationsActions.expireStaleQueuedAlerts,
+  {}
+);
+
+// Daily digest fallback for queued alerts and users without push permission.
+crons.daily(
+  "notification digest email",
+  { hourUTC: 13, minuteUTC: 0 },
+  internal.notificationsActions.sendDailyDigests,
+  {}
+);
+
 // Reply-back tracker: observe replies to published drafts during their 48h
 // outcome window. Suggestions/publishing remain human-approved only.
 crons.interval("poll reply outcomes", { minutes: 15 }, internal.outcomes.pollDue, {});
