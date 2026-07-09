@@ -28,7 +28,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP12**.
 
 ## Stories
 
-- [ ] **WP12-S1 — Schema + shared helpers**
+- [x] **WP12-S1 — Schema + shared helpers**
   - Additive schema: `briefingSettings` (enabled, hourLocal, timezone,
     emailOptIn) + `briefingRuns` (status, error, counts, artifact, localDay).
   - `shared/briefings.ts`: local-hour matching, local-day key, demo
