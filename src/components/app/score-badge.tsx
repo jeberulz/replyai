@@ -1,8 +1,13 @@
+"use client";
+
+import { Badge } from "@/components/ds/badge";
+import { Tooltip } from "@/components/ds/tooltip";
 import { cn } from "@/lib/utils";
 
 /**
  * "Worth replying" score, 0-100. Heuristic (timing, velocity, audience,
- * relevance) with a plain-language reason — shown in the title tooltip.
+ * relevance) with a plain-language reason — shown in the tooltip.
+ * Never a fake ML / engagement percentage (PRD guardrail).
  */
 export function ScoreBadge({
   value,
@@ -13,23 +18,22 @@ export function ScoreBadge({
   reason?: string;
   className?: string;
 }) {
-  const tier =
-    value >= 70
-      ? "bg-success/15 text-success"
-      : value >= 45
-        ? "bg-warning/15 text-warning"
-        : "bg-muted text-muted-foreground";
+  const variant =
+    value >= 70 ? "success" : value >= 45 ? "warning" : "neutral";
+
+  const badge = (
+    <Badge
+      variant={variant}
+      label={`${value}/100`}
+      className={cn("font-semibold tabular-nums", className)}
+    />
+  );
+
+  if (!reason) return badge;
+
   return (
-    <span
-      title={reason}
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums",
-        tier,
-        className
-      )}
-    >
-      {value}
-      <span className="font-normal opacity-80">/100</span>
-    </span>
+    <Tooltip content={reason} placement="above" delay={0}>
+      {badge}
+    </Tooltip>
   );
 }

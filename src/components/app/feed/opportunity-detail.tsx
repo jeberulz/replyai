@@ -12,9 +12,10 @@ import {
 
 import { dismissOpportunityAction } from "@/app/actions";
 import { ScoreBadge } from "@/components/app/score-badge";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ds/badge";
+import { Button } from "@/components/ds/button";
+import { Card } from "@/components/ds/card";
+import { IconButton } from "@/components/ds/icon-button";
 import {
   Pane,
   PaneActionBar,
@@ -53,28 +54,29 @@ export function OpportunityDetail({
           </PaneTabPill>
         }
         actions={
-          <button
-            type="button"
+          <IconButton
+            label="Dismiss"
+            icon={<X className="size-[17px]" />}
+            variant="ghost"
+            size="sm"
             onClick={dismiss}
-            disabled={pending}
-            aria-label="Dismiss"
-            className="transition-colors hover:text-foreground"
-          >
-            <X className="size-[17px]" />
-          </button>
+            isDisabled={pending}
+          />
         }
       />
       <PaneTitleRow title="Opportunity">
         {note && (
-          <Badge variant="outline" className="font-normal text-muted-foreground">
-            {note}
-          </Badge>
+          <Badge
+            variant="neutral"
+            label={note}
+            className="font-normal text-muted-foreground"
+          />
         )}
       </PaneTitleRow>
 
       <PaneBody className="space-y-4">
-        <Card>
-          <CardContent className="space-y-3 p-4">
+        <Card padding={3}>
+          <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0 text-sm">
                 <span className="font-semibold">{opportunity.authorName}</span>{" "}
@@ -99,11 +101,11 @@ export function OpportunityDetail({
                 {formatCount(opportunity.velocity)}/hr velocity
               </span>
             </div>
-          </CardContent>
+          </div>
         </Card>
 
-        <Card>
-          <CardContent className="space-y-3 p-4">
+        <Card padding={3}>
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">Worth replying?</h3>
               <ScoreBadge value={opportunity.score} reason={opportunity.reason} />
@@ -111,11 +113,11 @@ export function OpportunityDetail({
             <p className="text-sm leading-normal text-muted-foreground">
               {opportunity.reason}
             </p>
-          </CardContent>
+          </div>
         </Card>
 
-        <Card>
-          <CardContent className="space-y-2 p-4">
+        <Card padding={3}>
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Lightbulb className="size-4 text-primary" />
               <h3 className="text-sm font-semibold">Suggested angle</h3>
@@ -123,27 +125,27 @@ export function OpportunityDetail({
             <p className="text-[15px] leading-normal text-muted-foreground">
               {opportunity.suggestedAngle}
             </p>
-          </CardContent>
+          </div>
         </Card>
       </PaneBody>
 
       <PaneActionBar
         note="Analyzing opens the reply workbench with 3 replies + 3 quote tweets in your voice."
       >
-        <Button asChild className="w-full sm:flex-1">
-          <Link href={`/dashboard?url=${encodeURIComponent(opportunity.tweetUrl)}`}>
-            <ArrowRight />
-            Analyze &amp; reply
-          </Link>
-        </Button>
         <Button
-          variant="outline"
+          label="Analyze & reply"
+          icon={<ArrowRight className="size-3.5" />}
+          href={`/dashboard?url=${encodeURIComponent(opportunity.tweetUrl)}`}
+          as={Link}
+          className="w-full sm:flex-1"
+        />
+        <Button
+          variant="secondary"
+          label="Dismiss"
           onClick={dismiss}
-          disabled={pending}
+          isDisabled={pending}
           className="w-full sm:w-auto"
-        >
-          Dismiss
-        </Button>
+        />
       </PaneActionBar>
     </Pane>
   );

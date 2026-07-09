@@ -3,9 +3,13 @@
  * uses (orange mono eyebrow → Instrument Serif title → Inter subtitle), so the
  * app and marketing surfaces read as one product. See design.md "Typography".
  *
- * Serif titles render at the app h1 step (2rem, tracking -0.02em) in the single
- * shipping weight (400) — never add font-bold/semibold to Instrument Serif.
+ * Heading uses Astryx/Dark Chrome `--font-family-heading` (Instrument Serif,
+ * weight 400). Never add font-bold/semibold to Instrument Serif.
  */
+
+import { Heading } from "@/components/ds/heading";
+import { Text } from "@/components/ds/text";
+
 export function PageHeader({
   eyebrow,
   title,
@@ -20,19 +24,35 @@ export function PageHeader({
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
       <div className="space-y-2">
-        <p className="font-mono text-xs uppercase tracking-[0.16em] text-primary">
+        <Text
+          type="code"
+          color="accent"
+          size="sm"
+          display="block"
+          className="uppercase tracking-[0.16em]"
+        >
           {eyebrow}
-        </p>
-        <h1 className="font-serif text-[2rem] leading-[1.05] tracking-[-0.02em] text-foreground">
+        </Text>
+        <Heading
+          level={1}
+          className="text-[2rem] leading-[1.05] tracking-[-0.02em]"
+        >
           {title}
-        </h1>
-        {description && (
-          <p className="max-w-[60ch] text-sm leading-6 text-muted-foreground">
+        </Heading>
+        {description ? (
+          <Text
+            type="supporting"
+            color="secondary"
+            display="block"
+            className="max-w-[60ch] leading-6"
+          >
             {description}
-          </p>
-        )}
+          </Text>
+        ) : null}
       </div>
-      {children && <div className="flex items-center gap-2">{children}</div>}
+      {children ? (
+        <div className="flex items-center gap-2">{children}</div>
+      ) : null}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ds/icon-button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { SetupChecklist } from "@/components/app/setup-checklist";
@@ -59,15 +59,13 @@ export function AppSidebar({
       {/* Mobile top bar */}
       <header className="flex items-center justify-between border-b bg-sidebar px-4 py-3 md:hidden">
         <span className="font-semibold">ReplyPilot</span>
-        <Button
+        <IconButton
           type="button"
           variant="ghost"
-          size="icon"
+          label="Open menu"
+          icon={<Menu className="size-5" />}
           onClick={() => setMobileOpen(true)}
-          aria-label="Open menu"
-        >
-          <Menu className="size-5" />
-        </Button>
+        />
       </header>
 
       {/* Desktop rail */}
@@ -80,7 +78,10 @@ export function AppSidebar({
         <SidebarBody user={user} />
       </aside>
 
-      {/* Mobile drawer */}
+      {/*
+        Mobile drawer stays on shadcn Dialog — Astryx Dialog is centered modal
+        and would regress the WP6 slide-in drawer. Escalate before swapping.
+      */}
       <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>
         <DialogContent className="fixed left-0 top-0 flex h-full max-h-none w-[min(100vw,16rem)] max-w-none translate-x-0 translate-y-0 flex-col rounded-none border-r p-0 data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left">
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-sidebar">

@@ -12,8 +12,9 @@ import { toast } from "sonner";
 
 import { retryDraftAsStandaloneAction } from "@/app/actions";
 import { XLogo } from "@/components/app/x-logo";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ds/badge";
+import { Button } from "@/components/ds/button";
+import { Card } from "@/components/ds/card";
 import { cn, timeAgo } from "@/lib/utils";
 import { buildXIntentUrl } from "../../../../shared/xPublish";
 
@@ -45,13 +46,13 @@ export const draftStatusMeta: Record<
   {
     icon: LucideIcon;
     label: string;
-    variant: "secondary" | "warning" | "success" | "destructive";
+    variant: "neutral" | "warning" | "success" | "error";
   }
 > = {
-  draft: { icon: FileText, label: "Draft", variant: "secondary" },
+  draft: { icon: FileText, label: "Draft", variant: "neutral" },
   scheduled: { icon: Clock, label: "Scheduled", variant: "warning" },
   published: { icon: CheckCircle2, label: "Published", variant: "success" },
-  failed: { icon: XCircle, label: "Failed", variant: "destructive" },
+  failed: { icon: XCircle, label: "Failed", variant: "error" },
 };
 
 export function draftSubline(draft: Draft): string {
@@ -82,73 +83,76 @@ export function DraftRow({
     draft.status === "failed" && draft.publishMode !== "standalone";
 
   return (
-    <div
+    <Card
       onClick={onSelect}
       data-testid={`draft-row-${draft._id}`}
+      padding={3}
       className={cn(
-        "flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-muted-foreground/30 sm:flex-row sm:items-center",
+        "cursor-pointer transition-colors hover:border-muted-foreground/30",
         selected && "border-primary/60 ring-1 ring-primary/40",
         pending && "opacity-50"
       )}
     >
-      <div className="flex w-full items-start gap-3 sm:min-w-0 sm:flex-1 sm:items-center">
-        <Badge variant={meta.variant} className="shrink-0">
-          <meta.icon className="size-3" />
-          {meta.label}
-        </Badge>
-        <div className="min-w-0 flex-1">
-          <div className="line-clamp-1 text-sm font-medium">{draft.text}</div>
-          <div className="line-clamp-1 text-xs text-muted-foreground">
-            {draftKindLabel(draft)} · {draftSubline(draft)}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex w-full items-start gap-3 sm:min-w-0 sm:flex-1 sm:items-center">
+          <Badge
+            variant={meta.variant}
+            label={meta.label}
+            icon={<meta.icon className="size-3" />}
+            className="shrink-0"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="line-clamp-1 text-sm font-medium">{draft.text}</div>
+            <div className="line-clamp-1 text-xs text-muted-foreground">
+              {draftKindLabel(draft)} · {draftSubline(draft)}
+            </div>
           </div>
         </div>
+        {(canReplyOnX || canRetryStandalone) && (
+          <div className="grid w-full gap-2 sm:w-auto sm:flex sm:flex-wrap sm:justify-end">
+            {canReplyOnX && (
+              <Button
+                variant="secondary"
+                size="sm"
+                label="Reply on X"
+                icon={<XLogo className="size-3.5" />}
+                className="w-full sm:w-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(
+                    buildXIntentUrl({
+                      text: draft.text,
+                      inReplyTo: draft.targetTweetId,
+                    }),
+                    "_blank",
+                    "noopener,noreferrer"
+                  );
+                }}
+              />
+            )}
+            {canRetryStandalone && (
+              <Button
+                variant="secondary"
+                size="sm"
+                label="Post as tweet"
+                isDisabled={pending}
+                className="w-full sm:w-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startTransition(async () => {
+                    try {
+                      await retryDraftAsStandaloneAction(draft._id);
+                      toast.success("Retrying as standalone tweet…");
+                    } catch {
+                      toast.error("Retry failed");
+                    }
+                  });
+                }}
+              />
+            )}
+          </div>
+        )}
       </div>
-      {(canReplyOnX || canRetryStandalone) && (
-        <div className="grid w-full gap-2 sm:w-auto sm:flex sm:flex-wrap sm:justify-end">
-          {canReplyOnX && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full sm:w-auto"
-              onClick={(e) => {
-                e.stopPropagation();
-                window.open(
-                  buildXIntentUrl({
-                    text: draft.text,
-                    inReplyTo: draft.targetTweetId,
-                  }),
-                  "_blank",
-                  "noopener,noreferrer"
-                );
-              }}
-            >
-              <XLogo className="size-3.5" />
-              Reply on X
-            </Button>
-          )}
-          {canRetryStandalone && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={pending}
-              className="w-full sm:w-auto"
-              onClick={(e) => {
-                e.stopPropagation();
-                startTransition(async () => {
-                  try {
-                    await retryDraftAsStandaloneAction(draft._id);
-                    toast.success("Retrying as standalone tweet…");
-                  } catch {
-                    toast.error("Retry failed");
-                  }
-                });
-              }}
-            >
-              Post as tweet
-            </Button>
-          )}
-        </div>
-      )}
-    </div>
+    </Card>
   );
 }

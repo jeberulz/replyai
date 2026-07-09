@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip } from "@/components/ds/tooltip";
 import { useSidebar } from "./sidebar-provider";
 
 export function SidebarFooter({
@@ -31,18 +26,21 @@ export function SidebarFooter({
 
   if (collapsed) {
     return (
-      <TooltipProvider delayDuration={0}>
-        <div className="flex shrink-0 justify-center border-t border-border/60 p-3">
-          <Tooltip>
-            <TooltipTrigger asChild>{avatar}</TooltipTrigger>
-            <TooltipContent side="right">
+      <div className="flex shrink-0 justify-center border-t border-border/60 p-3">
+        <Tooltip
+          content={
+            <>
               {user.displayName}
               <br />@{user.username}
-              {user.isDemo && " · demo"}
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </TooltipProvider>
+              {user.isDemo ? " · demo" : null}
+            </>
+          }
+          placement="end"
+          delay={0}
+        >
+          {avatar}
+        </Tooltip>
+      </div>
     );
   }
 

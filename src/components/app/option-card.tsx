@@ -22,9 +22,10 @@ import {
 } from "@/app/actions";
 import { trackClient } from "@/lib/analytics/client";
 import { useSessionToken } from "@/components/app/convex-provider";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ds/badge";
+import { Button } from "@/components/ds/button";
+import { Card } from "@/components/ds/card";
+import { TextArea } from "@/components/ds/text-area";
 import {
   Dialog,
   DialogContent,
@@ -42,7 +43,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { ReplyPacingWarning } from "@/components/app/reply-pacing/reply-pacing-warning";
 import { cn } from "@/lib/utils";
 import {
@@ -295,17 +295,28 @@ export function OptionCard({
   };
 
   return (
-    <Card data-testid={`option-card-${option._id}`} className={cn(pending && "opacity-60")}>
-      <CardContent className="space-y-3 p-4 sm:p-5">
+    <Card
+      data-testid={`option-card-${option._id}`}
+      padding={4}
+      className={cn(pending && "opacity-60")}
+    >
+      <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="accent" className="capitalize">
-              {option.category}
-            </Badge>
+            <Badge
+              variant="info"
+              label={option.category}
+              className="capitalize"
+            />
             {currentEditBucket !== "no_edit" && (
-              <Badge variant="outline">
-                {currentEditBucket === "minor_edit" ? "minor edits" : "major edits"}
-              </Badge>
+              <Badge
+                variant="neutral"
+                label={
+                  currentEditBucket === "minor_edit"
+                    ? "minor edits"
+                    : "major edits"
+                }
+              />
             )}
           </div>
           <span
@@ -320,33 +331,34 @@ export function OptionCard({
 
         {editing ? (
           <div className="space-y-2">
-            <Textarea
+            <TextArea
+              label="Edit option"
+              isLabelHidden
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(value) => setDraft(value)}
               rows={4}
-              className="text-sm"
-              autoFocus
+              hasAutoFocus
+              size="sm"
             />
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button
                 size="sm"
+                label="Save"
+                icon={<Check className="size-3.5" />}
                 onClick={saveEdit}
-                disabled={pending || overLimit}
+                isDisabled={pending || overLimit}
                 className="w-full sm:w-auto"
-              >
-                <Check /> Save
-              </Button>
+              />
               <Button
                 size="sm"
                 variant="ghost"
+                label="Cancel"
                 onClick={() => {
                   setDraft(option.content);
                   setEditing(false);
                 }}
                 className="w-full sm:w-auto"
-              >
-                Cancel
-              </Button>
+              />
             </div>
           </div>
         ) : (
@@ -365,21 +377,27 @@ export function OptionCard({
           <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
+              label="Copy"
+              icon={
+                copied ? (
+                  <Check className="size-3.5" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )
+              }
               onClick={copy}
               className="flex-1 sm:flex-none"
-            >
-              {copied ? <Check /> : <Copy />} Copy
-            </Button>
+            />
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
+              label="Edit"
+              icon={<Pencil className="size-3.5" />}
               onClick={() => setEditing(true)}
-              disabled={editing}
+              isDisabled={editing}
               className="flex-1 sm:flex-none"
-            >
-              <Pencil /> Edit
-            </Button>
+            />
 
             <Select onValueChange={rewrite} value="">
               <SelectTrigger className="h-8 w-full gap-1 rounded-md px-3 text-xs font-medium sm:w-auto">
@@ -404,59 +422,59 @@ export function OptionCard({
             <Button
               size="sm"
               variant="ghost"
+              label="Save draft"
               onClick={saveAsDraft}
-              disabled={pending}
+              isDisabled={pending}
               className="w-full sm:w-auto"
-            >
-              Save draft
-            </Button>
+            />
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
+              label="Schedule"
+              icon={<CalendarClock className="size-3.5" />}
               onClick={() => setScheduleOpen(true)}
-              disabled={pending}
+              isDisabled={pending}
               className="w-full sm:w-auto"
-            >
-              <CalendarClock /> Schedule
-            </Button>
+            />
             {canThread && (
               <Button
                 size="sm"
-                variant="outline"
+                variant="secondary"
+                label="Post as tweet"
+                icon={<Send className="size-3.5" />}
                 onClick={() => publish("standalone")}
-                disabled={pending || overLimit}
+                isDisabled={pending || overLimit}
                 className="w-full sm:w-auto"
-              >
-                <Send /> Post as tweet
-              </Button>
+              />
             )}
             {canThread && option.kind === "reply" && (
               <Button
                 size="sm"
-                variant="outline"
+                variant="secondary"
+                label="Reply on X"
+                icon={<ExternalLink className="size-3.5" />}
                 onClick={() => openReplyOnX(content)}
-                disabled={pending || overLimit}
+                isDisabled={pending || overLimit}
                 className="w-full sm:w-auto"
-              >
-                <ExternalLink /> Reply on X
-              </Button>
+              />
             )}
             <Button
               size="sm"
+              variant="primary"
+              label={option.kind === "quote" ? "Quote on X" : "Reply"}
+              icon={<Send className="size-3.5" />}
               onClick={() => publish()}
-              disabled={pending || overLimit}
-              title={
+              isDisabled={pending || overLimit}
+              tooltip={
                 option.kind === "quote"
                   ? "Posts your text with the tweet linked — shows as a quote card"
                   : undefined
               }
               className="w-full sm:w-auto"
-            >
-              <Send /> {option.kind === "quote" ? "Quote on X" : "Reply"}
-            </Button>
+            />
           </div>
         </div>
-      </CardContent>
+      </div>
 
       <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
         <DialogContent>
@@ -477,11 +495,15 @@ export function OptionCard({
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setScheduleOpen(false)}>
-              Cancel
-            </Button>
             <Button
-              disabled={!scheduleAt || pending}
+              variant="ghost"
+              label="Cancel"
+              onClick={() => setScheduleOpen(false)}
+            />
+            <Button
+              label="Schedule"
+              icon={<CalendarClock className="size-3.5" />}
+              isDisabled={!scheduleAt || pending}
               onClick={() => {
                 const timestamp = new Date(scheduleAt).getTime();
                 if (Number.isNaN(timestamp) || timestamp <= Date.now()) {
@@ -490,9 +512,7 @@ export function OptionCard({
                 }
                 publish(defaultPublishMode(), timestamp);
               }}
-            >
-              <CalendarClock /> Schedule
-            </Button>
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>
