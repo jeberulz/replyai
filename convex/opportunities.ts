@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import type { QueryCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import {
   internalMutation,
   internalQuery,
@@ -14,6 +14,11 @@ import {
   normalizeHandle,
   pruneExpiredDismissedAuthors,
 } from "../shared/feedFilters";
+import {
+  effectiveDisplayScore,
+  freshnessLabel,
+  isOpportunityExpired,
+} from "../shared/feedFreshness";
 import { opportunityStillRelevant } from "../shared/semanticRelevance";
 import { requireUser } from "./helpers";
 
@@ -137,6 +142,61 @@ export const pruneStale = internalMutation({
         });
       }
     }
+  },
+});
+
+/** Archive one user's expired "new" opportunities; returns the count archived. */
+async function archiveExpiredForUserImpl(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  now: number
+): Promise<number> {
+  const rows = await ctx.db
+    .query("opportunities")
+    .withIndex("by_user_status", (q) =>
+      q.eq("userId", userId).eq("status", "new")
+    )
+    .collect();
+  let archived = 0;
+  for (const row of rows) {
+    if (isOpportunityExpired(row.postedAt, now)) {
+      await ctx.db.patch(row._id, {
+        status: "archived",
+        outcome: row.outcome ?? "ignored",
+        archivedAt: now,
+      });
+      archived += 1;
+    }
+  }
+  return archived;
+}
+
+/**
+ * Archive "new" opportunities whose reply window has expired
+ * (`isOpportunityExpired`, shared/feedFreshness.ts). Distinct from
+ * `pruneStale`'s dismiss path: archived means "the window closed
+ * unattended," not "the user rejected it."
+ */
+export const archiveExpiredForUser = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const archived = await archiveExpiredForUserImpl(ctx, userId, Date.now());
+    return { archived };
+  },
+});
+
+/** Fan out archiving across users with scanner settings enabled. */
+export const archiveExpiredAll = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const settings = await ctx.db.query("scannerSettings").collect();
+    let archived = 0;
+    for (const setting of settings) {
+      if (!setting.enabled) continue;
+      archived += await archiveExpiredForUserImpl(ctx, setting.userId, now);
+    }
+    return { archived };
   },
 });
 

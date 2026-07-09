@@ -22,7 +22,7 @@ export type LiveOpportunityPoint = {
   postedAt: number;
   scannedAt: number;
   score: number;
-  status: "new" | "dismissed" | "analyzed";
+  status: "new" | "dismissed" | "analyzed" | "archived";
 };
 
 export type ReplyPacingWarningLevel = "none" | "watch" | "warning" | "limit";
@@ -140,7 +140,9 @@ export function deriveBestReplyWindows({
   for (const opportunity of liveOpportunities) {
     const dayTimestamp = opportunity.scannedAt || opportunity.postedAt;
     if (!isSameLocalDay(dayTimestamp, nowMs, timezoneOffsetMinutes)) continue;
-    if (opportunity.status === "dismissed") continue;
+    if (opportunity.status === "dismissed" || opportunity.status === "archived") {
+      continue;
+    }
     const hour = localHour(dayTimestamp, timezoneOffsetMinutes);
     const stats = getHourStats(statsByHour, hour);
     stats.opportunityCount += 1;

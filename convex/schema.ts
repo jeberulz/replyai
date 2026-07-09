@@ -308,8 +308,12 @@ export default defineSchema({
     status: v.union(
       v.literal("new"),
       v.literal("dismissed"),
-      v.literal("analyzed")
+      v.literal("analyzed"),
+      v.literal("archived")
     ),
+    // Set when the auto-archive cron expires a "new" opportunity past the
+    // reply window (shared/feedFreshness.ts).
+    archivedAt: v.optional(v.number()),
     source: v.optional(
       v.union(
         v.literal("following"),

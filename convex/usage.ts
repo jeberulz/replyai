@@ -113,7 +113,9 @@ export const stats = query({
         authorFollowers: o.authorFollowers,
         score: o.score,
         scannedAt: o.scannedAt,
-        status: o.status,
+        // Auto-archived rows behave like dismissed for the funnel — the
+        // window closed unattended, same as a user-dismissed row.
+        status: o.status === "archived" ? ("dismissed" as const) : o.status,
         outcome: o.outcome,
       }));
     const replyOutcomeRows = await ctx.db
