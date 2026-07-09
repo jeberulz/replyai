@@ -1,13 +1,16 @@
 # Phase 2 Program — Compounding intelligence
 
 **Kickoff base:** `main` @ WP34 merged (`21473cc` or later).  
-**Current base:** `main` @ Wave 2 complete (`5d1b14a` / #48 or later).  
+**Current base:** `main` @ Wave 3 complete (`d4e0784` / #50–#52 or later).  
 **Exit criterion:** data moat visible — retention driven by accumulated per-user
 outcome data (reply-back, relationships, compounding content).  
 **Process:** `docs/AGENT_PLAYBOOK.md` §5–§7 (orchestrator + workers, story loop,
 wave gates).  
 **Model policy (Phase 2 sprint):** all worker sessions use **Grok 4.5 Fast**
 (`grok-4.5-fast-xhigh`) unless the orchestrator escalates after two failed gates.
+
+**Status:** Wave 3 merged. Automated Gate 3 green. Tag `phase-2-gate-3-pass`
+after manual extras. See `docs/wp/PHASE2-CLOSEOUT.md`.
 
 ---
 
@@ -25,20 +28,20 @@ wave gates).
 | WP23 | Reply-to-post ladder | #44 |
 | WP14 | A/B reply variants | #47 |
 | WP36 | Voice-drift agent | #48 |
+| WP15 | PWA + offline drafts | #50 |
+| WP39 | Onboarding concierge MVP | #51 |
 | Phase 1 | WP7–11, WP9, WP21, WP31, WP33, WP10, WP22, Astryx WP24–30 | on `main` |
 
 ---
 
 ## Phase 2 backlog (remaining)
 
-| WP | Package | Branch slug |
-|---|---|---|
-| WP15 | PWA + offline drafts | `feat/wp15-pwa-offline-drafts` |
-| WP39 | Onboarding concierge MVP | `feat/wp39-onboarding-concierge-mvp` |
+**Empty.** All Phase 2 WPs merged.
 
-**Phase 2 complete** when Wave 3 merges + Gate 3 passes.
+**Phase 2 complete** when Gate 3 passes (automated ✅ + manual extras) and
+`phase-2-gate-3-pass` is tagged.
 
-Story scaffolds on `main`: WP23, WP38, WP35, WP37, WP13, WP14, WP36, **WP39, WP15**.
+Story scaffolds on `main`: WP23, WP38, WP35, WP37, WP13, WP14, WP36, WP39, WP15.
 
 ---
 
@@ -62,16 +65,13 @@ Story scaffolds on `main`: WP23, WP38, WP35, WP37, WP13, WP14, WP36, **WP39, WP1
 | WP36 | #48 |
 | Gate fix | #46 (compose null-safe detail) |
 
-### Wave 3 — launch polish ← **current**
+### Wave 3 — complete
 
-| Worker | WP | File boundary |
-|---|---|---|
-| W8 | WP39 | `onboarding/**`, `convex/onboardingConcierge*`, onboarding actions |
-| W9 | WP15 | `public/manifest*`, extend `push-sw.js`, `src/lib/offlineDrafts.ts`, draft sync UI |
-
-**Parallel OK:** WP39 and WP15 are disjoint (no shared files except avoid both editing `src/app/actions.ts` in same commit — split action groups per WP).
-
-**Sequence note:** WP15 last before Product Hunt push (program plan); can merge before or after WP39 if gate green.
+| WP | PR |
+|---|---|
+| WP15 | #50 |
+| WP39 | #51 |
+| Docs scaffold | #49 / #52 |
 
 ---
 
@@ -103,35 +103,8 @@ Run on post-merge `main` after each wave:
 - Push: hot-window notification still opens `/feed` (WP8 regression)
 - Install: Lighthouse PWA installable (document score in PR)
 
-Tag: `git tag phase-2-gate-3-pass` when green.
+Tag: `git tag phase-2-gate-3-pass` when green (including manual extras).
 
 ---
 
-## Orchestrator spawn template
-
-```
-You own WP{NN} only. NOT the orchestrator.
-Model: grok-4.5-fast-xhigh
-Repo: replyai · Branch: feat/wp{NN}-{slug} from origin/main
-Read: AGENT_PLAYBOOK.md, PRD.md, AGENTS.md, docs/wp/wp{NN}-stories.md,
-  PRODUCT_STRATEGY §14, convex/_generated/ai/guidelines.md, design.md (UI)
-File boundary: {from this doc}
-DoD: {from stories file header}
-Story loop → checks → commit → progress.md
-Open PR; do not merge.
-```
-
----
-
-## Worker quick start
-
-```bash
-git fetch origin main
-git checkout -b feat/wp39-onboarding-concierge-mvp origin/main
-# or
-git checkout -b feat/wp15-pwa-offline-drafts origin/main
-```
-
----
-
-*Maintained by the Phase 2 orchestrator. Update when Wave 3 completes.*
+*Maintained by the Phase 2 orchestrator. Wave 3 complete — see PHASE2-CLOSEOUT.md.*
