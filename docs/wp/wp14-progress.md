@@ -28,3 +28,9 @@
 
 - `VariantComparePanel` on draft detail: observed published/responded/no-minor-edit counts per label.
 - Draft detail: “Track as A/B variant” for untracked analysis-linked drafts; variant badge when labeled.
+
+## 2026-07-09 — WP14-S5
+
+- `npm run typecheck && npm run lint && npm test && npm run build` green.
+- Confirmed no WP36 voiceDrift source files on this branch (only wp36 story scaffold docs on main).
+- Discarded contaminated voiceDriftRuns account cascade stubs from earlier parallel-worker collision.

@@ -62,5 +62,5 @@ voice profiles.
   - Draft detail or analysis sidebar: side-by-side observed stats per variant.
   - Dark Chrome; no fake scores or predicted winners.
 
-- [ ] **WP14-S5 — Verification**
+- [x] **WP14-S5 — Verification**
   - Demo mode end-to-end; unit tests; checks green; PR DoD checklist.
