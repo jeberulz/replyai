@@ -23,7 +23,7 @@ regressed; demo mode stays unbroken.
     semantic relevance is below the curated bar; add cases for curated pass
     at ≥ 0.3 and unsafe fail.
 
-- [ ] **WP9-S2** — Classifier emits `suggestedAngle` in one pass
+- [x] **WP9-S2** — Classifier emits `suggestedAngle` in one pass
   - Extend `SemanticScore` with `suggestedAngle: string`.
   - Add pure helper `demoSuggestedAngle(text, niche?)` for deterministic angles.
   - `demoSemanticRelevance` returns a deterministic `suggestedAngle` via that helper.

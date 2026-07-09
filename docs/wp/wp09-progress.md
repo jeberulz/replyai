@@ -17,3 +17,13 @@ Append-only. Decisions, dead ends, gotchas for the next iteration.
 - Combined score still uses `combineTopicRelevance` (keyword max semantic*0.9),
   so curated pass tests use `relevance >= 0.3/0.9` when keywordScore is 0.
 - Verified: `npm run typecheck && npm test -- tests/semanticRelevance.test.ts`.
+
+## 2026-07-09 — WP9-S2
+
+- Extended `SemanticScore` with optional `suggestedAngle` (required on the
+  batch classifier path; optional so `src/app/actions.ts` ManualSemanticSchema
+  stays compatible without editing out-of-boundary files).
+- Added `demoSuggestedAngle`; `demoSemanticRelevance` always sets angle.
+- `classifyBatch` zod schema + prompt now emit angle in the same call;
+  empty LLM angle falls back to `demoSuggestedAngle`.
+- Verified: `npm run typecheck && npm test -- tests/semanticRelevance.test.ts`.

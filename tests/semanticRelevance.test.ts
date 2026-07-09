@@ -4,6 +4,7 @@ import {
   combineTopicRelevance,
   CURATED_SOURCE_MIN_RELEVANCE,
   demoSemanticRelevance,
+  demoSuggestedAngle,
   opportunityStillRelevant,
   passesCombinedFeedFilter,
   resolveManualTopicRelevance,
@@ -148,7 +149,55 @@ describe("selectSemanticClassificationTargets", () => {
   });
 });
 
+describe("demoSuggestedAngle", () => {
+  it("returns a deterministic actionable angle for agent/support posts", () => {
+    const text = "We're rolling out autonomous support bots for customer teams";
+    const a = demoSuggestedAngle(text, {
+      keywords: ["ai agents"],
+      voiceTopics: [],
+      recentTopics: [],
+    });
+    const b = demoSuggestedAngle(text, {
+      keywords: ["ai agents"],
+      voiceTopics: [],
+      recentTopics: [],
+    });
+    expect(a).toBe(b);
+    expect(a.length).toBeGreaterThan(20);
+    expect(a.toLowerCase()).not.toMatch(/share your thoughts/);
+  });
+
+  it("does not use the old hot-take / digit template heuristics", () => {
+    const hot = demoSuggestedAngle("Unpopular opinion: hot take about shipping");
+    const digits = demoSuggestedAngle("We grew 40% MoM with no new hires");
+    expect(hot).not.toMatch(/measured contrarian/i);
+    expect(digits).not.toMatch(/numbers replying to numbers/i);
+  });
+});
+
 describe("demoSemanticRelevance", () => {
+  it("always includes a suggestedAngle", () => {
+    const result = demoSemanticRelevance(
+      "We're rolling out autonomous support bots for customer teams",
+      {
+        keywords: ["llm agents", "ai"],
+        voiceTopics: [],
+        recentTopics: [],
+      }
+    );
+    expect(result.suggestedAngle).toBeTruthy();
+    expect(result.suggestedAngle).toBe(
+      demoSuggestedAngle(
+        "We're rolling out autonomous support bots for customer teams",
+        {
+          keywords: ["llm agents", "ai"],
+          voiceTopics: [],
+          recentTopics: [],
+        }
+      )
+    );
+  });
+
   it("returns an unsafe verdict for political content", () => {
     const result = demoSemanticRelevance(
       "Congress passed a new immigration bill",
@@ -160,6 +209,7 @@ describe("demoSemanticRelevance", () => {
     );
     expect(result.relevance).toBe(0);
     expect(result.brandSafety).toBe("unsafe");
+    expect(result.suggestedAngle).toBeTruthy();
   });
 
   it("allows niche policy discussions when they fit the user's focus", () => {

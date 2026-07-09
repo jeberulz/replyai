@@ -54,6 +54,12 @@ export type SemanticScore = {
   relevance: number;
   reason: string;
   brandSafety: "safe" | "unsafe";
+  /**
+   * Short actionable reply angle (missing-angle style). Always set by the
+   * batch/demo classifier; optional so older call sites (manual analyze) that
+   * only need relevance/safety stay type-compatible without a schema change.
+   */
+  suggestedAngle?: string;
 };
 
 export function resolveManualTopicRelevance(
@@ -190,6 +196,40 @@ function demoBrandSafetyVerdict(
   return { brandSafety: "safe", reason: "Brand-safe context" };
 }
 
+/**
+ * Deterministic missing-angle style suggestion — used by demo classifier and
+ * as a cache-hit fallback when the 24h semantic cache has no stored angle
+ * (schema cannot grow in WP9).
+ */
+export function demoSuggestedAngle(
+  text: string,
+  niche?: NicheContext
+): string {
+  const haystack = text.toLowerCase();
+  const nicheHint =
+    niche?.keywords.find((k) => k.trim().length > 1)?.trim() ??
+    niche?.voiceTopics.find((k) => k.trim().length > 1)?.trim();
+
+  if (
+    (haystack.includes("autonomous") || haystack.includes("agent")) &&
+    (haystack.includes("support") || haystack.includes("customer"))
+  ) {
+    return "Name the failure mode teams hit when agents meet messy support workflows — then the one constraint that fixed it.";
+  }
+  if (haystack.includes("language model") || haystack.includes("llm")) {
+    return "Add a concrete eval or latency tradeoff from shipping an LLM feature that the thread hasn't named.";
+  }
+  if (haystack.includes("?")) {
+    return nicheHint
+      ? `Answer with one specific ${nicheHint} example from your own work — skip the generic advice.`
+      : "Answer with one specific example from your own work — skip the generic advice.";
+  }
+  if (nicheHint && haystack.includes(nicheHint.toLowerCase())) {
+    return `Point out the missing ${nicheHint} angle — the second-order consequence practitioners feel but the thread skipped.`;
+  }
+  return "Share a short, concrete story from experience that confirms or complicates the claim.";
+}
+
 /** Deterministic demo classifier — no API key required. */
 export function demoSemanticRelevance(
   text: string,
@@ -203,12 +243,14 @@ export function demoSemanticRelevance(
   ]
     .map((t) => t.trim().toLowerCase())
     .filter((t) => t.length > 1);
+  const suggestedAngle = demoSuggestedAngle(text, niche);
   const safety = demoBrandSafetyVerdict(haystack, nicheTerms);
   if (safety.brandSafety === "unsafe") {
     return {
       relevance: 0,
       reason: safety.reason,
       brandSafety: "unsafe",
+      suggestedAngle,
     };
   }
 
@@ -240,6 +282,7 @@ export function demoSemanticRelevance(
       relevance >= 0.5
         ? "Topic aligns with your niche (demo semantic match)"
         : "Weak niche overlap",
+    suggestedAngle,
   };
 }
 
