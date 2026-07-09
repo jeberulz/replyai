@@ -17,3 +17,13 @@
 - Billing: `briefing` paid feature label/gate message.
 - Regenerated `convex/_generated/api.d.ts` for new module.
 - Verified: `npm run typecheck` + briefing + accountData tests.
+
+## WP12-S3 — Briefing action (generate artifact)
+
+- Added `convex/briefingActions.ts` (`use node`): LLM structured artifact
+  via Anthropic + zod; demo fallback when no key / LLM error.
+- Ranking changelog sentence folded into coaching insight when recent.
+- `startRun` + `dispatchDueBriefings` schedule `generateBriefing`.
+- Usage: no Convex-side `usage.record` (same as research/semantic — public
+  mutation needs sessionToken); noted as Found-not-fixed / follow-up.
+- Verified: `npx convex codegen`, `npm run typecheck`, unit tests.

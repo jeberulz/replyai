@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import {
@@ -309,7 +310,7 @@ export const startRun = internalMutation({
     if (existing) return null;
 
     const now = Date.now();
-    return await ctx.db.insert("briefingRuns", {
+    const runId = await ctx.db.insert("briefingRuns", {
       userId,
       localDay,
       status: "running",
@@ -317,6 +318,13 @@ export const startRun = internalMutation({
       outcomeCount: 0,
       createdAt: now,
     });
+
+    await ctx.scheduler.runAfter(0, internal.briefingActions.generateBriefing, {
+      runId,
+      userId,
+    });
+
+    return runId;
   },
 });
 
@@ -367,12 +375,14 @@ export const failRun = internalMutation({
 
 /**
  * Hourly cron entry: find enabled Pro/demo users whose local hour matches
- * and who lack a run for today's local day, then create a running record.
- * Scheduling the generate action is wired in WP12-S3/S4.
+ * and who lack a run for today's local day, then enqueue generate.
  */
 export const dispatchDueBriefings = internalMutation({
   args: { nowMs: v.optional(v.number()) },
-  returns: v.object({ enqueued: v.number(), runIds: v.array(v.id("briefingRuns")) }),
+  returns: v.object({
+    enqueued: v.number(),
+    runIds: v.array(v.id("briefingRuns")),
+  }),
   handler: async (ctx, { nowMs }) => {
     const now = nowMs ?? Date.now();
     const settingsRows = await ctx.db.query("briefingSettings").collect();
@@ -410,6 +420,12 @@ export const dispatchDueBriefings = internalMutation({
         outcomeCount: 0,
         createdAt: now,
       });
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.briefingActions.generateBriefing,
+        { runId, userId: settings.userId }
+      );
       runIds.push(runId);
     }
 

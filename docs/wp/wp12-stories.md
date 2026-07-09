@@ -42,7 +42,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP12**.
   - `shared/accountData.ts` + `convex/account.ts`: delete/export include
     briefing tables.
 
-- [ ] **WP12-S3 — Briefing action (generate artifact)**
+- [x] **WP12-S3 — Briefing action (generate artifact)**
   - `convex/briefingActions.ts`: load overnight opportunities + yesterday
     outcomes (+ light ranking changelog if present); LLM or demo path;
     write completed/failed `briefingRuns` row; record usage when AI used.

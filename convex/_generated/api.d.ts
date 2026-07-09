@@ -12,6 +12,7 @@ import type * as account from "../account.js";
 import type * as analyses from "../analyses.js";
 import type * as billing from "../billing.js";
 import type * as billingNode from "../billingNode.js";
+import type * as briefingActions from "../briefingActions.js";
 import type * as briefings from "../briefings.js";
 import type * as cache from "../cache.js";
 import type * as crons from "../crons.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   analyses: typeof analyses;
   billing: typeof billing;
   billingNode: typeof billingNode;
+  briefingActions: typeof briefingActions;
   briefings: typeof briefings;
   cache: typeof cache;
   crons: typeof crons;
