@@ -554,7 +554,9 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"])
     .index("by_user_status", ["userId", "status"])
-    .index("by_opportunity", ["opportunityId"]),
+    .index("by_opportunity", ["opportunityId"])
+    // Cron delivery + stale expiry — avoid full-table scans.
+    .index("by_status_created", ["status", "createdAt"]),
 
   notificationDailyCounts: defineTable({
     userId: v.id("users"),

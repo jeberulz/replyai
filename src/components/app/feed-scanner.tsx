@@ -111,15 +111,8 @@ export function FeedScanner() {
     deepLinkHandledRef.current = true;
     setSelectedId(opportunityId);
     if (alertId) {
-      void markNotificationAlertOpenedAction(alertId).then((result) => {
-        if (result.opened) {
-          trackClient("notification_alert_opened", {
-            alertId,
-            opportunityId,
-            tier: result.tier,
-          });
-        }
-      });
+      // Server mutation schedules notification_alert_opened — don't double-fire client.
+      void markNotificationAlertOpenedAction(alertId);
     }
   }, [searchParams]);
 

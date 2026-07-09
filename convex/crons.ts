@@ -15,6 +15,14 @@ crons.interval(
   {}
 );
 
+// Expire queued alerts older than 24h (quiet hours / transient push failures).
+crons.interval(
+  "expire stale notification alerts",
+  { hours: 6 },
+  internal.notificationsActions.expireStaleQueuedAlerts,
+  {}
+);
+
 // Daily digest fallback for queued alerts and users without push permission.
 crons.daily(
   "notification digest email",

@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { ActionCtx } from "./_generated/server";
 import { internalAction } from "./_generated/server";
+import { absoluteNotificationUrl } from "../shared/notifications";
 import { trackConvexEvent } from "./lib/analytics";
 
 function vapidConfigured(): boolean {
@@ -24,6 +25,21 @@ function configureWebPush(): boolean {
     process.env.VAPID_PRIVATE_KEY!
   );
   return true;
+}
+
+function configuredAppUrl(): string | null {
+  const value =
+    process.env.APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    "";
+  return value ? value.replace(/\/$/, "") : null;
+}
+
+/** Gone / expired subscription — safe to drop. Other errors leave queued. */
+function isGonePushError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const statusCode = (error as { statusCode?: number }).statusCode;
+  return statusCode === 404 || statusCode === 410;
 }
 
 type DueAlert = {
@@ -48,14 +64,9 @@ async function deliverDueAlerts(
   if (due.length === 0) {
     return { attempted: 0, delivered: 0, suppressed: 0 };
   }
+  // Incomplete VAPID: leave alerts queued so digest can still drain them.
   if (!configureWebPush()) {
-    for (const alert of due) {
-      await ctx.runMutation(internal.notifications.suppressAlert, {
-        alertId: alert.alertId,
-        reason: "vapid_not_configured",
-      });
-    }
-    return { attempted: due.length, delivered: 0, suppressed: due.length };
+    return { attempted: due.length, delivered: 0, suppressed: 0 };
   }
 
   let delivered = 0;
@@ -89,12 +100,15 @@ async function deliverDueAlerts(
         source: alert.source,
       });
       delivered += 1;
-    } catch {
-      await ctx.runMutation(internal.notifications.suppressAlert, {
-        alertId: alert.alertId,
-        reason: "push_delivery_failed",
-      });
-      suppressed += 1;
+    } catch (error) {
+      if (isGonePushError(error)) {
+        await ctx.runMutation(internal.notifications.suppressAlert, {
+          alertId: alert.alertId,
+          reason: "push_subscription_gone",
+        });
+        suppressed += 1;
+      }
+      // Transient failures: leave status=queued for the next cron tick.
     }
   }
 
@@ -129,7 +143,7 @@ export const deliverAllQueuedAlerts = internalAction({
   handler: async (ctx): Promise<{ users: number; delivered: number; suppressed: number }> => {
     const userIds: Id<"users">[] = await ctx.runQuery(
       internal.notifications.usersWithQueuedAlerts,
-      {}
+      { limit: 100 }
     );
     let delivered = 0;
     let suppressed = 0;
@@ -205,14 +219,16 @@ export const sendDailyDigests = internalAction({
       return { users: candidates.length, alerts: 0, sent: 0 };
     }
 
+    const appUrl = configuredAppUrl();
     let alertCount = 0;
     let sent = 0;
     for (const batch of candidates) {
       const lines = batch.alerts
-        .map(
-          (alert) =>
-            `• ${alert.title}: ${alert.body}\n  ${alert.deepLink}`
-        )
+        .map((alert) => {
+          const link =
+            absoluteNotificationUrl(appUrl, alert.deepLink) ?? alert.deepLink;
+          return `• ${alert.title}: ${alert.body}\n  ${link}`;
+        })
         .join("\n\n");
       alertCount += batch.alerts.length;
 
@@ -249,5 +265,18 @@ export const sendDailyDigests = internalAction({
     }
 
     return { users: candidates.length, alerts: alertCount, sent };
+  },
+});
+
+/** Drop queued alerts older than 24h so quiet-hours / failed-push queues don't grow forever. */
+export const expireStaleQueuedAlerts = internalAction({
+  args: {},
+  returns: v.object({ expired: v.number() }),
+  handler: async (ctx): Promise<{ expired: number }> => {
+    const expired = await ctx.runMutation(internal.notifications.expireStaleQueued, {
+      olderThanMs: 24 * 60 * 60 * 1000,
+      limit: 200,
+    });
+    return { expired };
   },
 });

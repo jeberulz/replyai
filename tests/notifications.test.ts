@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   ALL_NOTIFICATION_SOURCES,
   NOTIFICATION_DEFAULTS,
+  absoluteNotificationUrl,
   buildNotificationCopy,
+  buildNotificationDeepLink,
   classifyNotificationTier,
   evaluateNotificationEnqueue,
   isInQuietHours,
@@ -133,6 +135,30 @@ describe("notification copy", () => {
       "Reply in the next ~15 min — window is still young."
     );
     expect(copy.body).not.toMatch(/%/);
+  });
+});
+
+describe("notification deep links", () => {
+  it("defaults to a relative feed path when app URL is missing", () => {
+    expect(buildNotificationDeepLink(null, "opp1", "alert1")).toBe(
+      "/feed?opportunity=opp1&alert=alert1"
+    );
+    expect(buildNotificationDeepLink(undefined, "opp1", "alert1")).toBe(
+      "/feed?opportunity=opp1&alert=alert1"
+    );
+  });
+
+  it("prefixes an absolute origin when provided", () => {
+    expect(
+      buildNotificationDeepLink("https://app.example/", "opp1", "alert1")
+    ).toBe("https://app.example/feed?opportunity=opp1&alert=alert1");
+  });
+
+  it("absolutizes relative links for digest email", () => {
+    expect(
+      absoluteNotificationUrl("https://app.example", "/feed?opportunity=a&alert=b")
+    ).toBe("https://app.example/feed?opportunity=a&alert=b");
+    expect(absoluteNotificationUrl(null, "/feed?x=1")).toBeNull();
   });
 });
 

@@ -48,14 +48,26 @@ const settingsReturnValidator = v.object({
   notificationEmail: v.optional(v.string()),
 });
 
+/** All three VAPID vars required — matches web-push configureWebPush(). */
 function pushConfigured(): boolean {
   return Boolean(
-    process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY
+    process.env.VAPID_PUBLIC_KEY &&
+      process.env.VAPID_PRIVATE_KEY &&
+      process.env.VAPID_SUBJECT
   );
 }
 
-function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+/**
+ * Optional absolute origin for digest emails / absolute deep links.
+ * Prefer relative deep links (null here) so missing Convex env never ships
+ * `http://localhost:3000` into push payloads.
+ */
+function configuredAppUrl(): string | null {
+  const value =
+    process.env.APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    "";
+  return value ? value.replace(/\/$/, "") : null;
 }
 
 async function getOrCreateSettings(
@@ -436,6 +448,7 @@ export const evaluateOpportunity = internalMutation({
     if (decision.action === "skip") return null;
 
     const copy = buildNotificationCopy(decision.tier);
+    // Relative deep link first (works for SW + in-app); absolute only if APP_URL set.
     const alertId = await ctx.db.insert("notificationAlerts", {
       userId,
       opportunityId,
@@ -450,7 +463,11 @@ export const evaluateOpportunity = internalMutation({
       createdAt: now,
     });
     await ctx.db.patch(alertId, {
-      deepLink: buildNotificationDeepLink(appUrl(), opportunityId, alertId),
+      deepLink: buildNotificationDeepLink(
+        configuredAppUrl(),
+        opportunityId,
+        alertId
+      ),
     });
 
     await ctx.scheduler.runAfter(0, internal.notificationsActions.deliverQueuedAlerts, {
@@ -505,10 +522,11 @@ export const dueQueuedAlerts = internalQuery({
       now,
       settingsRow.timezone
     );
+    const remaining = settingsRow.dailyCap - deliveredToday;
     const canPush =
       canDeliverPush(snapshot) &&
       !quiet &&
-      deliveredToday < settingsRow.dailyCap &&
+      remaining > 0 &&
       pushConfigured();
     if (!canPush) return [];
 
@@ -518,10 +536,13 @@ export const dueQueuedAlerts = internalQuery({
       .first();
     if (!subscription) return [];
 
+    const takeCount = Math.max(0, Math.min(limit, remaining));
+    if (takeCount === 0) return [];
+
     const queued = await ctx.db
       .query("notificationAlerts")
       .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", "queued"))
-      .take(limit);
+      .take(takeCount);
 
     return queued.map((alert) => ({
       alertId: alert._id,
@@ -617,7 +638,8 @@ export const markAlertSent = internalMutation({
       .filter((row) => row.userId === userId)
       .sort((a, b) => (b.openedAt ?? b.deliveredAt ?? b.createdAt) - (a.openedAt ?? a.deliveredAt ?? a.createdAt))[0];
     if (!candidate || candidate.status === "sent") return null;
-    if (candidate.status !== "opened" && candidate.status !== "delivered") {
+    // DoD: open→send — only count publishes after the alert deep link was opened.
+    if (candidate.status !== "opened" || candidate.openedAt == null) {
       return null;
     }
     const now = Date.now();
@@ -704,30 +726,44 @@ export const digestCandidates = internalQuery({
 });
 
 export const usersWithQueuedAlerts = internalQuery({
-  args: {},
+  args: { limit: v.optional(v.number()) },
   returns: v.array(v.id("users")),
-  handler: async (ctx) => {
-    const rows = await ctx.db.query("notificationAlerts").collect();
+  handler: async (ctx, { limit }) => {
+    const maxUsers = limit ?? 100;
     const userIds = new Set<Id<"users">>();
-    for (const row of rows) {
-      if (row.status === "queued") userIds.add(row.userId);
+    // Indexed by status — page newest queued first; stop once we have enough users.
+    const queued = await ctx.db
+      .query("notificationAlerts")
+      .withIndex("by_status_created", (q) => q.eq("status", "queued"))
+      .order("desc")
+      .take(Math.max(maxUsers * 5, 50));
+    for (const row of queued) {
+      userIds.add(row.userId);
+      if (userIds.size >= maxUsers) break;
     }
     return [...userIds];
   },
 });
 
 export const expireStaleQueued = internalMutation({
-  args: { olderThanMs: v.number() },
+  args: { olderThanMs: v.number(), limit: v.optional(v.number()) },
   returns: v.number(),
-  handler: async (ctx, { olderThanMs }) => {
+  handler: async (ctx, { olderThanMs, limit }) => {
     const cutoff = Date.now() - olderThanMs;
+    const batch = limit ?? 200;
     let expired = 0;
-    const allQueued = await ctx.db.query("notificationAlerts").collect();
-    for (const row of allQueued) {
-      if (row.status === "queued" && row.createdAt < cutoff) {
-        await ctx.db.patch(row._id, { status: "expired" });
-        expired += 1;
-      }
+    const stale = await ctx.db
+      .query("notificationAlerts")
+      .withIndex("by_status_created", (q) =>
+        q.eq("status", "queued").lt("createdAt", cutoff)
+      )
+      .take(batch);
+    for (const row of stale) {
+      await ctx.db.patch(row._id, {
+        status: "expired",
+        suppressedReason: "stale_queued",
+      });
+      expired += 1;
     }
     return expired;
   },

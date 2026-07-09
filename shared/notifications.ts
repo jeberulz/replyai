@@ -151,17 +151,35 @@ export function buildNotificationCopy(tier: NotificationTier): {
   };
 }
 
+/**
+ * Deep link into the feed for an alert. Prefer a relative path so Convex
+ * (which does not inherit Next env) never ships `localhost` push URLs.
+ * Pass `appUrl` only when an absolute URL is required (e.g. email digest).
+ */
 export function buildNotificationDeepLink(
-  appUrl: string,
+  appUrl: string | null | undefined,
   opportunityId: string,
   alertId: string
 ): string {
-  const base = appUrl.replace(/\/$/, "");
   const params = new URLSearchParams({
     opportunity: opportunityId,
     alert: alertId,
   });
-  return `${base}/feed?${params.toString()}`;
+  const path = `/feed?${params.toString()}`;
+  const base = appUrl?.trim().replace(/\/$/, "");
+  if (!base) return path;
+  return `${base}${path}`;
+}
+
+/** Absolute URL for digest email; null when APP_URL is unset (skip absolute). */
+export function absoluteNotificationUrl(
+  appUrl: string | null | undefined,
+  deepLink: string
+): string | null {
+  if (/^https?:\/\//i.test(deepLink)) return deepLink;
+  const base = appUrl?.trim().replace(/\/$/, "");
+  if (!base) return null;
+  return `${base}${deepLink.startsWith("/") ? deepLink : `/${deepLink}`}`;
 }
 
 export function canDeliverPush(settings: NotificationSettingsSnapshot): boolean {

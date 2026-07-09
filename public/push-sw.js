@@ -24,7 +24,11 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = event.notification.data?.url || "/feed";
+  const raw = event.notification.data?.url || "/feed";
+  // Deep links may be relative (/feed?…) so Convex never ships localhost.
+  const target = /^https?:\/\//i.test(raw)
+    ? raw
+    : new URL(raw, self.location.origin).href;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {

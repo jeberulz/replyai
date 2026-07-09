@@ -25,3 +25,13 @@
 ## 2026-07-09 — Review fix
 
 - `fix(wp8): remove Date.now from settings query` — `settings` query uses `notificationSettingsDefaults()` (no wall-clock); server blocks `masterEnabled` without `permissionGrantedAt`; Switch disabled until push subscription exists.
+
+## 2026-07-09 — Orchestrator review fixes (#1–#6)
+
+1. VAPID: `pushConfigured` requires SUBJECT; incomplete VAPID leaves alerts queued (no suppress) so digest can drain.
+2. open→send: `markAlertSent` requires `status === "opened"` + `openedAt`.
+3. Deep links: relative `/feed?…` by default; `APP_URL` for digest absolute; SW resolves relative against origin.
+4. Cap: `dueQueuedAlerts` takes `min(limit, remaining)`.
+5. Cron scan: `by_status_created` index; `usersWithQueuedAlerts` pages queued rows (no full collect).
+6. `expireStaleQueued` cron every 6h via `expireStaleQueuedAlerts` (24h TTL, batched).
+Bonus: removed double `notification_alert_opened` client track; push 404/410 only suppresses.
