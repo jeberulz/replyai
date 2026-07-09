@@ -87,3 +87,13 @@ Append-only. Newest entries at the bottom.
     "Suggested replacement — …" profiles awaiting Watch/Pass. No console errors.
 - Note: the verification dispatch mutated the shared dev deployment (2 eligible
   users → 2 curator runs, `lastCuratorRunMonth=2026-07`). Harmless dev data.
+
+## 2026-07-09 — S7 cascade + docs
+
+- No cascade code change needed: `convex/account.ts` export/delete and
+  `shared/accountData.ts` operate on whole rows for `researchRuns`,
+  `researchProfiles`, and `scannerSettings`, so the new optional fields
+  (`runKind`, `curatorPrunedCount`, `passedReason`, `lastCuratorRunMonth`) are
+  automatically exported and deleted. Verified `tests/accountData.test.ts` green.
+- README: added a "Research curator (Pro)" bullet (monthly cron, idempotent per
+  UTC month, suggest-only human gate).

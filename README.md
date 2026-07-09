@@ -35,6 +35,10 @@ always.
   watched/list authors. Quiet hours (default 22:00–08:00 UTC) and a 5/day cap.
   No auto-publish; no fake engagement percentages. Optional Convex env:
   `VAPID_*` (all three), `APP_URL` (digest absolute links), `RESEND_*`.
+- **Research curator (Pro)** — a monthly Convex cron prunes quiet suggested
+  accounts and surfaces up to 5 replacement candidates with plain-language
+  reasons. Idempotent per UTC calendar month. Suggest-only: every watch change
+  needs an explicit human Watch/Pass click — never auto-watch, never auto-publish.
 - **Publishing & scheduling** — publish now or schedule for later via Convex
   scheduled functions. Statuses update live on the dashboard (Convex
   reactivity, no polling).

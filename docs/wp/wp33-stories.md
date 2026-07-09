@@ -82,7 +82,7 @@ scanner keyword graph auto-rewrite, daily curator cadence.
     - Empty/locked states for free plan.
   - Reuse `ProfileDetail` / `ProfileRow` (WP21/Astryx paths).
 
-- [ ] **WP33-S7 — Account delete/export + docs**
+- [x] **WP33-S7 — Account delete/export + docs**
   - Export/delete includes new optional fields.
   - README or `docs/observability.md` one line on curator cron if appropriate.
 
