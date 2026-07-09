@@ -73,3 +73,17 @@ Append-only. Newest entries at the bottom.
   (resultCount) + `prunedCount` (curatorPrunedCount). `locked` = not Pro/demo.
 - Manual `startRun` and existing queries unchanged.
 - Typed `returns` validator on the new query (matches WP12 briefings style).
+
+## 2026-07-09 — S6 research UI + demo verify
+
+- `CuratorStrip` in `research-agent.tsx`: four states — loading (null), locked
+  (free-plan upgrade copy), empty (no run yet), and complete/running/failed.
+  Uses `api.research.latestCuratorRun`; `timeAgo` for the run time; ds `Text`/
+  `Spinner`/`PaneEyebrow`. No fake scores — counts only.
+- Verified end-to-end in demo mode (`/api/auth/demo` → `/research`):
+  - Empty state rendered first ("first monthly refresh runs on the 1st").
+  - Ran `internal.research.dispatchMonthlyCuratorAll` → strip showed
+    "just now · 0 quiet accounts pruned · 5 new suggestions"; list showed 5
+    "Suggested replacement — …" profiles awaiting Watch/Pass. No console errors.
+- Note: the verification dispatch mutated the shared dev deployment (2 eligible
+  users → 2 curator runs, `lastCuratorRunMonth=2026-07`). Harmless dev data.

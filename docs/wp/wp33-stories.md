@@ -75,7 +75,7 @@ scanner keyword graph auto-rewrite, daily curator cadence.
   - `research.latestCuratorRun` — last monthly run status + counts for UI.
   - Keep existing manual `startRun` unchanged.
 
-- [ ] **WP33-S6 — Research UI**
+- [x] **WP33-S6 — Research UI**
   - `src/components/app/research-agent.tsx` (or research page shell):
     - "Monthly curator" strip: last run time, quiet profiles pruned count,
       new suggestions count.
