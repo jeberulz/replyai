@@ -63,6 +63,13 @@ export const ACCOUNT_USER_TABLES = [
     deletionOrder: 47,
   },
   {
+    table: "authors",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "authorHandle"],
+    deletionOrder: 48,
+  },
+  {
     table: "usage",
     ownershipField: "userId",
     indexName: "by_user_month",

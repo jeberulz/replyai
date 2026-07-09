@@ -86,6 +86,13 @@ async function countByUser(
         if (row._id) count += 1;
       }
       return count;
+    case "authors":
+      for await (const row of ctx.db
+        .query("authors")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
     case "usage":
       for await (const row of ctx.db
         .query("usage")
@@ -230,6 +237,13 @@ async function listByUser(
         rows.push(row as unknown as Record<string, unknown>);
       }
       return rows;
+    case "authors":
+      for await (const row of ctx.db
+        .query("authors")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
     case "usage":
       for await (const row of ctx.db
         .query("usage")
@@ -369,6 +383,13 @@ async function takeDeletionBatch(
       return (
         await ctx.db
           .query("briefingRuns")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "authors":
+      return (
+        await ctx.db
+          .query("authors")
           .withIndex("by_user", (q) => q.eq("userId", userId))
           .take(ACCOUNT_DELETION_BATCH_SIZE)
       ).map((row) => row._id);
