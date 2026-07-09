@@ -14,33 +14,33 @@ Definition of done from `docs/PRODUCT_STRATEGY.md` §14: capped, quiet-hours-awa
 
 ## Stories
 
-- [ ] **WP8-S1 — Schema**
+- [x] **WP8-S1 — Schema**
   - Additive tables: `notificationSettings`, `pushSubscriptions`, `notificationAlerts`, `notificationDailyCounts`.
   - Optional `users.notificationEmail` for digest delivery.
 
-- [ ] **WP8-S2 — Shared logic + tests**
+- [x] **WP8-S2 — Shared logic + tests**
   - `shared/notifications.ts`: quiet hours, golden-15 tier, enqueue eligibility, copy (no fake ML %).
   - Vitest coverage for cap, quiet hours, tier classification, source toggles.
 
-- [ ] **WP8-S3 — Enqueue on upsert**
+- [x] **WP8-S3 — Enqueue on upsert**
   - Minimal hook in `opportunities.upsertMany` scheduling `internal.notifications.evaluateOpportunity` for new rows.
   - Pro gate + settings gate inside evaluation.
 
-- [ ] **WP8-S4 — Push + SW + VAPID**
+- [x] **WP8-S4 — Push + SW + VAPID**
   - `convex/notificationsActions.ts` (`use node`) with web-push delivery; no-op without VAPID keys.
   - `public/push-sw.js` service worker (push only — not full PWA).
 
-- [ ] **WP8-S5 — Settings UI**
+- [x] **WP8-S5 — Settings UI**
   - `notification-settings-card` on settings page (ds/ components): master toggle, sources, threshold, quiet hours, push permission, digest toggle, optional notification email.
 
-- [ ] **WP8-S6 — Deliver + deeplink + open**
+- [x] **WP8-S6 — Deliver + deeplink + open**
   - Deep link `/feed?opportunity=…&alert=…`; mark alert opened; track `notification_alert_opened`.
 
-- [ ] **WP8-S7 — Open→send**
+- [x] **WP8-S7 — Open→send**
   - Link publish to alert `sent` status; `notification_alert_sent` analytics for open→send rate.
 
-- [ ] **WP8-S8 — Digest email**
+- [x] **WP8-S8 — Digest email**
   - Daily cron composes digest; Resend when env-gated; demo/no-op otherwise; does not block delivery.
 
-- [ ] **WP8-S9 — Delete/export + docs + checks**
+- [x] **WP8-S9 — Delete/export + docs + checks**
   - Account delete/export includes notification tables; README/env/observability updates; full CI suite + security audit.

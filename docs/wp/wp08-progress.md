@@ -15,3 +15,9 @@
 | Pro gate | `hasProAccess` (demo counts as Pro) |
 | Push without VAPID | no network push (demo-safe) |
 | Copy | golden-15: "Reply in the next ~15 min — window is still young." — no fake ML % |
+
+## 2026-07-09 — Verification
+
+- `npm run typecheck && npm run lint && npm test && npm run build` — pass (lint: 4 existing generated-file warnings only).
+- `npm run security:audit` — pass (70 public Convex functions, 5 new notification endpoints auth-gated via `requireUser`).
+- `npx convex codegen` blocked (no `CONVEX_DEPLOYMENT`); `convex/_generated/api.d.ts` updated manually for `notifications` + `notificationsActions`.
