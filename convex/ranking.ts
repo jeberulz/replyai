@@ -1,7 +1,27 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import { computeRankingWeights } from "../shared/rankingWeights";
-import type { OpportunityFunnelRow } from "../shared/rankingWeights";
+import type { OpportunityFunnelRow, RankingWeights } from "../shared/rankingWeights";
+import { rankingChangelogSentence } from "../shared/rankingChangelog";
+
+/**
+ * Changelog is set on every successful recompute (not only "material"
+ * changes) — `rankingChangelogSentence` already falls back to a plain
+ * "refreshed recently" sentence when there's no meaningful multiplier delta,
+ * so every recompute with enough data produces a fresh, truthful sentence.
+ */
+function changelogPatch(
+  weights: RankingWeights | null,
+  nowMs: number
+): { rankingChangelog?: string; rankingChangelogAt?: number } {
+  if (!weights) {
+    return { rankingChangelog: undefined, rankingChangelogAt: undefined };
+  }
+  return {
+    rankingChangelog: rankingChangelogSentence(weights, nowMs) ?? undefined,
+    rankingChangelogAt: nowMs,
+  };
+}
 
 function toFunnelRow(row: {
   source?: "following" | "list" | "watched" | "search";
@@ -37,12 +57,11 @@ export const recomputeForUser = internalMutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
 
-    const weights = computeRankingWeights(
-      rows.map(toFunnelRow),
-      Date.now()
-    );
+    const now = Date.now();
+    const weights = computeRankingWeights(rows.map(toFunnelRow), now);
     await ctx.db.patch(settings._id, {
       rankingWeights: weights ?? undefined,
+      ...changelogPatch(weights, now),
     });
   },
 });
@@ -57,12 +76,11 @@ export const recomputeAll = internalMutation({
         .query("opportunities")
         .withIndex("by_user", (q) => q.eq("userId", settings.userId))
         .collect();
-      const weights = computeRankingWeights(
-        rows.map(toFunnelRow),
-        Date.now()
-      );
+      const now = Date.now();
+      const weights = computeRankingWeights(rows.map(toFunnelRow), now);
       await ctx.db.patch(settings._id, {
         rankingWeights: weights ?? undefined,
+        ...changelogPatch(weights, now),
       });
     }
   },
