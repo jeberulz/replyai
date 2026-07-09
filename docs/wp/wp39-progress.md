@@ -32,3 +32,11 @@
 - Failures write `failed` run row via `failRun`; never throw past the action.
 - Server actions: `runOnboardingConciergeAction`, `skipOnboardingConciergeAction`,
   `applyOnboardingConciergeProposalAction`, `acceptOnboardingConciergeWatchAction`.
+
+## 2026-07-09 — WP39-S4
+
+- New first step `concierge` in `onboarding-flow.tsx` (before goal/niche).
+- `ConciergeReviewStep`: editable goal radios, keyword chips, per-handle Accept
+  for watches, voice snippet preview (not full train until voice step).
+- Confirm → `acceptProposal` then jump to voice; Manual → `skipRun` → goal step.
+- Watches never auto-added (RULINGS Wave 3).

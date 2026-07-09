@@ -59,7 +59,7 @@ groundwork" — this WP ships the MVP agent path.
   - Fetch bio + recent tweets (or demo); LLM or heuristic proposal.
   - Missing keys → demo proposal; failures → failed run row + graceful UI.
 
-- [ ] **WP39-S4 — Onboarding review UI**
+- [x] **WP39-S4 — Onboarding review UI**
   - Show proposal as editable chips/cards; Accept applies goal/keywords/watch seeds.
   - "Use manual setup instead" skips to current wizard behavior.
 
