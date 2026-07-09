@@ -42,9 +42,18 @@ wave gates).
 | WP38 | Command palette v2 | P1 daily-driver UX | `feat/wp38-command-palette-v2` |
 | WP39 | Onboarding concierge MVP | P2 | `feat/wp39-onboarding-concierge-mvp` |
 
-Story scaffolds on `main`: WP23, WP38, WP35, WP37, WP13 (this program PR).
-Workers for WP14–15, WP36, WP39 author `wpNN-stories.md` on their branch before
-coding.
+Story scaffolds on `main`: WP23, WP38, WP35, WP37, WP13, **WP14, WP36**.
+Workers for WP15, WP39 author `wpNN-stories.md` on their branch before coding.
+
+### Wave 1 — complete (`main` @ #44)
+
+| WP | PR |
+|---|---|
+| WP38 | #40 |
+| WP35 | #41 |
+| WP37 | #42 |
+| WP13 | #43 |
+| WP23 | #44 |
 
 ---
 
@@ -67,12 +76,12 @@ coding.
 | W4 | WP23 | **Owns** `convex/compose.ts`, compose prompts in `src/lib/ai.ts` (compose-only helpers), compose UI route, `src/app/actions.ts` compose actions |
 | W5 | WP13 | **Owns** `authors` schema, `convex/authors.ts`, dossier UI on feed/workbench |
 
-### Wave 2 — after Gate 1
+### Wave 2 — after Gate 1 ← **current**
 
 | Worker | WP | Sequencing |
 |---|---|---|
-| W6 | WP14 | Start after WP23 merges **or** additive-only draft fields (`variantGroupId`) |
-| W7 | WP36 | Parallel with WP14 if limited to voice profile tables + voice studio |
+| W6 | WP14 | WP23 merged ✅ — `docs/wp/wp14-stories.md` on main |
+| W7 | WP36 | Parallel — `docs/wp/wp36-stories.md` on main |
 
 ### Wave 3 — launch polish
 
