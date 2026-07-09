@@ -8,6 +8,7 @@ export type ResearchTweetSample = {
   text: string;
   likes: number;
   replies: number;
+  postedAt?: number;
   authorHandle: string;
   authorName: string;
   authorFollowers: number;
@@ -42,6 +43,25 @@ export function followersBandScore(followers: number): number {
   return 0.55;
 }
 
+function targetLikeRateForFollowerBand(followers: number): number {
+  if (followers < 1_000) return 0.045;
+  if (followers < 10_000) return 0.03;
+  if (followers < 50_000) return 0.02;
+  if (followers < 250_000) return 0.012;
+  if (followers < 1_000_000) return 0.007;
+  return 0.0035;
+}
+
+export function bandNormalizedEngagementScore(
+  followers: number,
+  avgLikes: number
+): number {
+  if (followers <= 0 || avgLikes <= 0) return 0;
+  const likeRate = avgLikes / followers;
+  const targetRate = targetLikeRateForFollowerBand(followers);
+  return clamp(likeRate / targetRate, 0, 1);
+}
+
 export function topicOverlapTags(
   texts: string[],
   bio: string,
@@ -62,6 +82,35 @@ export function replyFriendlyScore(tweets: ResearchTweetSample[]): number {
     if (t.text.includes("?")) score += 0.15;
   }
   return clamp(score / tweets.length, 0, 1);
+}
+
+export function postFrequencyLabel(tweets: ResearchTweetSample[]): string {
+  const timestamps = tweets
+    .map((tweet) => tweet.postedAt)
+    .filter((postedAt): postedAt is number => typeof postedAt === "number")
+    .sort((a, b) => b - a);
+
+  if (timestamps.length < 2) {
+    return "Recent sample only";
+  }
+
+  const gaps: number[] = [];
+  for (let index = 1; index < timestamps.length; index += 1) {
+    const gapMs = timestamps[index - 1] - timestamps[index];
+    if (gapMs > 0) gaps.push(gapMs / 86_400_000);
+  }
+
+  if (gaps.length === 0) {
+    return "Recent sample only";
+  }
+
+  const averageGapDays =
+    gaps.reduce((sum, gapDays) => sum + gapDays, 0) / gaps.length;
+
+  if (averageGapDays <= 1.5) return "Posts about daily";
+  if (averageGapDays <= 4) return "Posts every few days";
+  if (averageGapDays <= 10) return "Posts weekly";
+  return "Posts occasionally";
 }
 
 export function aggregateProfilesFromTweets(
@@ -95,7 +144,7 @@ export function scoreResearchProfile(
       ? 0.5
       : clamp(topicTags.length / Math.min(3, nicheKeywords.length), 0, 1);
 
-  const engagement = clamp(avgLikes / 500, 0, 1);
+  const engagement = bandNormalizedEngagementScore(top.authorFollowers, avgLikes);
   const audience = followersBandScore(top.authorFollowers);
   const replyFriendly = replyFriendlyScore(tweets);
 
@@ -103,8 +152,7 @@ export function scoreResearchProfile(
     100 * (0.35 * overlap + 0.25 * audience + 0.25 * engagement + 0.15 * replyFriendly)
   );
 
-  const postFrequency =
-    tweets.length >= 3 ? "Active this week" : "Occasional poster";
+  const postFrequency = postFrequencyLabel(tweets);
 
   return {
     handle,
