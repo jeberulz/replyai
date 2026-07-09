@@ -23,7 +23,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
   until real data backs them; keep discovery + timing signals sharp — they are
   the differentiator.
 - **Layout**: `src/app` (Next App Router) · `convex/` (schema + functions) ·
-  `shared/` (scoring + voice logic imported by both sides) · `tests/` (vitest).
+  `shared/` (scoring + voice logic imported by both sides) · `tests/` (vitest) ·
+  `extension/` (Chrome MV3 — read-only score badge + deep link; build with
+  `npm run extension:build`).
 - **Auth**: session token in an httpOnly cookie, validated by every Convex
   function via `requireUser(ctx, sessionToken)` (`convex/helpers.ts`). Never
   add a Convex query/mutation that skips it.
@@ -31,7 +33,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
   flow — every integration has a deterministic fallback (`shared/demoData.ts`,
   demo branches in `src/lib/ai.ts` / `src/lib/x.ts`). Keep it that way.
 - **Platform rule (permanent)**: no auto-publish path. Every post requires an
-  explicit user click on that specific text.
+  explicit user click on that specific text. The browser extension must stay
+  read + deep-link only — never inject posts or automate X's reply UI.
 - **X API reply restriction (since Feb 2026)**: X blocks API replies/quotes on
   all standard tiers unless the post's author mentioned or engaged you first
   (Enterprise exempt). Standalone posts still work. Publish failures are

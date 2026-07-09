@@ -108,6 +108,7 @@ data and Claude-generated analysis with no code changes.
 | `npm run evals` | Deterministic eval gate — guardrails + voice fidelity vs `evals/fixtures/`, no keys |
 | `npm run security:audit` | Convex auth/token surface audit + high/critical dependency audit |
 | `npm run evals:llm` | Optional LLM-judged eval pass — needs `ANTHROPIC_API_KEY`, skips without it |
+| `npm run extension:build` | Build the Chrome MV3 extension into `extension/dist` (load unpacked) |
 
 ## Architecture notes
 
@@ -133,6 +134,11 @@ data and Claude-generated analysis with no code changes.
   gate.
 - **`convex/_generated`** — checked in (standard Convex practice); regenerated
   automatically by `npx convex dev`.
+- **Browser extension** — `extension/` is a Chrome MV3 package (see
+  `extension/README.md`). It shows a read-only conversation-score badge on
+  x.com status pages and deep-links to
+  `/dashboard?url=…&auto=1`. It never posts, never fills X's composer, and
+  never automates replies.
 
 ## Platform risk (X ToS)
 
@@ -142,6 +148,8 @@ than any competitor could. Design decisions, permanent:
 - A human clicks send on **every** post. There is no auto-publish path in the
   codebase; the scanner only suggests.
 - Scheduling counts as explicit approval of that specific text at that time.
+- The browser extension is **read + deep-link only** — no DOM automation of
+  posting on X.
 - Review X's current API terms on automated monitoring before shipping the
   feed scanner to production; reading timelines requires a paid API tier.
 
