@@ -53,12 +53,12 @@ voice profiles.
   - Query: get comparison for group (observed counts only).
   - All public functions: `requireUser`; account cascade.
 
-- [ ] **WP14-S3 — Publish flow hooks**
+- [x] **WP14-S3 — Publish flow hooks**
   - After publishing variant A on an analysis, offer “Generate variant B for comparison”.
   - Reuse existing generate-more path; tag new draft with same `variantGroupId`.
   - Fair-use / 3-options rules unchanged.
 
-- [ ] **WP14-S4 — Comparison UI**
+- [x] **WP14-S4 — Comparison UI**
   - Draft detail or analysis sidebar: side-by-side observed stats per variant.
   - Dark Chrome; no fake scores or predicted winners.
 

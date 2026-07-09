@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import {
   CalendarClock,
   Check,
   Copy,
   ExternalLink,
+  GitCompareArrows,
   Loader2,
   Pencil,
   Send,
@@ -90,14 +91,39 @@ export function OptionCard({
   isDemo: boolean;
 }) {
   const sessionToken = useSessionToken();
+  const trackDraft = useMutation(api.variants.trackDraft);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(option.content);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
   const [copied, setCopied] = useState(false);
   const [watchingDraftId, setWatchingDraftId] = useState<string | null>(null);
+  const [variantNudge, setVariantNudge] = useState<{
+    trackedLabel: string;
+    nextLabel: string;
+  } | null>(null);
   const [pending, startTransition] = useTransition();
   const notifiedRef = useRef<string | null>(null);
+
+  const suggestFollowUp = useQuery(
+    api.variants.suggestFollowUp,
+    sessionToken && analysisId
+      ? {
+          sessionToken,
+          analysisId: analysisId as Id<"tweetAnalyses">,
+          category: option.category,
+        }
+      : "skip"
+  );
+
+  const followUpNudge =
+    variantNudge ??
+    (suggestFollowUp
+      ? {
+          trackedLabel: suggestFollowUp.publishedLabel,
+          nextLabel: suggestFollowUp.nextLabel,
+        }
+      : null);
 
   const watchedDraft = useQuery(
     api.drafts.get,
@@ -245,6 +271,32 @@ export function OptionCard({
   const defaultPublishMode = (): PublishMode =>
     option.kind === "quote" ? "url_quote" : "threaded";
 
+  const trackPublishedVariant = async (draftId: string) => {
+    if (!sessionToken) return;
+    try {
+      const result = await trackDraft({
+        sessionToken,
+        draftId: draftId as Id<"savedDrafts">,
+        category: option.category,
+      });
+      if (result.variantLabel === "A") {
+        setVariantNudge({ trackedLabel: "A", nextLabel: "B" });
+        toast.message(
+          "Tracked as variant A. Generate another option for variant B when you want a comparison.",
+          { duration: 6000 }
+        );
+      } else if (result.variantLabel === "B") {
+        setVariantNudge({ trackedLabel: "B", nextLabel: "C" });
+        toast.success("Tracked as variant B");
+      } else {
+        setVariantNudge(null);
+        toast.success("Tracked as variant C");
+      }
+    } catch {
+      // Non-blocking: publish already succeeded.
+    }
+  };
+
   const publish = (
     publishMode: PublishMode = defaultPublishMode(),
     scheduledFor?: number
@@ -265,6 +317,7 @@ export function OptionCard({
           category: option.category,
         });
         setScheduleOpen(false);
+        await trackPublishedVariant(draftId);
         if (scheduledFor) {
           toast.success("Scheduled — it will publish at the chosen time");
         } else if (isDemo) {
@@ -372,6 +425,25 @@ export function OptionCard({
           <span className="font-medium text-foreground/70">Why this works:</span>{" "}
           {option.reason}
         </p>
+
+        {followUpNudge && (
+          <div
+            data-testid="variant-follow-up-nudge"
+            className="flex gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+          >
+            <GitCompareArrows className="mt-0.5 size-3.5 shrink-0 text-primary" />
+            <div className="space-y-0.5">
+              <p className="font-medium text-foreground/80">
+                Track variant {followUpNudge.nextLabel} for comparison
+              </p>
+              <p>
+                Variant {followUpNudge.trackedLabel} is tracked. Use “Generate 3
+                more”, then publish another option — observed counts only, no
+                predictions.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2 border-t pt-3">
           <ReplyPacingWarning />

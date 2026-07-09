@@ -18,3 +18,13 @@
 - Drafts `save`/`publish` accept optional `variantGroupId`/`variantLabel` (ownership-checked).
 - Comparison pulls `replyOutcomeTrackers` by draft; demo without trackers uses deterministic fixture counts.
 - Regenerated `convex/_generated/api.d.ts` via `npx convex codegen`.
+
+## 2026-07-09 — WP14-S3
+
+- Option card: after publish, `trackDraft` attaches A/B/C; soft toast + in-card nudge to generate variant B/C via existing generate-more path.
+- No auto-publish; tracking is best-effort and never blocks publish.
+
+## 2026-07-09 — WP14-S4
+
+- `VariantComparePanel` on draft detail: observed published/responded/no-minor-edit counts per label.
+- Draft detail: “Track as A/B variant” for untracked analysis-linked drafts; variant badge when labeled.
