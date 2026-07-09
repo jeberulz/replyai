@@ -44,13 +44,15 @@ scanner keyword graph auto-rewrite, daily curator cadence.
     - `demoCuratorArtifact(...)` for deterministic demo run summary
   - Vitest: quiet detection, month key, demo shape.
 
-- [ ] **WP33-S2 — Schema additions**
+- [x] **WP33-S2 — Schema additions**
   - `researchRuns`: optional `runKind` union `manual` | `monthly_curator`
     (default `manual` for existing rows).
   - Optional `researchProfiles.passedReason: v.optional(v.string())` when
     status → `passed` via curator prune.
   - Optional `scannerSettings.lastCuratorRunMonth: v.optional(v.string())`
     for idempotency.
+  - Added (beyond enumerated list): `researchRuns.curatorPrunedCount`
+    (optional number) so the UI can show quiet-pruned count precisely per run.
 
 - [ ] **WP33-S3 — Curator action**
   - `internal.researchActions.runMonthlyCurator` (or `convex/researchCurator.ts`):

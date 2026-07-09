@@ -22,3 +22,13 @@ Append-only. Newest entries at the bottom.
 - `demoCuratorArtifact` reuses `demoResearchProfiles`; reasons prefixed
   "Suggested replacement — " via `replacementReason` (idempotent).
 - Tests: `tests/researchCurator.test.ts` (10 cases). Typecheck green.
+
+## 2026-07-09 — S2 schema
+
+- Additive optional fields only: `researchRuns.runKind`,
+  `researchRuns.curatorPrunedCount`, `researchProfiles.passedReason`,
+  `scannerSettings.lastCuratorRunMonth`. No breaking changes to existing rows.
+- `curatorPrunedCount` added beyond the S2 list to persist the pruned count per
+  run (needed by the S6 UI strip). Justified additive field; noted in stories.
+- `_generated/dataModel.d.ts` derives `Doc` types from `schema.ts` directly, so
+  no codegen was needed for the new fields. Typecheck green.
