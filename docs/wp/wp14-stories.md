@@ -48,7 +48,7 @@ voice profiles.
   - Additive draft fields / optional `variantGroups` table.
   - `shared/variantCompare.ts`: aggregate tracker + edit-bucket stats per group; vitest fixtures.
 
-- [ ] **WP14-S2 — Convex API**
+- [x] **WP14-S2 — Convex API**
   - Create/link variant group on publish or explicit “track as variant”.
   - Query: get comparison for group (observed counts only).
   - All public functions: `requireUser`; account cascade.
