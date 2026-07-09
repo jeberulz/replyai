@@ -60,7 +60,7 @@ export function SidebarProjects() {
     <>
       <div className="mt-4 px-3">
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+          <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
             Projects
           </span>
           <Button

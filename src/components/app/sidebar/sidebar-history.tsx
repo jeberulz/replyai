@@ -66,7 +66,7 @@ function HistoryRow({
         <ScoreBadge
           value={analysis.score.value}
           reason={analysis.score.reason}
-          className="mt-0.5 shrink-0 px-1.5 py-0 text-[10px]"
+          className="mt-0.5 shrink-0 px-1.5 py-0 text-xs"
         />
         <span className="line-clamp-2 min-w-0 flex-1 leading-snug">{label}</span>
       </Link>
@@ -139,7 +139,7 @@ function HistorySection({
 
   return (
     <div className="mb-3">
-      <div className="mb-1 px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+      <div className="mb-1 px-3 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
         {title}
       </div>
       <div className="space-y-0.5">
@@ -184,7 +184,7 @@ export function SidebarHistory() {
 
   return (
     <div className="mt-4 min-h-0 flex-1 overflow-y-auto border-t border-border/60 pt-3">
-      <div className="mb-2 px-3 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
+      <div className="mb-2 px-3 font-mono text-xs uppercase tracking-[0.08em] text-primary">
         Library
       </div>
       {!analyses?.length ? (

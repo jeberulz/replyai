@@ -237,7 +237,7 @@ export function DraftDetail({
                   </div>
                 </div>
               ) : (
-                <p className="whitespace-pre-wrap text-[15px] leading-normal">
+                <p className="whitespace-pre-wrap text-base leading-6">
                   {draft.text}
                 </p>
               )}

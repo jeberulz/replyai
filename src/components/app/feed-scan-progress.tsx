@@ -89,7 +89,7 @@ export function FeedScanProgress({
               {keywords.map((keyword) => (
                 <span
                   key={keyword}
-                  className="rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider text-muted-foreground"
+                  className="rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground"
                 >
                   {keyword}
                 </span>
@@ -104,7 +104,7 @@ export function FeedScanProgress({
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <div className="flex justify-between font-mono text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+            <div className="flex justify-between font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
               {steps.map((label, i) => (
                 <span
                   key={label}

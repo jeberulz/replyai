@@ -74,7 +74,7 @@ export function PersonalAnalyticsCard() {
           <p className="font-mono text-xs uppercase tracking-[0.16em] text-primary">
             Personal analytics
           </p>
-          <CardTitle className="text-[15px] font-semibold">
+          <CardTitle className="text-base font-semibold">
             What your closed reply outcomes are actually showing
           </CardTitle>
         </div>
@@ -220,7 +220,7 @@ export function PersonalAnalyticsCard() {
                   )}
                   title={`${formatWindow(bucket.hour)} · ${bucket.responded}/${bucket.sent} replied${bucket.responseRate === null ? "" : ` · ${bucket.responseRate}%`}`}
                 />
-                <div className="text-center font-mono text-[10px] text-muted-foreground">
+                <div className="text-center font-mono text-xs text-muted-foreground">
                   {formatHour(bucket.hour)}
                 </div>
               </div>

@@ -148,7 +148,7 @@ export function ModelEval({
                         key={i}
                         className="rounded-md bg-muted px-3 py-2 text-xs leading-5"
                       >
-                        <span className="mr-1.5 font-mono text-[10px] uppercase text-muted-foreground">
+                        <span className="mr-1.5 font-mono text-xs uppercase text-muted-foreground">
                           {option.category}
                         </span>
                         {option.content}
@@ -171,7 +171,7 @@ export function ModelEval({
             })}
           </div>
           <p className="text-sm text-muted-foreground">{evaluation.summary}</p>
-          <p className="font-mono text-[11px] text-muted-foreground">
+          <p className="font-mono text-xs text-muted-foreground">
             judged by {modelLabel(evaluation.judgeModel)} ·{" "}
             {timeAgo(evaluation.createdAt)} · costs are estimates from token
             usage

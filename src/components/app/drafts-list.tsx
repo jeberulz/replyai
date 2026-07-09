@@ -49,7 +49,7 @@ export function DraftsList() {
   const list = (
     <div className="flex h-full min-h-0 flex-col bg-background">
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-4 sm:px-6">
-        <h2 className="text-[15px] font-semibold">Drafts &amp; published</h2>
+        <h2 className="text-base font-semibold">Drafts &amp; published</h2>
         <span className="text-xs tabular-nums text-muted-foreground">
           {drafts === undefined ? "" : `${drafts.length} items`}
         </span>

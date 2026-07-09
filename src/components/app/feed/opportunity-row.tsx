@@ -79,7 +79,7 @@ export function OpportunityRow({
           </div>
         )}
 
-        <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed">
+        <p className="line-clamp-3 whitespace-pre-wrap text-base leading-6">
           {opportunity.text}
         </p>
 
@@ -94,7 +94,7 @@ export function OpportunityRow({
           </span>
         </div>
 
-        <p className="line-clamp-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+        <p className="line-clamp-2 rounded-md bg-muted px-3 py-2 text-sm leading-5 text-muted-foreground">
           <span className="font-semibold text-foreground">Suggested angle:</span>{" "}
           {opportunity.suggestedAngle}
         </p>

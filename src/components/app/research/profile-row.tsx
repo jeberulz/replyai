@@ -46,7 +46,7 @@ export function ProfileRow({
             <span className="font-medium">{profile.displayName}</span>{" "}
             <span className="text-muted-foreground">@{profile.handle}</span>
           </p>
-          <p className="mt-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+          <p className="mt-0.5 font-mono text-xs tabular-nums text-muted-foreground">
             {formatCount(profile.followers)} followers · ~
             {formatCount(profile.avgLikes)} avg likes
             {profile.postFrequency ? ` · ${profile.postFrequency}` : ""}

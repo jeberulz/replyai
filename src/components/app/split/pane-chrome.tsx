@@ -119,7 +119,7 @@ export function PaneActionBar({
     <div className="shrink-0 space-y-2.5 border-t border-border bg-background px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3.5 sm:px-5 sm:pb-4.5">
       <div className="flex flex-wrap items-center gap-2">{children}</div>
       {note ? (
-        <p className="flex items-start gap-2 text-[11.5px] leading-snug text-muted-foreground">
+        <p className="flex items-start gap-2 text-xs leading-snug text-muted-foreground">
           {note}
         </p>
       ) : null}
@@ -182,7 +182,7 @@ export function FilterChips<T extends string>({
             type="button"
             onClick={() => onValueChange(opt.value)}
             className={cn(
-              "rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors",
+              "rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors",
               active
                 ? "bg-foreground text-background"
                 : "border border-border text-muted-foreground hover:text-foreground"
@@ -207,7 +207,7 @@ export function PaneEyebrow({
   return (
     <p
       className={cn(
-        "font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground",
+        "font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground",
         className
       )}
     >

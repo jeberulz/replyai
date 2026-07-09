@@ -53,7 +53,7 @@ export function TweetBlock({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="whitespace-pre-wrap text-sm leading-relaxed">
+        <p className="whitespace-pre-wrap text-base leading-6">
           {tweet.text}
         </p>
         {tweet.mediaText && (

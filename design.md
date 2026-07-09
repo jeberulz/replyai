@@ -223,7 +223,7 @@ Borders, not shadows.
 - **Button**: app buttons stay 40px (`h-10`), `rounded-md`, sans medium.
   Default app variant can use solid `--primary` orange, but the landing page
   mostly uses white pills and orange micro-labels.
-- **Reply composer / preview**: the flagship component. Serif-text body on a
+- **Reply composer / preview**: the flagship component. Sans body text on a
   `#232323` card, `rounded-xl`, 1px border, mono meta row (character count,
   voice-match score, timestamp) pinned to the card footer. Textarea keeps
   vertical resize.
@@ -305,8 +305,8 @@ render at `lg+`. Pane widths persist per surface (react-resizable-panels
 
 - **Do** use pure black (`#000`) for the landing page and AI-generation
   moments; use `#181818` for working screens.
-- **Do** set generated replies and tweets in the serif text face — editorial
-  typography is the brand.
+- **Do** set generated replies and tweets in the sans text face at the app body
+  size. Editorial typography is reserved for page and pane identity.
 - **Do** keep every structural line at 1px `--border`.
 - **Do** put live numbers in tabular mono.
 - **Do** use orange (`#ff4400`) for micro-labels, active dots, and small

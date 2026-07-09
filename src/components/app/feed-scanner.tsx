@@ -365,7 +365,7 @@ export function FeedScanner() {
       {/* Top bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
         <div className="flex items-center gap-3">
-          <h2 className="text-[15px] font-semibold">Feed scanner</h2>
+          <h2 className="text-base font-semibold">Feed scanner</h2>
           <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground">
             <span
               className={

@@ -175,7 +175,7 @@ export function AnalysisThread({
   const userBubble = (
     <div className="flex justify-end">
       <div className="max-w-[85%] rounded-2xl rounded-br-md bg-accent px-4 py-3">
-        <p className="line-clamp-4 whitespace-pre-wrap text-sm leading-relaxed">
+        <p className="line-clamp-4 whitespace-pre-wrap text-base leading-6">
           {tweet.text}
         </p>
         {analysis.tweetUrl && (
@@ -234,7 +234,7 @@ export function AnalysisThread({
     const left = (
       <div className="flex h-full min-h-0 flex-col bg-background">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="truncate text-[15px] font-semibold">
+          <h2 className="truncate text-base font-semibold">
             Analyzing @{tweet.authorHandle}
           </h2>
           <Info className="size-[18px] text-muted-foreground" />

@@ -74,7 +74,7 @@ export function OpportunityCard({ opportunity }: { opportunity: Opportunity }) {
           </div>
         </div>
 
-        <p className="whitespace-pre-wrap text-sm leading-relaxed">
+        <p className="whitespace-pre-wrap text-base leading-6">
           {opportunity.text}
         </p>
 

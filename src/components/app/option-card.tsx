@@ -416,7 +416,7 @@ export function OptionCard({
             </div>
           </div>
         ) : (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed">
+          <p className="whitespace-pre-wrap text-base leading-6">
             {content}
           </p>
         )}
