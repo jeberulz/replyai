@@ -56,6 +56,6 @@ view in Voice Studio.
   - “Check for voice drift” button; shows diff + Apply / Dismiss.
   - Apply patches profile style/examples per user selection only.
 
-- [ ] **WP36-S5 — Verification (+ optional cron)**
+- [x] **WP36-S5 — Verification (+ optional cron)**
   - Manual demo + trained profile path; checks green.
   - Optional: quarterly cron stub behind feature flag — skip if timeboxed.

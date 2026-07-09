@@ -31,3 +31,10 @@
 - `VoiceDriftPanel` on each Voice Studio profile card: Check / field checkboxes /
   Apply selected / Dismiss. Never auto-applies.
 - Diff shows before→after for changed style fields + phrase deltas.
+
+## 2026-07-09 — WP36-S5
+
+- Verified: `tsc --noEmit`, `eslint .` (0 errors; pre-existing generated warnings),
+  `vitest run` (398 pass / 1 skip), `next build` green.
+- Quarterly cron skipped (MVP on-demand only) — stretch left for later.
+- Worktree-only: `replyai-wp36`; primary checkout left for WP14.
