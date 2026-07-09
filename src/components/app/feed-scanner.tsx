@@ -18,6 +18,7 @@ import {
   FRESH_AGE_MS,
   HIGH_VELOCITY_THRESHOLD,
 } from "../../../shared/feedFilters";
+import { RANKING_CHANGELOG_MAX_AGE_MS } from "../../../shared/rankingChangelog";
 import {
   fetchOwnedListsAction,
   saveEngageListsAction,
@@ -97,6 +98,7 @@ export function FeedScanner() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [changelogDismissed, setChangelogDismissed] = useState(false);
   // Always-on clock for the "fresh" filter. Lazy initializer keeps Date.now()
   // out of the render body (the interval callback is the only in-effect update).
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -333,6 +335,12 @@ export function FeedScanner() {
 
   const scannerOn = settings?.enabled ?? false;
 
+  const showRankingChangelog =
+    !changelogDismissed &&
+    !!settings?.rankingChangelog &&
+    !!settings?.rankingChangelogAt &&
+    nowMs - settings.rankingChangelogAt <= RANKING_CHANGELOG_MAX_AGE_MS;
+
   const list = (
     <div className="flex h-full min-h-0 flex-col bg-background">
       {/* Top bar */}
@@ -374,6 +382,22 @@ export function FeedScanner() {
           </Button>
         </div>
       </div>
+
+      {showRankingChangelog && (
+        <div className="mx-4 mt-4 flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm sm:mx-6">
+          <p className="flex-1 text-muted-foreground">
+            {settings!.rankingChangelog}
+          </p>
+          <button
+            type="button"
+            onClick={() => setChangelogDismissed(true)}
+            aria-label="Dismiss ranking update"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
 
       {/* Scroll body */}
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
