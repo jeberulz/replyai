@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { ScoreBadge } from "@/components/app/score-badge";
+import { Card } from "@/components/ds/card";
 import { formatCount, timeAgo } from "@/lib/utils";
 import type { AnalyzeInput } from "./use-analysis-pipeline";
 
@@ -44,29 +45,34 @@ export function SuggestionChips({
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {opportunities.map((opp) => (
-          <button
+          <Card
             key={opp._id}
-            type="button"
-            disabled={disabled}
-            onClick={() =>
-              onPick({
-                text: opp.text,
-                url: opp.tweetUrl,
-                authorHandle: opp.authorHandle,
-                authorFollowers: opp.authorFollowers,
-              })
-            }
-            className="flex items-start gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
+            padding={3}
+            className="cursor-pointer transition-colors hover:bg-accent/40"
           >
-            <ScoreBadge value={opp.score} reason={opp.reason} />
-            <span className="min-w-0 flex-1">
-              <span className="line-clamp-2 block text-sm">{opp.text}</span>
-              <span className="mt-1 block text-xs text-muted-foreground">
-                @{opp.authorHandle} · {formatCount(opp.authorFollowers)}{" "}
-                followers · {timeAgo(opp.postedAt)}
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() =>
+                onPick({
+                  text: opp.text,
+                  url: opp.tweetUrl,
+                  authorHandle: opp.authorHandle,
+                  authorFollowers: opp.authorFollowers,
+                })
+              }
+              className="flex w-full items-start gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ScoreBadge value={opp.score} reason={opp.reason} />
+              <span className="min-w-0 flex-1">
+                <span className="line-clamp-2 block text-sm">{opp.text}</span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  @{opp.authorHandle} · {formatCount(opp.authorFollowers)}{" "}
+                  followers · {timeAgo(opp.postedAt)}
+                </span>
               </span>
-            </span>
-          </button>
+            </button>
+          </Card>
         ))}
       </div>
     </div>
