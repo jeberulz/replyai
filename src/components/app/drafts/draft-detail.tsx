@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useMutation } from "convex/react";
 import {
   AlertCircle,
   Check,
   ExternalLink,
+  GitCompareArrows,
   Pencil,
   ShieldCheck,
   Trash2,
@@ -19,6 +21,8 @@ import {
 import { XLogo } from "@/components/app/x-logo";
 import { ReplyPacingWarning } from "@/components/app/reply-pacing/reply-pacing-warning";
 import { DuplicateReplyWarning } from "@/components/app/reply-pacing/duplicate-reply-warning";
+import { VariantComparePanel } from "@/components/app/drafts/variant-compare-panel";
+import { useSessionToken } from "@/components/app/convex-provider";
 import { Badge } from "@/components/ds/badge";
 import { Button } from "@/components/ds/button";
 import { Card } from "@/components/ds/card";
@@ -34,6 +38,8 @@ import {
   PaneTitleRow,
 } from "@/components/app/split/pane-chrome";
 import { cn } from "@/lib/utils";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { buildXIntentUrl } from "../../../../shared/xPublish";
 import {
   draftKindLabel,
@@ -77,6 +83,8 @@ export function DraftDetail({
   onDeleted: () => void;
 }) {
   const meta = draftStatusMeta[draft.status];
+  const sessionToken = useSessionToken();
+  const trackDraft = useMutation(api.variants.trackDraft);
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(draft.text);
@@ -89,6 +97,10 @@ export function DraftDetail({
   const canRetryStandalone =
     draft.status === "failed" && draft.publishMode !== "standalone";
   const editable = draft.status !== "published";
+  const canTrackVariant =
+    Boolean(draft.analysisId) &&
+    (draft.kind === "reply" || draft.kind === "quote") &&
+    !draft.variantGroupId;
 
   const save = () =>
     startTransition(async () => {
@@ -113,6 +125,22 @@ export function DraftDetail({
       }
     });
 
+  const trackAsVariant = () => {
+    if (!sessionToken) return;
+    startTransition(async () => {
+      try {
+        const result = await trackDraft({
+          sessionToken,
+          draftId: draft._id as Id<"savedDrafts">,
+        });
+        toast.success(`Tracked as variant ${result.variantLabel}`);
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Could not track variant"
+        );
+      }
+    });
+  };
   return (
     <Pane>
       <PaneHeader
@@ -135,11 +163,16 @@ export function DraftDetail({
         }
       />
       <PaneTitleRow title="Draft detail">
-        <Badge
-          variant={meta.variant}
-          label={meta.label}
-          icon={<meta.icon className="size-3" />}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge
+            variant={meta.variant}
+            label={meta.label}
+            icon={<meta.icon className="size-3" />}
+          />
+          {draft.variantLabel && (
+            <Badge variant="info" label={`Variant ${draft.variantLabel}`} />
+          )}
+        </div>
       </PaneTitleRow>
 
       <PaneBody className="space-y-4">
@@ -267,6 +300,13 @@ export function DraftDetail({
             )}
           </Card>
         </div>
+
+        {draft.variantGroupId && (
+          <div className="space-y-2">
+            <PaneEyebrow>Variant comparison</PaneEyebrow>
+            <VariantComparePanel draftId={draft._id} />
+          </div>
+        )}
       </PaneBody>
 
       <PaneActionBar
@@ -303,6 +343,16 @@ export function DraftDetail({
             variant={canReplyOnX ? "secondary" : "primary"}
             label="Post as tweet"
             onClick={retryStandalone}
+            isDisabled={pending}
+            className="w-full sm:w-auto"
+          />
+        )}
+        {canTrackVariant && (
+          <Button
+            variant="secondary"
+            label="Track as A/B variant"
+            icon={<GitCompareArrows className="size-3.5" />}
+            onClick={trackAsVariant}
             isDisabled={pending}
             className="w-full sm:w-auto"
           />

@@ -33,6 +33,9 @@ export type Draft = {
   error?: string;
   publishedTweetId?: string;
   publishedAt?: number;
+  analysisId?: string;
+  variantGroupId?: string;
+  variantLabel?: "A" | "B" | "C";
 };
 
 export type DraftStatus = Draft["status"];
