@@ -2,6 +2,11 @@
 
 import * as React from "react";
 
+import { Heading } from "@/components/ds/heading";
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+} from "@/components/ds/segmented-control";
 import { cn } from "@/lib/utils";
 
 /**
@@ -74,9 +79,9 @@ export function PaneTitleRow({
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-1.5 pt-4 sm:px-5">
-      <h2 className="font-serif text-[22px] leading-none text-foreground">
+      <Heading level={2} className="text-[22px] leading-none">
         {title}
-      </h2>
+      </Heading>
       {children}
     </div>
   );
@@ -122,7 +127,7 @@ export function PaneActionBar({
   );
 }
 
-/** Segmented toggle (e.g. Options / Preview). */
+/** Segmented toggle (e.g. Options / Preview) — Astryx SegmentedControl. */
 export function SegmentedToggle<T extends string>({
   value,
   onValueChange,
@@ -133,30 +138,29 @@ export function SegmentedToggle<T extends string>({
   options: { value: T; label: string }[];
 }) {
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5">
-      {options.map((opt) => {
-        const active = opt.value === value;
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onValueChange(opt.value)}
-            className={cn(
-              "rounded-md px-3.5 py-1.5 text-xs font-medium transition-colors",
-              active
-                ? "bg-accent text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-    </div>
+    <SegmentedControl
+      label="View"
+      size="sm"
+      value={value}
+      onChange={(next) => onValueChange(next as T)}
+    >
+      {options.map((opt) => (
+        <SegmentedControlItem
+          key={opt.value}
+          value={opt.value}
+          label={opt.label}
+        />
+      ))}
+    </SegmentedControl>
   );
 }
 
 /** Pill-style filter chips (All / Scheduled / … ) — active is a white pill. */
+/**
+ * Filter chips (feed/drafts status filters).
+ * Kept custom — design.md wants a white/foreground active pill, not
+ * SegmentedControl's muted track. Do not swap for ds/SegmentedControl.
+ */
 export function FilterChips<T extends string>({
   value,
   onValueChange,

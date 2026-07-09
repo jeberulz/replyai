@@ -18,10 +18,11 @@ import {
 } from "@/app/actions";
 import { XLogo } from "@/components/app/x-logo";
 import { ReplyPacingWarning } from "@/components/app/reply-pacing/reply-pacing-warning";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ds/badge";
+import { Button } from "@/components/ds/button";
+import { Card } from "@/components/ds/card";
+import { IconButton } from "@/components/ds/icon-button";
+import { TextArea } from "@/components/ds/text-area";
 import {
   Pane,
   PaneActionBar,
@@ -121,23 +122,23 @@ export function DraftDetail({
         }
         actions={
           editable ? (
-            <button
-              type="button"
+            <IconButton
+              label="Delete draft"
+              icon={<Trash2 className="size-[17px]" />}
+              variant="ghost"
+              size="sm"
               onClick={remove}
-              disabled={pending}
-              aria-label="Delete draft"
-              className="transition-colors hover:text-foreground"
-            >
-              <Trash2 className="size-[17px]" />
-            </button>
+              isDisabled={pending}
+            />
           ) : undefined
         }
       />
       <PaneTitleRow title="Draft detail">
-        <Badge variant={meta.variant}>
-          <meta.icon className="size-3" />
-          {meta.label}
-        </Badge>
+        <Badge
+          variant={meta.variant}
+          label={meta.label}
+          icon={<meta.icon className="size-3" />}
+        />
       </PaneTitleRow>
 
       <PaneBody className="space-y-4">
@@ -157,8 +158,8 @@ export function DraftDetail({
 
         <div className="space-y-2">
           <PaneEyebrow>The draft</PaneEyebrow>
-          <Card>
-            <CardContent className="space-y-2 p-4">
+          <Card padding={3}>
+            <div className="space-y-2">
               {draft.targetTweetUrl && draft.kind === "reply" && (
                 <a
                   href={draft.targetTweetUrl}
@@ -172,32 +173,33 @@ export function DraftDetail({
               )}
               {editing ? (
                 <div className="space-y-2">
-                  <Textarea
+                  <TextArea
+                    label="Draft text"
+                    isLabelHidden
                     value={text}
-                    onChange={(e) => setText(e.target.value)}
+                    onChange={(value) => setText(value)}
                     rows={4}
-                    autoFocus
+                    hasAutoFocus
                   />
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Button
                       size="sm"
+                      label="Save"
+                      icon={<Check className="size-3.5" />}
                       onClick={save}
-                      disabled={pending}
+                      isDisabled={pending}
                       className="w-full sm:w-auto"
-                    >
-                      <Check /> Save
-                    </Button>
+                    />
                     <Button
                       size="sm"
                       variant="ghost"
+                      label="Cancel"
                       onClick={() => {
                         setText(draft.text);
                         setEditing(false);
                       }}
                       className="w-full sm:w-auto"
-                    >
-                      Cancel
-                    </Button>
+                    />
                   </div>
                 </div>
               ) : (
@@ -205,65 +207,63 @@ export function DraftDetail({
                   {draft.text}
                 </p>
               )}
-            </CardContent>
+            </div>
           </Card>
         </div>
 
         <div className="space-y-2">
           <PaneEyebrow>Status</PaneEyebrow>
-          <Card>
-            <CardContent className="p-4">
+          <Card padding={3}>
+            <TimelineStep
+              color="bg-success"
+              title="Drafted"
+              sub={`${draftKindLabel(draft)} · saved`}
+              connector
+            />
+            {draft.status === "scheduled" && (
+              <TimelineStep
+                color="bg-warning"
+                title="Scheduled"
+                sub={draftSubline(draft)}
+                connector={false}
+                titleClass="text-warning"
+              />
+            )}
+            {draft.status === "failed" && (
+              <>
+                <TimelineStep
+                  color="bg-destructive"
+                  title="Publish attempted"
+                  sub="Blocked by the X API"
+                  connector
+                  titleClass="text-destructive"
+                />
+                <TimelineStep
+                  color="bg-primary"
+                  title="Retry available"
+                  sub="Use a fallback below"
+                  connector={false}
+                  titleClass="text-primary"
+                />
+              </>
+            )}
+            {draft.status === "published" && (
               <TimelineStep
                 color="bg-success"
-                title="Drafted"
-                sub={`${draftKindLabel(draft)} · saved`}
-                connector
+                title="Published"
+                sub={draftSubline(draft)}
+                connector={false}
+                titleClass="text-success"
               />
-              {draft.status === "scheduled" && (
-                <TimelineStep
-                  color="bg-warning"
-                  title="Scheduled"
-                  sub={draftSubline(draft)}
-                  connector={false}
-                  titleClass="text-warning"
-                />
-              )}
-              {draft.status === "failed" && (
-                <>
-                  <TimelineStep
-                    color="bg-destructive"
-                    title="Publish attempted"
-                    sub="Blocked by the X API"
-                    connector
-                    titleClass="text-destructive"
-                  />
-                  <TimelineStep
-                    color="bg-primary"
-                    title="Retry available"
-                    sub="Use a fallback below"
-                    connector={false}
-                    titleClass="text-primary"
-                  />
-                </>
-              )}
-              {draft.status === "published" && (
-                <TimelineStep
-                  color="bg-success"
-                  title="Published"
-                  sub={draftSubline(draft)}
-                  connector={false}
-                  titleClass="text-success"
-                />
-              )}
-              {draft.status === "draft" && (
-                <TimelineStep
-                  color="bg-muted-foreground"
-                  title="Saved as draft"
-                  sub="Not scheduled yet"
-                  connector={false}
-                />
-              )}
-            </CardContent>
+            )}
+            {draft.status === "draft" && (
+              <TimelineStep
+                color="bg-muted-foreground"
+                title="Saved as draft"
+                sub="Not scheduled yet"
+                connector={false}
+              />
+            )}
           </Card>
         </div>
       </PaneBody>
@@ -279,6 +279,8 @@ export function DraftDetail({
         <ReplyPacingWarning className="w-full" />
         {canReplyOnX && (
           <Button
+            label="Reply on X"
+            icon={<XLogo className="size-3.5" />}
             className="w-full sm:w-auto"
             onClick={() =>
               window.open(
@@ -290,50 +292,45 @@ export function DraftDetail({
                 "noopener,noreferrer"
               )
             }
-          >
-            <XLogo className="size-3.5" />
-            Reply on X
-          </Button>
+          />
         )}
         {canRetryStandalone && (
           <Button
-            variant={canReplyOnX ? "outline" : "default"}
+            variant={canReplyOnX ? "secondary" : "primary"}
+            label="Post as tweet"
             onClick={retryStandalone}
-            disabled={pending}
+            isDisabled={pending}
             className="w-full sm:w-auto"
-          >
-            Post as tweet
-          </Button>
+          />
         )}
         {draft.status === "published" && draft.publishedTweetId && (
-          <Button asChild className="w-full sm:w-auto">
-            <a
-              href={`https://x.com/i/web/status/${draft.publishedTweetId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <ExternalLink /> Open on X
-            </a>
-          </Button>
+          <Button
+            label="Open on X"
+            icon={<ExternalLink className="size-3.5" />}
+            href={`https://x.com/i/web/status/${draft.publishedTweetId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full sm:w-auto"
+          />
         )}
         {editable && !editing && (
           <Button
-            variant="outline"
+            variant="secondary"
+            label="Edit"
+            icon={<Pencil className="size-3.5" />}
             onClick={() => setEditing(true)}
             className="w-full sm:w-auto"
-          >
-            <Pencil /> Edit
-          </Button>
+          />
         )}
         {editable && (
           <Button
-            variant="outline"
+            variant="secondary"
+            label="Delete"
+            icon={<Trash2 className="size-3.5" />}
             onClick={remove}
-            disabled={pending}
+            isDisabled={pending}
             className="w-full sm:w-auto"
-          >
-            <Trash2 /> Delete
-          </Button>
+          />
         )}
       </PaneActionBar>
     </Pane>

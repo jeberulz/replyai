@@ -6,9 +6,9 @@ import Link from "next/link";
 
 import { dismissOpportunityAction } from "@/app/actions";
 import { ScoreBadge } from "@/components/app/score-badge";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ds/badge";
+import { Button } from "@/components/ds/button";
+import { Card } from "@/components/ds/card";
 import { cn, formatCount, timeAgo } from "@/lib/utils";
 import type { Opportunity } from "@/components/app/opportunity-card";
 
@@ -36,13 +36,14 @@ export function OpportunityRow({
     <Card
       onClick={onSelect}
       data-testid={`opportunity-row-${opportunity._id}`}
+      padding={3}
       className={cn(
         "cursor-pointer transition-colors hover:border-border",
         selected && "border-primary/60 ring-1 ring-primary/40",
         pending && "opacity-50"
       )}
     >
-      <CardContent className="space-y-3 p-4">
+      <div className="space-y-2.5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 text-sm font-semibold">
             {opportunity.authorName}{" "}
@@ -56,9 +57,11 @@ export function OpportunityRow({
         </div>
 
         {note && (
-          <Badge variant="outline" className="font-normal text-muted-foreground">
-            {note}
-          </Badge>
+          <Badge
+            variant="neutral"
+            label={note}
+            className="font-normal text-muted-foreground"
+          />
         )}
 
         <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed">
@@ -84,30 +87,28 @@ export function OpportunityRow({
         <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
           <Button
             size="sm"
-            asChild
+            variant="primary"
+            label="Analyze & reply"
+            icon={<ArrowRight className="size-3.5" />}
+            href={`/dashboard?url=${encodeURIComponent(opportunity.tweetUrl)}`}
+            as={Link}
             onClick={(e) => e.stopPropagation()}
             className="w-full sm:w-auto"
-          >
-            <Link href={`/dashboard?url=${encodeURIComponent(opportunity.tweetUrl)}`}>
-              Analyze &amp; reply
-              <ArrowRight />
-            </Link>
-          </Button>
+          />
           <Button
             size="sm"
             variant="ghost"
-            disabled={pending}
+            label="Dismiss"
+            icon={<X className="size-3.5" />}
+            isDisabled={pending}
             className="w-full sm:w-auto"
             onClick={(e) => {
               e.stopPropagation();
               startTransition(() => dismissOpportunityAction(opportunity._id));
             }}
-          >
-            <X />
-            Dismiss
-          </Button>
+          />
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 }
