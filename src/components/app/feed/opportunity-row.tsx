@@ -32,7 +32,7 @@ export function OpportunityRow({
   const [pending, startTransition] = useTransition();
   const note = sourceNote(opportunity);
   const freshness = opportunity.freshnessLabel;
-  const windowClosed = freshness === "Window closed";
+  const windowClosed = opportunity.windowClosed ?? false;
   const displayScore = opportunity.effectiveScore ?? opportunity.score;
 
   return (

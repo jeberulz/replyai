@@ -29,6 +29,8 @@ export type Opportunity = {
   effectiveScore?: number;
   /** Plain-language freshness copy, e.g. "Window closing" — null while fresh. */
   freshnessLabel?: string | null;
+  /** True once the reply window has fully closed. */
+  windowClosed?: boolean;
 };
 
 function sourceNote(opportunity: Opportunity): string | null {

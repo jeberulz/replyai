@@ -50,3 +50,37 @@ export function freshnessLabel(postedAt: number, nowMs: number): string | null {
   if (ageMinutes >= REPLY_WINDOW_DEAD_MINUTES) return "Window closed";
   return "Window closing";
 }
+
+export type OpportunityFreshness = {
+  effectiveScore: number;
+  freshnessLabel: string | null;
+  /** True once the reply window has fully closed (age >= dead window). */
+  windowClosed: boolean;
+};
+
+/**
+ * All three read-time freshness values for one opportunity, computed from a
+ * single age lookup. Prefer this over calling the individual helpers
+ * separately when you need more than one of them for the same row — it
+ * avoids recomputing age and avoids UI code recovering `windowClosed` by
+ * string-matching `freshnessLabel`.
+ */
+export function opportunityFreshness(
+  storedScore: number,
+  postedAt: number,
+  nowMs: number
+): OpportunityFreshness {
+  const ageMinutes = opportunityAgeMinutes(postedAt, nowMs);
+  const windowClosed = ageMinutes >= REPLY_WINDOW_DEAD_MINUTES;
+  const label =
+    ageMinutes <= REPLY_WINDOW_FULL_MINUTES
+      ? null
+      : windowClosed
+        ? "Window closed"
+        : "Window closing";
+  return {
+    effectiveScore: Math.round(storedScore * replyTimingFactor(ageMinutes)),
+    freshnessLabel: label,
+    windowClosed,
+  };
+}
