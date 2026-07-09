@@ -676,4 +676,25 @@ export default defineSchema({
     .index("by_user_handle", ["userId", "authorHandle"])
     .index("by_user_responseCount", ["userId", "responseCount"])
     .index("by_user_lastRespondedAt", ["userId", "lastRespondedAt"]),
+
+  // WP37 — optional cache of last on-demand trend-radar run (topic clusters).
+  // Separate from WP13 author dossiers. Additive; MVP may compute without writing.
+  trendRuns: defineTable({
+    userId: v.id("users"),
+    windowMs: v.number(),
+    corpusSize: v.number(),
+    topics: v.array(
+      v.object({
+        slug: v.string(),
+        label: v.string(),
+        conversationCount: v.number(),
+        opportunityIds: v.array(v.string()),
+        matchedKeywords: v.array(v.string()),
+      })
+    ),
+    demo: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_created", ["userId", "createdAt"]),
 });
