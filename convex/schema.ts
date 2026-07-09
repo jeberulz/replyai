@@ -402,6 +402,10 @@ export default defineSchema({
         scoreDecileMultipliers: v.optional(v.record(v.string(), v.number())),
       })
     ),
+    // Deterministic plain-language ranking changelog sentence (WP32) — no
+    // fake ML % in the UI. Set/cleared alongside rankingWeights.
+    rankingChangelog: v.optional(v.string()),
+    rankingChangelogAt: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   // Side-by-side model comparisons: the same generation run across several
