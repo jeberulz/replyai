@@ -73,4 +73,14 @@ crons.interval(
   {}
 );
 
+// Monthly research curator: prune quiet suggested profiles and surface
+// replacement candidates for eligible users. Idempotent per UTC month; every
+// watch change still requires an explicit human click.
+crons.monthly(
+  "dispatch monthly research curator",
+  { day: 1, hourUTC: 5, minuteUTC: 0 },
+  internal.research.dispatchMonthlyCuratorAll,
+  {}
+);
+
 export default crons;

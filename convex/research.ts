@@ -10,6 +10,13 @@ import {
   mergeWatchedHandles,
   normalizeResearchHandle,
 } from "../shared/researchWatch";
+import {
+  MAX_REPLACEMENT_SUGGESTIONS,
+  QUIET_REASON,
+  curatorMonthKey,
+  isProfileQuiet,
+} from "../shared/researchCurator";
+import { hasProAccess } from "../shared/billing";
 
 const MAX_RUNS_PER_DAY = 3;
 
@@ -92,6 +99,59 @@ export const latestRun = query({
       .collect();
     if (runs.length === 0) return null;
     return runs.sort((a, b) => b.createdAt - a.createdAt)[0];
+  },
+});
+
+/**
+ * WP33 — last monthly curator run for the current user, plus a `locked` flag
+ * for free-plan users. Powers the research "Monthly curator" status strip.
+ */
+export const latestCuratorRun = query({
+  args: { sessionToken: v.string() },
+  returns: v.object({
+    locked: v.boolean(),
+    run: v.union(
+      v.object({
+        _id: v.id("researchRuns"),
+        status: v.union(
+          v.literal("running"),
+          v.literal("complete"),
+          v.literal("failed")
+        ),
+        newSuggestionCount: v.number(),
+        prunedCount: v.number(),
+        error: v.optional(v.string()),
+        createdAt: v.number(),
+      }),
+      v.null()
+    ),
+  }),
+  handler: async (ctx, { sessionToken }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const locked = !hasProAccess({ plan: user.plan, isDemo: user.isDemo });
+
+    const runs = await ctx.db
+      .query("researchRuns")
+      .withIndex("by_user_created", (q) => q.eq("userId", user._id))
+      .collect();
+    const curatorRuns = runs
+      .filter((r) => r.runKind === "monthly_curator")
+      .sort((a, b) => b.createdAt - a.createdAt);
+    const latest = curatorRuns[0];
+
+    if (!latest) return { locked, run: null };
+
+    return {
+      locked,
+      run: {
+        _id: latest._id,
+        status: latest.status,
+        newSuggestionCount: latest.resultCount,
+        prunedCount: latest.curatorPrunedCount ?? 0,
+        error: latest.error,
+        createdAt: latest.createdAt,
+      },
+    };
   },
 });
 
@@ -333,5 +393,180 @@ export const markRunFailed = internalMutation({
   },
   handler: async (ctx, { runId, error }) => {
     await ctx.db.patch(runId, { status: "failed", error, resultCount: 0 });
+  },
+});
+
+/**
+ * WP33 monthly cron entry. Iterates users with a scanner-settings row, and for
+ * each eligible (Pro or demo) user who has not had a curator run this UTC
+ * month, claims the month (sets `lastCuratorRunMonth`), opens a
+ * `monthly_curator` run, and schedules the discovery action. Idempotent: at
+ * most one curator run per user per calendar month.
+ */
+export const dispatchMonthlyCuratorAll = internalMutation({
+  args: { nowMs: v.optional(v.number()) },
+  returns: v.object({
+    enqueued: v.number(),
+    month: v.string(),
+    runIds: v.array(v.id("researchRuns")),
+  }),
+  handler: async (ctx, { nowMs }) => {
+    const now = nowMs ?? Date.now();
+    const month = curatorMonthKey(now);
+    const settingsRows = await ctx.db.query("scannerSettings").collect();
+    const runIds: Id<"researchRuns">[] = [];
+
+    for (const settings of settingsRows) {
+      if (settings.lastCuratorRunMonth === month) continue;
+
+      const user = await ctx.db.get(settings.userId);
+      if (!user) continue;
+      if (!hasProAccess({ plan: user.plan, isDemo: user.isDemo })) continue;
+
+      // Claim the month first so a retrying/overlapping cron cannot double-run.
+      await ctx.db.patch(settings._id, { lastCuratorRunMonth: month });
+
+      const runId = await ctx.db.insert("researchRuns", {
+        userId: settings.userId,
+        query: "Monthly curator",
+        seedHandles: [],
+        resultCount: 0,
+        status: "running",
+        runKind: "monthly_curator",
+        createdAt: now,
+      });
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.researchActions.runMonthlyCurator,
+        { userId: settings.userId, runId, month, nowMs: now }
+      );
+      runIds.push(runId);
+    }
+
+    return { enqueued: runIds.length, month, runIds };
+  },
+});
+
+/**
+ * WP33 curator prune — mark quiet *suggested* profiles `passed` (reason
+ * `quiet_30d`). Only touches `suggested` rows: watched handles the user
+ * explicitly set are never auto-unwatched (human approves every watch change).
+ * Returns the number pruned. Idempotent — already-passed rows are skipped.
+ */
+export const pruneQuietSuggestedProfiles = internalMutation({
+  args: {
+    userId: v.id("users"),
+    nowMs: v.number(),
+    quietDays: v.optional(v.number()),
+  },
+  returns: v.number(),
+  handler: async (ctx, { userId, nowMs, quietDays }) => {
+    const suggested = await ctx.db
+      .query("researchProfiles")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", userId).eq("status", "suggested")
+      )
+      .collect();
+
+    let pruned = 0;
+    for (const profile of suggested) {
+      if (isProfileQuiet(profile, nowMs, quietDays)) {
+        await ctx.db.patch(profile._id, {
+          status: "passed",
+          passedReason: QUIET_REASON,
+        });
+        pruned += 1;
+      }
+    }
+    return pruned;
+  },
+});
+
+/**
+ * WP33 curator save — insert up to `MAX_REPLACEMENT_SUGGESTIONS` brand-new
+ * suggestions (handles not already watching/passed/suggested), then close the
+ * curator run. Never writes to `watchedHandles`; suggestions await a human
+ * Watch/Pass click via the existing research detail flow.
+ */
+export const saveCuratorResults = internalMutation({
+  args: {
+    runId: v.id("researchRuns"),
+    userId: v.id("users"),
+    prunedCount: v.number(),
+    profiles: v.array(
+      v.object({
+        xUserId: v.optional(v.string()),
+        handle: v.string(),
+        displayName: v.string(),
+        bio: v.optional(v.string()),
+        followers: v.number(),
+        avgLikes: v.number(),
+        postFrequency: v.optional(v.string()),
+        topicTags: v.array(v.string()),
+        score: v.number(),
+        reason: v.string(),
+        exampleTweets: v.array(
+          v.object({
+            tweetId: v.string(),
+            text: v.string(),
+            likes: v.number(),
+          })
+        ),
+      })
+    ),
+  },
+  returns: v.number(),
+  handler: async (ctx, { runId, userId, prunedCount, profiles }) => {
+    const now = Date.now();
+    const settings = await ctx.db
+      .query("scannerSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    const watchedHandles = settings?.watchedHandles ?? [];
+
+    let savedCount = 0;
+    for (const p of profiles) {
+      if (savedCount >= MAX_REPLACEMENT_SUGGESTIONS) break;
+
+      const handle = normalizeResearchHandle(p.handle);
+      if (!handle || isWatchedHandle(watchedHandles, handle)) continue;
+
+      const existing = await ctx.db
+        .query("researchProfiles")
+        .withIndex("by_user_handle", (q) =>
+          q.eq("userId", userId).eq("handle", handle)
+        )
+        .unique();
+      // Only surface genuinely new accounts — never resurface a handle the
+      // user already saw (suggested), passed, or is watching.
+      if (existing) continue;
+
+      await ctx.db.insert("researchProfiles", {
+        userId,
+        runId,
+        xUserId: p.xUserId,
+        handle,
+        displayName: p.displayName,
+        bio: p.bio,
+        followers: p.followers,
+        avgLikes: p.avgLikes,
+        postFrequency: p.postFrequency,
+        topicTags: p.topicTags,
+        score: p.score,
+        reason: p.reason,
+        exampleTweets: p.exampleTweets,
+        status: "suggested",
+        discoveredAt: now,
+      });
+      savedCount += 1;
+    }
+
+    await ctx.db.patch(runId, {
+      status: "complete",
+      resultCount: savedCount,
+      curatorPrunedCount: prunedCount,
+    });
+    return savedCount;
   },
 });

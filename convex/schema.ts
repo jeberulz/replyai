@@ -362,6 +362,9 @@ export default defineSchema({
     watchedHandles: v.optional(v.array(v.string())),
     // Discovery keywords for search/recent (separate from filter keywords).
     searchKeywords: v.optional(v.array(v.string())),
+    // WP33 — last UTC month ("YYYY-MM") the monthly research curator ran for
+    // this user. Guards the "1 curator run per calendar month" idempotency.
+    lastCuratorRunMonth: v.optional(v.string()),
     // Authors dismissed from feed; hidden until `until` (7-day default).
     dismissedAuthors: v.optional(
       v.array(v.object({ handle: v.string(), until: v.number() }))
@@ -450,6 +453,13 @@ export default defineSchema({
       v.literal("failed")
     ),
     error: v.optional(v.string()),
+    // WP33 — distinguishes user-initiated runs from the monthly curator.
+    // Existing rows have no value; treated as "manual".
+    runKind: v.optional(
+      v.union(v.literal("manual"), v.literal("monthly_curator"))
+    ),
+    // WP33 — number of quiet suggested profiles pruned by a curator run.
+    curatorPrunedCount: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
@@ -481,6 +491,9 @@ export default defineSchema({
       v.literal("watching"),
       v.literal("passed")
     ),
+    // WP33 — why a profile was auto-passed (e.g. "quiet_30d" from the curator).
+    // Only set when the curator prunes a quiet suggestion.
+    passedReason: v.optional(v.string()),
     discoveredAt: v.number(),
   })
     .index("by_user", ["userId"])

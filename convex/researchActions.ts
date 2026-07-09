@@ -14,6 +14,11 @@ import {
   type ResearchTweetSample,
   type ScoredResearchProfile,
 } from "../shared/researchScoring";
+import {
+  MAX_REPLACEMENT_SUGGESTIONS,
+  demoCuratorArtifact,
+  replacementReason,
+} from "../shared/researchCurator";
 import { refreshAccessToken } from "../shared/xOAuth";
 
 const MAX_SEED_HANDLES = 5;
@@ -252,6 +257,152 @@ function demoProfilesToSave(
     exampleTweets: p.exampleTweets,
   }));
 }
+
+/** Build an X recent-search query from niche keywords + recent topics. */
+function curatorQueryFromNiche(
+  keywords: string[],
+  recentTopics: string[]
+): string {
+  const terms = [...keywords, ...recentTopics]
+    .map((t) => t.trim())
+    .filter((t) => t.length > 2)
+    .slice(0, 5);
+  const unique = [...new Set(terms.map((t) => t.toLowerCase()))];
+  if (unique.length === 0) return "";
+  if (unique.length === 1) return unique[0];
+  return `(${unique.map((t) => (t.includes(" ") ? `"${t}"` : t)).join(" OR ")})`;
+}
+
+/**
+ * WP33 monthly curator — prune quiet suggestions, then discover replacement
+ * candidates (reuses the manual research pipeline). The run row is created by
+ * the dispatcher; this only prunes + saves. No auto-watch, no auto-publish.
+ */
+export const runMonthlyCurator = internalAction({
+  args: {
+    userId: v.id("users"),
+    runId: v.id("researchRuns"),
+    month: v.string(),
+    nowMs: v.number(),
+  },
+  handler: async (ctx, { userId, runId, nowMs }) => {
+    try {
+      // 1. Prune quiet suggested profiles (always runs, keys or not).
+      const prunedCount = await ctx.runMutation(
+        internal.research.pruneQuietSuggestedProfiles,
+        { userId, nowMs }
+      );
+
+      const scanCtx = await ctx.runQuery(internal.scanner.scanContext, {
+        userId,
+      });
+
+      // 2a. Demo path — deterministic candidates for demo accounts only.
+      // A missing Anthropic key is NOT a demo trigger: real users still get
+      // real discovery, with template reasons via synthesizeReasons (matches
+      // the manual runResearch pipeline). Otherwise demo profiles would leak
+      // into a real user's suggestions.
+      if (scanCtx?.isDemo) {
+        const { candidates } = demoCuratorArtifact(nowMs, prunedCount);
+        await ctx.runMutation(internal.research.saveCuratorResults, {
+          runId,
+          userId,
+          prunedCount,
+          profiles: candidates.map((c) => ({
+            xUserId: c.xUserId,
+            handle: c.handle,
+            displayName: c.displayName,
+            bio: c.bio,
+            followers: c.followers,
+            avgLikes: c.avgLikes,
+            postFrequency: c.postFrequency,
+            topicTags: c.topicTags,
+            score: c.score,
+            reason: c.reason,
+            exampleTweets: c.exampleTweets,
+          })),
+        });
+        return;
+      }
+
+      // 2b. Real discovery — needs an X token; without one, keep the prune
+      // result and close the run with zero new suggestions.
+      const accessToken = await resolveAccessToken(ctx, userId);
+      if (!accessToken) {
+        await ctx.runMutation(internal.research.saveCuratorResults, {
+          runId,
+          userId,
+          prunedCount,
+          profiles: [],
+        });
+        return;
+      }
+
+      const niche = await ctx.runQuery(internal.scannerSemantic.nicheContext, {
+        userId,
+      });
+      const query = curatorQueryFromNiche(niche.keywords, niche.recentTopics);
+
+      const tweets: ResearchTweetSample[] = [];
+      if (query) tweets.push(...(await fetchSearchTweets(query, accessToken)));
+      const seeds = (scanCtx?.watchedHandles ?? [])
+        .map((h) => h.replace(/^@/, "").toLowerCase())
+        .filter(Boolean)
+        .slice(0, MAX_SEED_HANDLES);
+      for (const handle of seeds) {
+        tweets.push(...(await fetchHandleTweets(handle, accessToken)));
+      }
+
+      const ranked = rankResearchProfiles(tweets, niche.keywords, 30).slice(
+        0,
+        MAX_REPLACEMENT_SUGGESTIONS * 2
+      );
+      const reasons = await synthesizeReasons(
+        query || "your niche",
+        ranked,
+        niche.keywords
+      );
+
+      const profiles = ranked.map((p) => ({
+        xUserId: p.xUserId,
+        handle: p.handle,
+        displayName: p.displayName,
+        bio: p.bio,
+        followers: p.followers,
+        avgLikes: p.avgLikes,
+        postFrequency: p.postFrequency,
+        topicTags: p.topicTags,
+        score: p.score,
+        reason: replacementReason(
+          reasons.get(p.handle.toLowerCase()) ??
+            `Active in your niche — ${p.postFrequency.toLowerCase()}.`
+        ),
+        exampleTweets: p.exampleTweets,
+      }));
+
+      await ctx.runMutation(internal.research.saveCuratorResults, {
+        runId,
+        userId,
+        prunedCount,
+        profiles,
+      });
+    } catch (error) {
+      console.error("runMonthlyCurator failed", { userId, runId, error });
+      await captureConvexException(error, {
+        action: "runMonthlyCurator",
+        userId,
+        runId,
+      });
+      await ctx.runMutation(internal.research.markRunFailed, {
+        runId,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Monthly curator run failed unexpectedly.",
+      });
+    }
+  },
+});
 
 export const runResearch = internalAction({
   args: {

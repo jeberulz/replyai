@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ds/skeleton";
 import { Spinner } from "@/components/ds/spinner";
 import { TextInput } from "@/components/ds/text-input";
 import { Text } from "@/components/ds/text";
+import { timeAgo } from "@/lib/utils";
 
 const RUN_TIMEOUT_MS = 90_000;
 
@@ -32,6 +33,82 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: "watching", label: "Watching" },
 ];
 
+type CuratorState =
+  | typeof undefined
+  | {
+      locked: boolean;
+      run: {
+        status: "running" | "complete" | "failed";
+        newSuggestionCount: number;
+        prunedCount: number;
+        error?: string;
+        createdAt: number;
+      } | null;
+    };
+
+/** Monthly curator status strip — plain-language, no fake scores. */
+function CuratorStrip({ curator }: { curator: CuratorState }) {
+  if (curator === undefined) return null;
+
+  const shell =
+    "rounded-xl border border-border bg-muted/40 px-4 py-3 sm:px-5";
+
+  if (curator.locked) {
+    return (
+      <div className={shell}>
+        <PaneEyebrow>Monthly curator</PaneEyebrow>
+        <Text size="sm" className="mt-1 text-muted-foreground">
+          Auto-refreshes your watchlist every month — prunes quiet accounts and
+          suggests replacements. Available on the Pro plan.
+        </Text>
+      </div>
+    );
+  }
+
+  const run = curator.run;
+
+  if (!run) {
+    return (
+      <div className={shell}>
+        <PaneEyebrow>Monthly curator</PaneEyebrow>
+        <Text size="sm" className="mt-1 text-muted-foreground">
+          Your first monthly refresh runs on the 1st — it prunes quiet accounts
+          and suggests replacements for you to review.
+        </Text>
+      </div>
+    );
+  }
+
+  return (
+    <div className={shell}>
+      <div className="flex items-center justify-between gap-2">
+        <PaneEyebrow>Monthly curator</PaneEyebrow>
+        {run.status === "complete" && (
+          <Text size="sm" className="tabular-nums text-muted-foreground">
+            {timeAgo(run.createdAt)}
+          </Text>
+        )}
+      </div>
+      {run.status === "running" ? (
+        <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner size="sm" />
+          Refreshing your watchlist…
+        </div>
+      ) : run.status === "failed" ? (
+        <Text size="sm" className="mt-1 text-muted-foreground">
+          Last refresh didn&apos;t finish{run.error ? ` — ${run.error}` : "."}
+        </Text>
+      ) : (
+        <Text size="sm" className="mt-1 tabular-nums text-muted-foreground">
+          {run.prunedCount} quiet {run.prunedCount === 1 ? "account" : "accounts"}{" "}
+          pruned · {run.newSuggestionCount} new{" "}
+          {run.newSuggestionCount === 1 ? "suggestion" : "suggestions"}
+        </Text>
+      )}
+    </div>
+  );
+}
+
 /** Research tab — split list + detail, matching the drafts/feed layout. */
 export function ResearchAgent() {
   const sessionToken = useSessionToken();
@@ -41,6 +118,10 @@ export function ResearchAgent() {
   );
   const latestRun = useQuery(
     api.research.latestRun,
+    sessionToken ? { sessionToken } : "skip"
+  );
+  const curator = useQuery(
+    api.research.latestCuratorRun,
     sessionToken ? { sessionToken } : "skip"
   );
 
@@ -135,6 +216,8 @@ export function ResearchAgent() {
       </div>
 
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-6">
+        <CuratorStrip curator={curator} />
+
         <div className="space-y-4">
           <div className="space-y-1">
             <PaneEyebrow>New search</PaneEyebrow>
