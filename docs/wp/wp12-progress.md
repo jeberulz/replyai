@@ -27,3 +27,10 @@
 - Usage: no Convex-side `usage.record` (same as research/semantic — public
   mutation needs sessionToken); noted as Found-not-fixed / follow-up.
 - Verified: `npx convex codegen`, `npm run typecheck`, unit tests.
+
+## WP12-S4 — Cron dispatcher
+
+- Registered hourly `dispatch daily briefings` →
+  `internal.briefings.dispatchDueBriefings` in `convex/crons.ts`.
+- Idempotency already in dispatcher (localDay index + shouldEnqueueBriefing).
+- Verified: `npm run typecheck`.

@@ -55,4 +55,13 @@ crons.weekly(
   {}
 );
 
+// Daily briefing agent: hourly dispatcher filters to users whose local hour
+// matches and who lack a run for that local calendar day (idempotent).
+crons.interval(
+  "dispatch daily briefings",
+  { hours: 1 },
+  internal.briefings.dispatchDueBriefings,
+  {}
+);
+
 export default crons;

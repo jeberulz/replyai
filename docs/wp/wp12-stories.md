@@ -49,7 +49,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP12**.
   - Demo / missing `ANTHROPIC_API_KEY` never throws to the user path.
   - No publish mutations reachable from this action.
 
-- [ ] **WP12-S4 — Cron dispatcher**
+- [x] **WP12-S4 — Cron dispatcher**
   - `convex/crons.ts` + internal dispatch: hourly; enqueue eligible Pro+/demo
     users whose local hour matches now and who lack a run for that local day.
   - Idempotent: second dispatch same local day is a no-op.
