@@ -14,15 +14,15 @@ import {
 } from "@/app/actions";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { PageHeader } from "@/components/app/page-header";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Badge } from "@/components/ds/badge";
+import { Button } from "@/components/ds/button";
+import { Card } from "@/components/ds/card";
+import { Heading } from "@/components/ds/heading";
+import { IconButton } from "@/components/ds/icon-button";
+import { Skeleton } from "@/components/ds/skeleton";
+import { Text } from "@/components/ds/text";
+import { TextArea } from "@/components/ds/text-area";
+import { TextInput } from "@/components/ds/text-input";
 import {
   Dialog,
   DialogContent,
@@ -31,10 +31,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import {
   buildVoiceNegativeConstraints,
   normalizeNegativeConstraints,
@@ -108,26 +104,22 @@ function ProfileForm({
     key: keyof Omit<VoiceStyle, "commonPhrases">,
     placeholder: string
   ) => (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <Input
-        value={style[key]}
-        placeholder={placeholder}
-        onChange={(e) => setStyle({ ...style, [key]: e.target.value })}
-      />
-    </div>
+    <TextInput
+      label={label}
+      value={style[key]}
+      placeholder={placeholder}
+      onChange={(value) => setStyle({ ...style, [key]: value })}
+    />
   );
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label>Profile name</Label>
-        <Input
-          value={name}
-          placeholder="e.g. Builder voice, Spicy takes"
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
+      <TextInput
+        label="Profile name"
+        value={name}
+        placeholder="e.g. Builder voice, Spicy takes"
+        onChange={setName}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
         {field("Tone", "tone", "contrarian, data-driven")}
         {field("Sentence length", "sentenceLength", "short and punchy")}
@@ -136,46 +128,40 @@ function ProfileForm({
         {field("Punctuation", "punctuation", "em dashes, no exclamations")}
         {field("Reading level", "readingLevel", "accessible / technical")}
       </div>
-      <div className="space-y-1.5">
-        <Label>Common phrases (comma separated)</Label>
-        <Input
-          value={phrases}
-          placeholder="ship it, the real question is"
-          onChange={(e) => setPhrases(e.target.value)}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label>Example tweets (one per line)</Label>
-        <Textarea
-          rows={4}
-          value={examples}
-          placeholder="Paste a few tweets that sound like you"
-          onChange={(e) => setExamples(e.target.value)}
-        />
-      </div>
+      <TextInput
+        label="Common phrases (comma separated)"
+        value={phrases}
+        placeholder="ship it, the real question is"
+        onChange={setPhrases}
+      />
+      <TextArea
+        label="Example tweets (one per line)"
+        value={examples}
+        placeholder="Paste a few tweets that sound like you"
+        rows={4}
+        onChange={setExamples}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>Banned phrases (one per line)</Label>
-          <Textarea
-            rows={5}
-            value={bannedPhrases}
-            placeholder={"Great point!\n🚀"}
-            onChange={(e) => setBannedPhrases(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Anti-patterns (one per line)</Label>
-          <Textarea
-            rows={5}
-            value={antiPatterns}
-            placeholder={"Do not use hashtags.\nDo not add emoji."}
-            onChange={(e) => setAntiPatterns(e.target.value)}
-          />
-        </div>
+        <TextArea
+          label="Banned phrases (one per line)"
+          value={bannedPhrases}
+          placeholder={"Great point!\n🚀"}
+          rows={5}
+          onChange={setBannedPhrases}
+        />
+        <TextArea
+          label="Anti-patterns (one per line)"
+          value={antiPatterns}
+          placeholder={"Do not use hashtags.\nDo not add emoji."}
+          rows={5}
+          onChange={setAntiPatterns}
+        />
       </div>
       <DialogFooter>
         <Button
-          disabled={pending || !name.trim()}
+          label={initial ? "Save changes" : "Create profile"}
+          icon={pending ? <Loader2 className="animate-spin" /> : undefined}
+          isDisabled={pending || !name.trim()}
           onClick={() =>
             onSave({
               name: name.trim(),
@@ -196,10 +182,7 @@ function ProfileForm({
               }),
             })
           }
-        >
-          {pending && <Loader2 className="animate-spin" />}
-          {initial ? "Save changes" : "Create profile"}
-        </Button>
+        />
       </DialogFooter>
     </div>
   );
@@ -210,11 +193,12 @@ export function VoiceStudio({ xConnected }: { xConnected: boolean }) {
   const profiles = useQuery(
     api.voiceProfiles.list,
     sessionToken ? { sessionToken } : "skip"
-  ) as
-    | Profile[]
-    | undefined;
+  ) as Profile[] | undefined;
   const [dialog, setDialog] = useState<
-    { mode: "create" } | { mode: "edit"; profile: Profile } | { mode: "train" } | null
+    | { mode: "create" }
+    | { mode: "edit"; profile: Profile }
+    | { mode: "train" }
+    | null
   >(null);
   const [trainName, setTrainName] = useState("My voice");
   const [pending, startTransition] = useTransition();
@@ -238,48 +222,57 @@ export function VoiceStudio({ xConnected }: { xConnected: boolean }) {
         title="Voice profiles"
         description="Every generated reply runs through a voice profile so it sounds like you, not like an AI."
       >
-        <Button variant="outline" onClick={() => setDialog({ mode: "create" })}>
-          <Plus /> New profile
-        </Button>
-        <Button onClick={() => setDialog({ mode: "train" })}>
-          <Sparkles /> Train from my tweets
-        </Button>
+        <Button
+          variant="secondary"
+          label="New profile"
+          icon={<Plus className="size-4" />}
+          onClick={() => setDialog({ mode: "create" })}
+        />
+        <Button
+          label="Train from my tweets"
+          icon={<Sparkles className="size-4" />}
+          onClick={() => setDialog({ mode: "train" })}
+        />
       </PageHeader>
 
       {profiles === undefined ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Skeleton className="h-48" />
-          <Skeleton className="h-48" />
+          <Skeleton height={192} radius={3} index={0} />
+          <Skeleton height={192} radius={3} index={1} />
         </div>
       ) : profiles.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12 text-center text-sm text-muted-foreground">
-            <Mic2 className="size-6" />
-            No voice profiles yet. Train one from your tweets or create one
-            manually.
-          </CardContent>
+        <Card padding={4}>
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <Mic2 className="size-6 text-muted-foreground" />
+            <Text type="supporting" color="secondary" display="block">
+              No voice profiles yet. Train one from your tweets or create one
+              manually.
+            </Text>
+          </div>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {profiles.map((profile) => (
-            <Card key={profile._id}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    {profile.name}
+            <Card key={profile._id} padding={3}>
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <Heading level={3} className="text-base">
+                      {profile.name}
+                    </Heading>
                     {profile.isDefault && (
-                      <Badge variant="success">
-                        <Star className="size-3" /> default
-                      </Badge>
+                      <Badge
+                        variant="success"
+                        label="default"
+                        icon={<Star className="size-3" />}
+                      />
                     )}
-                  </CardTitle>
-                  <Badge variant="outline">{profile.source}</Badge>
+                  </div>
+                  <Badge variant="neutral" label={profile.source} />
                 </div>
-                <CardDescription>
+                <Text type="supporting" color="secondary" display="block">
                   {profile.style.tone} · {profile.style.sentenceLength}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
+                </Text>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   {(
                     [
@@ -300,14 +293,12 @@ export function VoiceStudio({ xConnected }: { xConnected: boolean }) {
                 {profile.style.commonPhrases.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {profile.style.commonPhrases.map((phrase) => (
-                      <Badge key={phrase} variant="secondary">
-                        {phrase}
-                      </Badge>
+                      <Badge key={phrase} variant="neutral" label={phrase} />
                     ))}
                   </div>
                 )}
                 {(profile.bannedPhrases?.length || profile.antiPatterns?.length) && (
-                  <div className="space-y-1 border-t pt-3 text-xs">
+                  <div className="space-y-1 border-t border-border pt-3 text-xs">
                     {profile.bannedPhrases && profile.bannedPhrases.length > 0 && (
                       <p className="line-clamp-2 text-muted-foreground">
                         Bans: {profile.bannedPhrases.slice(0, 4).join(", ")}
@@ -320,53 +311,50 @@ export function VoiceStudio({ xConnected }: { xConnected: boolean }) {
                     )}
                   </div>
                 )}
-                <div className="flex items-center gap-2 border-t pt-3">
+                <div className="flex items-center gap-2 border-t border-border pt-3">
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
+                    label="Edit"
                     onClick={() => setDialog({ mode: "edit", profile })}
-                  >
-                    Edit
-                  </Button>
+                  />
                   {!profile.isDefault && (
                     <>
                       <Button
                         size="sm"
                         variant="ghost"
-                        disabled={pending}
+                        label="Make default"
+                        isDisabled={pending}
                         onClick={() =>
                           startTransition(async () => {
                             await setDefaultVoiceAction(profile._id);
                             toast.success(`"${profile.name}" is now default`);
                           })
                         }
-                      >
-                        Make default
-                      </Button>
-                      <Button
-                        size="sm"
+                      />
+                      <IconButton
+                        label="Delete profile"
+                        icon={<Trash2 className="size-4" />}
                         variant="ghost"
+                        size="sm"
+                        isDisabled={pending}
                         className="ml-auto text-destructive hover:text-destructive"
-                        disabled={pending}
                         onClick={() =>
                           startTransition(async () => {
                             await deleteVoiceProfileAction(profile._id);
                             toast.success("Profile deleted");
                           })
                         }
-                      >
-                        <Trash2 />
-                      </Button>
+                      />
                     </>
                   )}
                 </div>
-              </CardContent>
+              </div>
             </Card>
           ))}
         </div>
       )}
 
-      {/* Create / edit dialog */}
       <Dialog
         open={dialog?.mode === "create" || dialog?.mode === "edit"}
         onOpenChange={(open) => !open && setDialog(null)}
@@ -403,7 +391,6 @@ export function VoiceStudio({ xConnected }: { xConnected: boolean }) {
         </DialogContent>
       </Dialog>
 
-      {/* Train dialog */}
       <Dialog
         open={dialog?.mode === "train"}
         onOpenChange={(open) => !open && setDialog(null)}
@@ -417,18 +404,24 @@ export function VoiceStudio({ xConnected }: { xConnected: boolean }) {
                 : "X isn't connected, so this trains on realistic sample tweets — connect X in Settings to train on your own."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-1.5">
-            <Label>Profile name</Label>
-            <Input
-              value={trainName}
-              onChange={(e) => setTrainName(e.target.value)}
-            />
-          </div>
+          <TextInput
+            label="Profile name"
+            value={trainName}
+            onChange={setTrainName}
+          />
           <DialogFooter>
-            <Button disabled={pending || !trainName.trim()} onClick={train}>
-              {pending ? <Loader2 className="animate-spin" /> : <Sparkles />}
-              Train voice
-            </Button>
+            <Button
+              label="Train voice"
+              icon={
+                pending ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )
+              }
+              isDisabled={pending || !trainName.trim()}
+              onClick={train}
+            />
           </DialogFooter>
         </DialogContent>
       </Dialog>

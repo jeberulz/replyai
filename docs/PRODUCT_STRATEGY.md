@@ -895,6 +895,8 @@ npm test && npm run build`), Convex guidelines
 | WP26 | App shell migration | P0 | sidebar/nav/command-menu; `(app)/layout` composition | Shell consumes ds/ tokens (restyle first; AppShell only if needed); WP6 mobile suite still green; landing untouched |
 | WP27 | Lists + workbench density | P0 | feed/drafts rows+detail, option-card, score-badge, pane-chrome controls | Item/SelectableCard/SegmentedControl/StatusDot/EmptyState; 3 options + reasons; no fake scores; WP6 suite green |
 | WP28 | AI / chat surfaces (deferred) | P1 | `src/components/app/chat/**` (excl. analytics until WP11) | Chat/Tokenizer/Progress where they cut custom CSS; ReplyPreview untouched; defer until WP24–27 gate |
+| WP29 | Voice Studio onto Astryx `ds/` | P0 | `src/components/app/voice-studio.tsx` | Voice tab uses ds Card/Badge/Button/TextInput/TextArea; Dialog stays ui/; train/CRUD/default unchanged; checks green |
+| WP30 | Settings onto Astryx `ds/` | P0 | `settings/page.tsx`, `account-data-controls.tsx`, `default-model-card.tsx` | Settings sections on ds primitives; Dialog stays ui/ for delete confirm; billing/export/delete/model default unchanged |
 
 Program brief: `docs/wp/WP24-ASTRYX-ADOPTION-PLAN.md`. Rulings: `docs/wp/RULINGS.md` (2026-07-09).
 
