@@ -16,7 +16,25 @@ export const SEMANTIC_RESCUE_LIMIT = 8;
 /** Hard cap on tweets sent to the classifier per scan. */
 export const SEMANTIC_BATCH_LIMIT = 25;
 
+/**
+ * Relaxed bar for list / watched / search — curated sources deserve a lower
+ * bar than following, not no bar (WP9).
+ */
+export const CURATED_SOURCE_MIN_RELEVANCE = 0.3;
+
 export const SEMANTIC_HAIKU_MODEL = "claude-haiku-4-5";
+
+export function isCuratedOpportunitySource(
+  source?: OpportunitySource
+): boolean {
+  return source === "list" || source === "watched" || source === "search";
+}
+
+export function minRelevanceForSource(source?: OpportunitySource): number {
+  return isCuratedOpportunitySource(source)
+    ? CURATED_SOURCE_MIN_RELEVANCE
+    : FEED_SCANNER_MIN_RELEVANCE;
+}
 
 export type NicheContext = {
   keywords: string[];
@@ -36,6 +54,12 @@ export type SemanticScore = {
   relevance: number;
   reason: string;
   brandSafety: "safe" | "unsafe";
+  /**
+   * Short actionable reply angle (missing-angle style). Always set by the
+   * batch/demo classifier; optional so older call sites (manual analyze) that
+   * only need relevance/safety stay type-compatible without a schema change.
+   */
+  suggestedAngle?: string;
 };
 
 export function resolveManualTopicRelevance(
@@ -110,7 +134,7 @@ export function selectSemanticClassificationTargets(
   return deduped.slice(0, SEMANTIC_BATCH_LIMIT);
 }
 
-/** Whether a following-timeline tweet should surface after semantic scoring. */
+/** Whether a tweet should surface after semantic scoring (source-aware bar). */
 export function passesCombinedFeedFilter(
   text: string,
   keywords: string[],
@@ -121,15 +145,12 @@ export function passesCombinedFeedFilter(
   if (typeof semantic !== "number" && semantic?.brandSafety === "unsafe") {
     return false;
   }
-  if (source === "list" || source === "watched" || source === "search") {
-    return true;
-  }
   const semanticScore =
     typeof semantic === "number"
       ? semantic
       : effectiveSemanticRelevance(semantic);
   const combined = combineTopicRelevance(keywordScore, semanticScore);
-  return combined >= FEED_SCANNER_MIN_RELEVANCE;
+  return combined >= minRelevanceForSource(source);
 }
 
 const TECH_POLICY_SIGNAL =
@@ -175,6 +196,51 @@ function demoBrandSafetyVerdict(
   return { brandSafety: "safe", reason: "Brand-safe context" };
 }
 
+/**
+ * Deterministic missing-angle style suggestion — used by demo classifier and
+ * as a cache-hit fallback when the 24h semantic cache has no stored angle
+ * (schema cannot grow in WP9).
+ */
+export function demoSuggestedAngle(
+  text: string,
+  niche?: NicheContext
+): string {
+  const haystack = text.toLowerCase();
+  const nicheHint =
+    niche?.keywords.find((k) => k.trim().length > 1)?.trim() ??
+    niche?.voiceTopics.find((k) => k.trim().length > 1)?.trim();
+
+  if (
+    (haystack.includes("autonomous") || haystack.includes("agent")) &&
+    (haystack.includes("support") || haystack.includes("customer"))
+  ) {
+    return "Name the failure mode teams hit when agents meet messy support workflows — then the one constraint that fixed it.";
+  }
+  if (haystack.includes("language model") || haystack.includes("llm")) {
+    return "Add a concrete eval or latency tradeoff from shipping an LLM feature that the thread hasn't named.";
+  }
+  if (haystack.includes("?")) {
+    return nicheHint
+      ? `Answer with one specific ${nicheHint} example from your own work — skip the generic advice.`
+      : "Answer with one specific example from your own work — skip the generic advice.";
+  }
+  if (nicheHint && haystack.includes(nicheHint.toLowerCase())) {
+    return `Point out the missing ${nicheHint} angle — the second-order consequence practitioners feel but the thread skipped.`;
+  }
+  return "Share a short, concrete story from experience that confirms or complicates the claim.";
+}
+
+/** Prefer triage angle; fall back when cache/legacy scores omit it. */
+export function resolveSuggestedAngle(
+  semantic: SemanticScore | undefined,
+  text: string,
+  niche?: NicheContext
+): string {
+  const fromTriage = semantic?.suggestedAngle?.trim();
+  if (fromTriage) return fromTriage;
+  return demoSuggestedAngle(text, niche);
+}
+
 /** Deterministic demo classifier — no API key required. */
 export function demoSemanticRelevance(
   text: string,
@@ -188,12 +254,14 @@ export function demoSemanticRelevance(
   ]
     .map((t) => t.trim().toLowerCase())
     .filter((t) => t.length > 1);
+  const suggestedAngle = demoSuggestedAngle(text, niche);
   const safety = demoBrandSafetyVerdict(haystack, nicheTerms);
   if (safety.brandSafety === "unsafe") {
     return {
       relevance: 0,
       reason: safety.reason,
       brandSafety: "unsafe",
+      suggestedAngle,
     };
   }
 
@@ -225,6 +293,7 @@ export function demoSemanticRelevance(
       relevance >= 0.5
         ? "Topic aligns with your niche (demo semantic match)"
         : "Weak niche overlap",
+    suggestedAngle,
   };
 }
 
@@ -246,11 +315,9 @@ export function opportunityStillRelevant(
   source: OpportunitySource | undefined,
   storedTopicRelevance?: number
 ): boolean {
-  if (source === "list" || source === "watched" || source === "search") {
-    return true;
-  }
+  const min = minRelevanceForSource(source);
   if (storedTopicRelevance !== undefined) {
-    return storedTopicRelevance >= FEED_SCANNER_MIN_RELEVANCE;
+    return storedTopicRelevance >= min;
   }
-  return topicRelevanceForKeywords(text, keywords) >= FEED_SCANNER_MIN_RELEVANCE;
+  return topicRelevanceForKeywords(text, keywords) >= min;
 }

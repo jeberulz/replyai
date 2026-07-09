@@ -20,9 +20,11 @@ import { applyRankingMultiplier, normalizeRankingWeights } from "../shared/ranki
 import {
   augmentScoreReason,
   combineTopicRelevance,
+  demoSuggestedAngle,
   effectiveSemanticRelevance,
   fingerprintText,
   passesCombinedFeedFilter,
+  resolveSuggestedAngle,
   selectSemanticClassificationTargets,
   SEMANTIC_CACHE_MS,
   type SemanticScore,
@@ -364,6 +366,8 @@ export const scanUser = internalAction({
               relevance: cached.semanticRelevance,
               reason: "Cached safe result",
               brandSafety: "safe",
+              // Cache stores relevance only (no schema change) — regenerate angle cheaply.
+              suggestedAngle: demoSuggestedAngle(target.text, nicheContext),
             },
             classifiedAt: cached.semanticClassifiedAt,
           });
@@ -417,7 +421,11 @@ export const scanUser = internalAction({
           score: score.value,
           rankingScore,
           reason: augmentScoreReason(score.reason, keywordScore, semanticScore),
-          suggestedAngle: suggestAngle(t),
+          suggestedAngle: resolveSuggestedAngle(
+            semantic?.semantic,
+            t.text,
+            nicheContext
+          ),
           replyCount: t.replies,
           velocity: velocityPerHour({ ...t, ageMinutes }),
           postedAt: t.postedAt,
@@ -905,19 +913,3 @@ async function fetchSearchTweets(
   };
 }
 
-function suggestAngle(t: TimelineTweet): string {
-  const text = t.text.toLowerCase();
-  if (text.includes("unpopular opinion") || text.includes("hot take")) {
-    return "Take a measured contrarian stance — agree with the core but name the exception they're missing.";
-  }
-  if (text.includes("?")) {
-    return "Answer the question directly with a specific example from your own work.";
-  }
-  if (/\d/.test(text)) {
-    return "Add your own data point — numbers replying to numbers performs well.";
-  }
-  if (t.replies > 200) {
-    return "The obvious takes are taken; reply with the second-order consequence nobody has raised.";
-  }
-  return "Share a short, concrete story from experience that confirms or complicates the claim.";
-}

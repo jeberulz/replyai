@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import { topicRelevanceForKeywords } from "../shared/scoring";
 import {
   combineTopicRelevance,
+  CURATED_SOURCE_MIN_RELEVANCE,
   demoSemanticRelevance,
+  demoSuggestedAngle,
+  opportunityStillRelevant,
   passesCombinedFeedFilter,
   resolveManualTopicRelevance,
+  resolveSuggestedAngle,
   selectSemanticClassificationTargets,
 } from "../shared/semanticRelevance";
 
@@ -55,7 +59,7 @@ describe("passesCombinedFeedFilter", () => {
     ).toBe(true);
   });
 
-  it("passes curated sources when the semantic screen does not flag them unsafe", () => {
+  it("rejects off-topic curated sources below the relaxed relevance bar", () => {
     expect(
       passesCombinedFeedFilter(
         "random pasta recipe",
@@ -64,6 +68,58 @@ describe("passesCombinedFeedFilter", () => {
         { relevance: 0.1, reason: "off-topic", brandSafety: "safe" },
         "watched"
       )
+    ).toBe(false);
+  });
+
+  it("passes curated sources that clear the relaxed relevance bar", () => {
+    expect(
+      passesCombinedFeedFilter(
+        "Shipping an AI agent for support teams",
+        keywords,
+        0,
+        {
+          relevance: CURATED_SOURCE_MIN_RELEVANCE / 0.9,
+          reason: "weak but on-niche",
+          brandSafety: "safe",
+        },
+        "list"
+      )
+    ).toBe(true);
+  });
+
+  it("still blocks unsafe curated sources even when relevance is high", () => {
+    expect(
+      passesCombinedFeedFilter(
+        "boycott this founder",
+        keywords,
+        0.9,
+        {
+          relevance: 0.9,
+          reason: "outrage",
+          brandSafety: "unsafe",
+        },
+        "search"
+      )
+    ).toBe(false);
+  });
+});
+
+describe("opportunityStillRelevant", () => {
+  it("applies the curated bar to stored topic relevance", () => {
+    expect(
+      opportunityStillRelevant("pasta", ["ai"], "watched", 0.2)
+    ).toBe(false);
+    expect(
+      opportunityStillRelevant("ai agents", ["ai"], "watched", 0.35)
+    ).toBe(true);
+  });
+
+  it("keeps the following bar at FEED_SCANNER_MIN_RELEVANCE", () => {
+    expect(
+      opportunityStillRelevant("x", ["ai"], "following", 0.4)
+    ).toBe(false);
+    expect(
+      opportunityStillRelevant("x", ["ai"], "following", 0.5)
     ).toBe(true);
   });
 });
@@ -94,7 +150,92 @@ describe("selectSemanticClassificationTargets", () => {
   });
 });
 
+describe("resolveSuggestedAngle", () => {
+  it("prefers the triage angle when present", () => {
+    expect(
+      resolveSuggestedAngle(
+        {
+          relevance: 0.8,
+          reason: "fit",
+          brandSafety: "safe",
+          suggestedAngle: "Name the eval gap the thread skipped.",
+        },
+        "hot take with 40% growth?"
+      )
+    ).toBe("Name the eval gap the thread skipped.");
+  });
+
+  it("falls back to demoSuggestedAngle when cache omits angle", () => {
+    const text = "We're rolling out autonomous support bots for customer teams";
+    expect(
+      resolveSuggestedAngle(
+        {
+          relevance: 0.7,
+          reason: "Cached safe result",
+          brandSafety: "safe",
+        },
+        text,
+        { keywords: ["ai"], voiceTopics: [], recentTopics: [] }
+      )
+    ).toBe(
+      demoSuggestedAngle(text, {
+        keywords: ["ai"],
+        voiceTopics: [],
+        recentTopics: [],
+      })
+    );
+  });
+});
+
+describe("demoSuggestedAngle", () => {
+  it("returns a deterministic actionable angle for agent/support posts", () => {
+    const text = "We're rolling out autonomous support bots for customer teams";
+    const a = demoSuggestedAngle(text, {
+      keywords: ["ai agents"],
+      voiceTopics: [],
+      recentTopics: [],
+    });
+    const b = demoSuggestedAngle(text, {
+      keywords: ["ai agents"],
+      voiceTopics: [],
+      recentTopics: [],
+    });
+    expect(a).toBe(b);
+    expect(a.length).toBeGreaterThan(20);
+    expect(a.toLowerCase()).not.toMatch(/share your thoughts/);
+  });
+
+  it("does not use the old hot-take / digit template heuristics", () => {
+    const hot = demoSuggestedAngle("Unpopular opinion: hot take about shipping");
+    const digits = demoSuggestedAngle("We grew 40% MoM with no new hires");
+    expect(hot).not.toMatch(/measured contrarian/i);
+    expect(digits).not.toMatch(/numbers replying to numbers/i);
+  });
+});
+
 describe("demoSemanticRelevance", () => {
+  it("always includes a suggestedAngle", () => {
+    const result = demoSemanticRelevance(
+      "We're rolling out autonomous support bots for customer teams",
+      {
+        keywords: ["llm agents", "ai"],
+        voiceTopics: [],
+        recentTopics: [],
+      }
+    );
+    expect(result.suggestedAngle).toBeTruthy();
+    expect(result.suggestedAngle).toBe(
+      demoSuggestedAngle(
+        "We're rolling out autonomous support bots for customer teams",
+        {
+          keywords: ["llm agents", "ai"],
+          voiceTopics: [],
+          recentTopics: [],
+        }
+      )
+    );
+  });
+
   it("returns an unsafe verdict for political content", () => {
     const result = demoSemanticRelevance(
       "Congress passed a new immigration bill",
@@ -106,6 +247,7 @@ describe("demoSemanticRelevance", () => {
     );
     expect(result.relevance).toBe(0);
     expect(result.brandSafety).toBe("unsafe");
+    expect(result.suggestedAngle).toBeTruthy();
   });
 
   it("allows niche policy discussions when they fit the user's focus", () => {

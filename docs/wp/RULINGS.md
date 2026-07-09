@@ -62,3 +62,24 @@ Ruling:
   starting the existing analyze pipeline once. No new Convex APIs, no
   publish paths, no cookie/token access from the extension. All other work
   stays in `extension/` (+ shared scoring helpers/tests as needed).
+
+## 2026-07-09 - WP9 - Scan-triage agent file boundary
+
+- Question: WP9's §14 key-files column lists `convex/scannerActions.ts` and
+  "model routing", but the curated-source relevance gate lives in
+  `shared/semanticRelevance.ts` and the Haiku classifier that must emit
+  `suggestedAngle` lives in `convex/semanticActions.ts`.
+- Ruling: WP9 may edit these files, only as needed to satisfy the DoD:
+  - `shared/semanticRelevance.ts` — curated-source relaxed threshold +
+    triage/angle types used by the classifier and feed filter; keep
+    `opportunityStillRelevant` consistent with the same gate.
+  - `convex/semanticActions.ts` — extend the existing Haiku batch call to
+    return relevance + brandSafety + suggestedAngle in one pass (model
+    routing stays Haiku-class / `SEMANTIC_HAIKU_MODEL` /
+    `ANTHROPIC_SEMANTIC_MODEL`).
+  - `convex/scannerActions.ts` — consume triage angles; remove template
+    `suggestAngle()`.
+  - Focused tests under `tests/` for the filter + demo triage path.
+  - Working artifacts `docs/wp/wp09-stories.md` and `docs/wp/wp09-progress.md`.
+  Do not edit schema, UI, billing, crons, or generated files unless WP9
+  stops and escalates again. No new dependencies.
