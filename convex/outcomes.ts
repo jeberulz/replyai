@@ -79,16 +79,29 @@ export const seedPublishedDraft = internalMutation({
         status: existing.status === "responded" ? "responded" : "active",
         pollCount: existing.pollCount,
       });
-      return;
+    } else {
+      await ctx.db.insert("replyOutcomeTrackers", {
+        draftId,
+        ...base,
+        pollCount: 0,
+        status: "active",
+        createdAt: now,
+      });
     }
 
-    await ctx.db.insert("replyOutcomeTrackers", {
-      draftId,
-      ...base,
-      pollCount: 0,
-      status: "active",
-      createdAt: now,
-    });
+    // WP13 — relationship memory: record outbound interaction.
+    if (targetAuthorHandle) {
+      await ctx.runMutation(internal.authors.recordSent, {
+        userId: draft.userId,
+        authorHandle: targetAuthorHandle,
+        authorName:
+          opportunity?.authorName ?? analysis?.tweet.authorName,
+        topic: analysis?.topic,
+        replySettings: analysis?.replySettings,
+        postedAt: opportunity?.postedAt ?? analysis?.tweet.postedAt,
+        at: publishedAt,
+      });
+    }
   },
 });
 
@@ -281,6 +294,27 @@ export const markResponded = internalMutation({
         outcome: "responded",
         respondedAt: now,
         sentAt: tracker.publishedAt,
+      });
+    }
+
+    // WP13 — relationship memory: record inbound response from target author.
+    const authorHandle = tracker.targetAuthorHandle;
+    if (authorHandle) {
+      const opportunity = tracker.opportunityId
+        ? await ctx.db.get(tracker.opportunityId)
+        : null;
+      const analysis = tracker.analysisId
+        ? await ctx.db.get(tracker.analysisId)
+        : null;
+      await ctx.runMutation(internal.authors.recordResponded, {
+        userId: tracker.userId,
+        authorHandle,
+        authorName:
+          opportunity?.authorName ?? analysis?.tweet.authorName,
+        topic: analysis?.topic,
+        replySettings: analysis?.replySettings,
+        postedAt: opportunity?.postedAt ?? analysis?.tweet.postedAt,
+        at: now,
       });
     }
   },
