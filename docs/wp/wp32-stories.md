@@ -75,7 +75,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP32**.
 - [x] **WP32-S6 — Account export**
   - Include new settings fields in export payload if scanner settings exported.
 
-- [ ] **WP32-S7 — Final verification + PR**
+- [x] **WP32-S7 — Final verification + PR**
   - Full CI suite green.
   - Confirm weekly cron unchanged (still `recomputeAll` Monday 04:00 UTC).
   - `docs/wp/wp32-progress.md` complete; PR per playbook §1.

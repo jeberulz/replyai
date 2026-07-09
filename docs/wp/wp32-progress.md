@@ -108,3 +108,25 @@ Append-only. Newest entries at the bottom.
   `sanitizeAccountExportRow` has no special case for `scannerSettings` — it
   falls through to a whole-row export, so the new fields are included
   automatically. No changes to `shared/accountData.ts` or `convex/account.ts`.
+
+## 2026-07-09 — WP32-S7: final verification
+
+- `npm run typecheck && npm run lint && npm test && npm run build` — all
+  green (305 tests passed, 1 pre-existing skip; lint has only pre-existing
+  warnings on generated `convex/_generated/*` files, unrelated to this WP).
+- Weekly cron confirmed unchanged: `convex/crons.ts` still schedules
+  `internal.ranking.recomputeAll` for Monday 04:00 UTC — WP32 did not touch
+  `crons.ts`, per the file-boundary ruling.
+- File boundary respected: touched `shared/rankingWeights.ts`,
+  `shared/rankingChangelog.ts` (new), `convex/ranking.ts`,
+  `convex/schema.ts` (additive only), `src/components/app/feed-scanner.tsx`,
+  `tests/rankingWeights.test.ts`, `tests/rankingChangelog.test.ts`,
+  `docs/wp/wp32-*.md`, `docs/wp/RULINGS.md`, `docs/wp/PHASE1-CLOSEOUT-WP31-33.md`.
+  Did not touch `crons.ts`, `opportunities` archive logic, `researchActions.ts`,
+  `shared/accountData.ts`, or add any new npm dependency.
+- Outstanding item for the reviewer/gate session: no real-browser
+  verification of the WP32-S4 banner was performed (see the S4 entry above)
+  because the shared Convex dev deployment was a live, contended resource
+  during this session. Recommend a browser pass once WP31/WP32 land and the
+  dev deployment is quiet.
+- Ready for PR per `docs/AGENT_PLAYBOOK.md` §1/§6.
