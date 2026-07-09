@@ -43,5 +43,5 @@ clusters, WP13 is **author** dossiers.
   - Compact Dark Chrome strip: “3 conversations forming around …”
   - Link into feed filtered view or opportunity list.
 
-- [ ] **WP37-S4 — Verification**
+- [x] **WP37-S4 — Verification**
   - Demo mode; no fake engagement %; checks green.

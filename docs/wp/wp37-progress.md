@@ -31,3 +31,12 @@
 - Feed filters by `opportunityMatchesTopic` (id → keyword → slug token).
 - No fake engagement %; copy is observed conversation counts only.
 - Typecheck + trends tests green.
+
+## 2026-07-09 — WP37-S4
+
+- Full suite green: `typecheck`, `lint` (pre-existing generated warnings only),
+  `test` (353 passed), `build`.
+- DoD: top-3 topic clusters, 7-day window, demo fixtures, on-demand query,
+  no viral predictions / fake scores. Surface on `/feed` only.
+- No escalations. File boundary held (did not touch drafts/compose/authors/
+  command-menu/ranking weights/scanner cron).
