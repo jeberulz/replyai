@@ -6,7 +6,7 @@
  * Remove or replace once WP25 adapters land real call sites.
  */
 
-import { Banner } from "@astryxdesign/core/Banner";
+import { Banner } from "@/components/ds/banner";
 
 export function AstryxBrandProof() {
   if (process.env.NODE_ENV === "production") {
