@@ -54,7 +54,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP12**.
     users whose local hour matches now and who lack a run for that local day.
   - Idempotent: second dispatch same local day is a no-op.
 
-- [ ] **WP12-S5 — Briefing UI surface + nav**
+- [x] **WP12-S5 — Briefing UI surface + nav**
   - `/briefing` page (or equivalent app route) shows latest artifact +
     last-run status ("last briefing ran at …" / never-run empty state).
   - Free plan: surface visible with upgrade copy; no fake scores.

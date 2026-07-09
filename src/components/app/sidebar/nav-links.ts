@@ -1,6 +1,7 @@
 import {
   FileText,
   Mic2,
+  Newspaper,
   Plus,
   Radar,
   Search,
@@ -22,6 +23,7 @@ export const navLinks: NavLink[] = [
   { href: "/dashboard", label: "New analysis", icon: Plus },
   { href: "/drafts", label: "Drafts", icon: FileText },
   { href: "/feed", label: "Feed scanner", icon: Radar },
+  { href: "/briefing", label: "Briefing", icon: Newspaper },
   { href: "/research", label: "Research", icon: Search },
   { href: "/voice", label: "Voice", icon: Mic2 },
   { href: "/settings", label: "Settings", icon: Settings },

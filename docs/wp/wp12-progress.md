@@ -34,3 +34,10 @@
   `internal.briefings.dispatchDueBriefings` in `convex/crons.ts`.
 - Idempotency already in dispatcher (localDay index + shouldEnqueueBriefing).
 - Verified: `npm run typecheck`.
+
+## WP12-S5 — Briefing UI surface + nav
+
+- Added `/briefing` page + `BriefingView` (artifact sections, last-run,
+  Pro upgrade gate, empty state).
+- Nav link in `nav-links.ts` (sidebar + ⌘K).
+- Verified: `npm run typecheck`.
