@@ -9,6 +9,7 @@ import {
   query,
 } from "./_generated/server";
 import { hasProAccess, paidFeatureGateMessage } from "../shared/billing";
+import { isOpportunityExpired } from "../shared/feedFreshness";
 import {
   buildNotificationCopy,
   buildNotificationDeepLink,
@@ -414,6 +415,7 @@ export const evaluateOpportunity = internalMutation({
     if (!opportunity || opportunity.userId !== userId || opportunity.status !== "new") {
       return null;
     }
+    if (isOpportunityExpired(opportunity.postedAt, Date.now())) return null;
 
     const settingsRow = await ctx.db
       .query("notificationSettings")
