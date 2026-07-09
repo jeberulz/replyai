@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 
 import { retryDraftAsStandaloneAction } from "@/app/actions";
+import { OfflineDraftBadge } from "@/components/app/drafts/offline-pending-banner";
 import { XLogo } from "@/components/app/x-logo";
 import { Badge } from "@/components/ds/badge";
 import { Button } from "@/components/ds/button";
@@ -114,6 +115,7 @@ export function DraftRow({
             icon={<meta.icon className="size-3" />}
             className="shrink-0"
           />
+          <OfflineDraftBadge draftId={draft._id} />
           <div className="min-w-0 flex-1">
             <div className="line-clamp-1 text-sm font-medium">{draft.text}</div>
             <div className="line-clamp-1 text-xs text-muted-foreground">

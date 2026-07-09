@@ -18,10 +18,10 @@ import { api } from "../../../convex/_generated/api";
 import {
   publishAction,
   rewriteAction,
-  saveDraftAction,
   saveEditAction,
 } from "@/app/actions";
 import { trackClient } from "@/lib/analytics/client";
+import { saveDraftWithOffline } from "@/lib/saveDraftWithOffline";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { Badge } from "@/components/ds/badge";
 import { Button } from "@/components/ds/button";
@@ -335,16 +335,24 @@ export function OptionCard({
 
   const saveAsDraft = () => {
     startTransition(async () => {
-      await saveDraftAction({
-        text: content,
-        kind: option.kind,
-        analysisId,
-        replyId: option._id,
-        targetTweetId,
-        targetTweetUrl,
-        category: option.category,
-      });
-      toast.success("Saved to drafts");
+      try {
+        const result = await saveDraftWithOffline({
+          text: content,
+          kind: option.kind,
+          analysisId,
+          replyId: option._id,
+          targetTweetId,
+          targetTweetUrl,
+          category: option.category,
+        });
+        if (result.queued) {
+          toast.message("Saved offline — will sync when you're back online");
+        } else {
+          toast.success("Saved to drafts");
+        }
+      } catch {
+        toast.error("Could not save draft");
+      }
     });
   };
 

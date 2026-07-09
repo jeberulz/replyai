@@ -865,13 +865,15 @@ export async function retryDraftAsStandaloneAction(draftId: string) {
 
 export async function saveDraftAction(args: {
   text: string;
-  kind: "reply" | "quote";
+  kind: "reply" | "quote" | "standalone" | "thread" | "longform";
   analysisId?: string;
   replyId?: string;
   targetTweetId?: string;
   targetTweetUrl?: string;
   category?: string;
-}) {
+  /** WP15 offline queue idempotency key. */
+  clientId?: string;
+}): Promise<{ draftId: string }> {
   const { sessionToken, user } = await requireSession();
   const result = await convexServer().mutation(api.drafts.save, {
     sessionToken,
@@ -881,8 +883,9 @@ export async function saveDraftAction(args: {
     replyId: args.replyId as Id<"generatedReplies"> | undefined,
     targetTweetId: args.targetTweetId,
     targetTweetUrl: args.targetTweetUrl,
+    clientId: args.clientId,
   });
-  if (args.replyId) {
+  if (args.replyId && !result.deduped) {
     await trackServer("option_selected", user._id, {
       analysisId: args.analysisId,
       replyId: args.replyId,
@@ -893,12 +896,16 @@ export async function saveDraftAction(args: {
       editDistanceNormalized: result.editDistanceNormalized,
     });
   }
-  await trackServer("draft_saved", user._id, {
-    analysisId: args.analysisId,
-    replyId: args.replyId,
-    kind: args.kind,
-  });
+  if (!result.deduped) {
+    await trackServer("draft_saved", user._id, {
+      analysisId: args.analysisId,
+      replyId: args.replyId,
+      kind: args.kind,
+    });
+  }
   revalidatePath("/dashboard");
+  revalidatePath("/drafts");
+  return { draftId: String(result.draftId) };
 }
 
 export async function deleteDraftAction(draftId: string) {
@@ -918,6 +925,37 @@ export async function updateDraftAction(draftId: string, text: string) {
     text,
   });
   revalidatePath("/drafts");
+}
+
+// ---------------------------------------------------------------------------
+// WP15 — offline draft sync (creates/updates only; never publish)
+// ---------------------------------------------------------------------------
+
+export async function syncOfflineDraftCreateAction(args: {
+  clientId: string;
+  text: string;
+  kind: "reply" | "quote" | "standalone" | "thread" | "longform";
+  analysisId?: string;
+  replyId?: string;
+  targetTweetId?: string;
+  targetTweetUrl?: string;
+}): Promise<{ draftId: string }> {
+  return saveDraftAction({
+    text: args.text,
+    kind: args.kind,
+    analysisId: args.analysisId,
+    replyId: args.replyId,
+    targetTweetId: args.targetTweetId,
+    targetTweetUrl: args.targetTweetUrl,
+    clientId: args.clientId,
+  });
+}
+
+export async function syncOfflineDraftUpdateAction(args: {
+  draftId: string;
+  text: string;
+}): Promise<void> {
+  await updateDraftAction(args.draftId, args.text);
 }
 
 // ---------------------------------------------------------------------------

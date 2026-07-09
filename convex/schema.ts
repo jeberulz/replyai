@@ -271,11 +271,17 @@ export default defineSchema({
     ),
     error: v.optional(v.string()),
     createdAt: v.number(),
+    /**
+     * WP15: client idempotency key for offline-queued creates.
+     * Optional — only set when syncing from the offline draft queue.
+     */
+    clientId: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
     .index("by_compose_run", ["composeRunId"])
-    .index("by_variant_group", ["variantGroupId"]),
+    .index("by_variant_group", ["variantGroupId"])
+    .index("by_user_client", ["userId", "clientId"]),
 
   /**
    * WP14 — A/B reply variant groups. Keyed by user + analysis + category
