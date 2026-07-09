@@ -54,7 +54,7 @@ scanner keyword graph auto-rewrite, daily curator cadence.
   - Added (beyond enumerated list): `researchRuns.curatorPrunedCount`
     (optional number) so the UI can show quiet-pruned count precisely per run.
 
-- [ ] **WP33-S3 — Curator action**
+- [x] **WP33-S3 — Curator action**
   - `internal.researchActions.runMonthlyCurator` (or `convex/researchCurator.ts`):
     - Load user settings + watching handles + suggested profiles.
     - Mark quiet suggested/watching profiles `passed` (not watched handles

@@ -32,3 +32,22 @@ Append-only. Newest entries at the bottom.
   run (needed by the S6 UI strip). Justified additive field; noted in stories.
 - `_generated/dataModel.d.ts` derives `Doc` types from `schema.ts` directly, so
   no codegen was needed for the new fields. Typecheck green.
+
+## 2026-07-09 — S3 curator action
+
+- `internal.research.pruneQuietSuggestedProfiles`: prunes only `suggested` rows
+  that are quiet → `passed` + `passedReason: "quiet_30d"`. **Does not touch
+  watched handles or watching rows** — the DoD top line requires a human to
+  approve every watch change, so auto-unwatch is out (deviation from the literal
+  "quiet watched...pruned" wording; documented for the PR).
+- `internal.research.saveCuratorResults`: insert-only for genuinely new handles
+  (skips watched/passed/already-suggested), capped at MAX_REPLACEMENT_SUGGESTIONS
+  (5); closes the run with resultCount + curatorPrunedCount.
+- `internal.researchActions.runMonthlyCurator`: prune → demo path (keys missing
+  or isDemo → `demoCuratorArtifact`) → real discovery (reuses fetchSearch/
+  fetchHandle/rankResearchProfiles/synthesizeReasons; query built from niche
+  keywords + recent topics). No token → keep prune, save 0 new. Reasons prefixed
+  "Suggested replacement — ". try/catch → markRunFailed + Sentry.
+- Run row is created by the S4 dispatcher; the action receives runId only.
+- `npx convex codegen` did not change checked-in `_generated` files; typecheck +
+  full suite (324 pass) green.
