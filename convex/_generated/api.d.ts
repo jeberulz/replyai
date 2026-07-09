@@ -45,6 +45,8 @@ import type * as trends from "../trends.js";
 import type * as usage from "../usage.js";
 import type * as users from "../users.js";
 import type * as variants from "../variants.js";
+import type * as voiceDrift from "../voiceDrift.js";
+import type * as voiceDriftActions from "../voiceDriftActions.js";
 import type * as voiceProfiles from "../voiceProfiles.js";
 import type * as xTokens from "../xTokens.js";
 
@@ -92,6 +94,8 @@ declare const fullApi: ApiFromModules<{
   usage: typeof usage;
   users: typeof users;
   variants: typeof variants;
+  voiceDrift: typeof voiceDrift;
+  voiceDriftActions: typeof voiceDriftActions;
   voiceProfiles: typeof voiceProfiles;
   xTokens: typeof xTokens;
 }>;

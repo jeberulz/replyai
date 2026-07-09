@@ -43,7 +43,7 @@ view in Voice Studio.
   - Compare stored profile style vs newly measured style from example set.
   - Vitest: no drift, minor drift, major drift fixtures.
 
-- [ ] **WP36-S2 — Schema + run records**
+- [x] **WP36-S2 — Schema + run records**
   - Additive `voiceDriftRuns` (or reuse pattern on existing table).
   - Internal write on run complete/fail; account delete/export.
 

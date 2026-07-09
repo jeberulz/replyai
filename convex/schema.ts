@@ -36,6 +36,33 @@ export const voiceStyle = v.object({
   commonPhrases: v.array(v.string()),
 });
 
+/** WP36 — persisted voice-drift suggestion payload (propose-only). */
+export const voiceDriftSuggestion = v.object({
+  severity: v.union(
+    v.literal("none"),
+    v.literal("minor"),
+    v.literal("major")
+  ),
+  changedFieldCount: v.number(),
+  fields: v.array(
+    v.object({
+      field: v.string(),
+      label: v.string(),
+      before: v.string(),
+      after: v.string(),
+      changed: v.boolean(),
+    })
+  ),
+  phraseDelta: v.object({
+    added: v.array(v.string()),
+    removed: v.array(v.string()),
+  }),
+  measuredStyle: voiceStyle,
+  summary: v.string(),
+  exampleTexts: v.array(v.string()),
+  demo: v.boolean(),
+});
+
 export default defineSchema({
   users: defineTable({
     xUserId: v.string(),
@@ -790,4 +817,35 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"]),
+
+  // WP36 — voice-drift agent runs (propose-only; never auto-apply).
+  voiceDriftRuns: defineTable({
+    userId: v.id("users"),
+    profileId: v.id("voiceProfiles"),
+    status: v.union(
+      v.literal("running"),
+      v.literal("complete"),
+      v.literal("failed"),
+      v.literal("dismissed")
+    ),
+    error: v.optional(v.string()),
+    /** Sources used: published drafts and/or X timeline / demo fixtures. */
+    sources: v.array(
+      v.union(
+        v.literal("published_drafts"),
+        v.literal("x_timeline"),
+        v.literal("demo")
+      )
+    ),
+    exampleCount: v.number(),
+    suggestion: v.optional(voiceDriftSuggestion),
+    /** Fields the user applied (empty if dismissed / none). */
+    appliedFields: v.optional(v.array(v.string())),
+    demo: v.boolean(),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_profile", ["profileId"]),
 });

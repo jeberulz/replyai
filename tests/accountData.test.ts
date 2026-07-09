@@ -31,6 +31,7 @@ describe("account data inventory contract", () => {
       "generatedReplies",
       "modelEvals",
       "tweetAnalyses",
+      "voiceDriftRuns",
       "voiceProfiles",
       "researchProfiles",
       "researchRuns",
