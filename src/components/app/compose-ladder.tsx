@@ -120,19 +120,20 @@ export function ComposeLadder() {
     </div>
   );
 
-  const detail = (
+  // Guard: do not build detail JSX when selected is null (empty/loading).
+  const detail = selected ? (
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-b border-border px-4 py-4 sm:px-6">
         <PaneEyebrow>Topic cluster</PaneEyebrow>
         <Heading level={2} className="mt-1 text-xl">
-          {selected!.topic}
+          {selected.topic}
         </Heading>
         <Text size="sm" className="mt-2 text-muted-foreground">
-          {selected!.reason}
+          {selected.reason}
         </Text>
-        {selected!.unusedAngles.length > 0 ? (
+        {selected.unusedAngles.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {selected!.unusedAngles.slice(0, 6).map((angle) => (
+            {selected.unusedAngles.slice(0, 6).map((angle) => (
               <Badge key={angle} variant="neutral" label={angle} />
             ))}
           </div>
@@ -170,10 +171,9 @@ export function ComposeLadder() {
                 <Sparkles className="size-4" />
               )
             }
-            isDisabled={pending || !selected}
+            isDisabled={pending}
             className="min-h-11 w-full sm:w-auto"
             onClick={() => {
-              if (!selected) return;
               startTransition(async () => {
                 const result = await startComposeAction({
                   format,
@@ -192,7 +192,7 @@ export function ComposeLadder() {
               });
             }}
           />
-          {activeRunId && run?.status === "complete" && selected ? (
+          {activeRunId && run?.status === "complete" ? (
             <Button
               variant="secondary"
               label="Generate more"
@@ -247,7 +247,7 @@ export function ComposeLadder() {
 
         <div className="space-y-2 border-t border-border pt-4">
           <PaneEyebrow>Source replies</PaneEyebrow>
-          {selected!.replies.map((reply) => (
+          {selected.replies.map((reply) => (
             <div
               key={reply.draftId}
               className="rounded-md border border-border px-3 py-2 text-sm"
@@ -263,13 +263,13 @@ export function ComposeLadder() {
         </div>
       </div>
     </div>
-  );
+  ) : null;
 
   return (
     <div className="-mx-4 h-[calc(100dvh-3rem)] overflow-hidden md:-mx-10 md:h-[calc(100dvh-4rem)]">
       <MasterDetail
         list={list}
-        detail={selected ? detail : null}
+        detail={detail}
         emptyDetail={
           <div className="flex h-full items-center justify-center p-8">
             <OatmealEmptyState

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   clusterWinningReplies,
@@ -106,5 +108,24 @@ describe("clusterWinningReplies", () => {
     const thread = demoComposeBundle(first, "thread");
     expect(thread.thread[0].posts.length).toBeGreaterThanOrEqual(4);
     expect(thread.thread[0].posts.length).toBeLessThanOrEqual(8);
+  });
+});
+
+describe("compose ladder null-selected guard (Gate 1)", () => {
+  it("empty clusters resolve selected to null", () => {
+    const clusters: ReturnType<typeof demoTopicClusters> = [];
+    const selectedId: string | null = null;
+    const selected =
+      clusters.find((c) => c.id === selectedId) ?? clusters[0] ?? null;
+    expect(selected).toBeNull();
+  });
+
+  it("detail pane is gated on selected (no selected! crash)", () => {
+    const src = readFileSync(
+      join(__dirname, "../src/components/app/compose-ladder.tsx"),
+      "utf8"
+    );
+    expect(src).not.toMatch(/selected!/);
+    expect(src).toMatch(/const detail = selected \?/);
   });
 });
