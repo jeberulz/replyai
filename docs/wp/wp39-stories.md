@@ -47,7 +47,7 @@ groundwork" — this WP ships the MVP agent path.
 
 ## Stories
 
-- [ ] **WP39-S1 — Shared proposal types + demo**
+- [x] **WP39-S1 — Shared proposal types + demo**
   - Proposal validator + demo fixture from static onboarding data.
   - Vitest: demo shape, fallback when empty input.
 
