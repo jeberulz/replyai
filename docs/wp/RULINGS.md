@@ -114,3 +114,68 @@ Ruling:
   Do not touch publish mutations, scanner internals, billing, or landing.
   No auto-publish. No fake engagement scores. Demo mode never breaks.
   No new dependencies unless escalated.
+
+## 2026-07-09 - WP31 - Freshness decay + auto-archive file boundary
+
+- Question: Phase 1 §10 #3 requires server-side archive and visible decay, but
+  timing logic already lives in `shared/scoring.ts` and notifications enqueue
+  from `convex/opportunities.ts`.
+- Ruling: WP31 may edit:
+  - `shared/feedFreshness.ts` (new) — age/window helpers aligned with scoring
+    curve; tests in `tests/feedFreshness.test.ts`.
+  - `convex/schema.ts` — additive `archived` status + optional `archivedAt`.
+  - `convex/opportunities.ts` — list filter/sort, internal archive mutations.
+  - `convex/crons.ts` — append archive interval (do not reorder existing crons).
+  - `convex/notifications.ts` or `internal.notifications.evaluateOpportunity`
+    — skip expired opportunities (minimal guard only).
+  - Feed UI: `src/components/app/feed/opportunity-row.tsx`,
+    `opportunity-detail.tsx`, and `feed-scanner.tsx` only for freshness copy/
+    styling (not scanner settings redesign).
+  - `shared/accountData.ts` + `convex/account.ts` — export/delete if needed.
+  - `docs/wp/wp31-stories.md`, `docs/wp/wp31-progress.md`.
+  Do **not** edit `scannerActions.ts`, `semanticRelevance.ts`,
+  `shared/rankingWeights.ts`, or research files. Escalate before changing
+  notification schema.
+
+## 2026-07-09 - WP32 - Ranking outcome weights + changelog file boundary
+
+- Question: Outcome-weighted ranking and changelog touch schema and possibly
+  `shared/briefings.ts` on branches where WP12 landed.
+- Ruling: WP32 may edit:
+  - `shared/rankingWeights.ts` — outcome weights + recency decay.
+  - `shared/rankingChangelog.ts` (new) — deterministic changelog sentence;
+    if `shared/briefings.ts` exists, refactor to import from here (no behavior
+    change).
+  - `convex/ranking.ts` — persist changelog on recompute.
+  - `convex/schema.ts` — additive `rankingChangelog` fields on
+    `scannerSettings`.
+  - One UI surface: `feed-scanner.tsx` **or** settings scanner card (not both
+    unless stories require).
+  - Scanner settings query in `convex/scanner.ts` (or equivalent) to expose
+    changelog fields.
+  - `tests/rankingWeights.test.ts`, `tests/rankingChangelog.test.ts` (new).
+  - `shared/accountData.ts` if export includes new fields.
+  - `docs/wp/wp32-stories.md`, `docs/wp/wp32-progress.md`.
+  Do **not** edit `convex/crons.ts` (weekly job stays as-is), `opportunities`
+  archive logic (WP31), or `researchActions.ts`. No LLM changelog agent in WP32.
+
+## 2026-07-09 - WP33 - Research agent v2 MVP file boundary
+
+- Question: §7.2.2 continuous curator implies cron, research pipeline, and UI
+  beyond `convex/research.ts`.
+- Ruling: WP33 may edit:
+  - `shared/researchCurator.ts` (new) + tests.
+  - `convex/schema.ts` — additive `runKind`, optional `passedReason`,
+    `lastCuratorRunMonth`.
+  - `convex/research.ts`, `convex/researchActions.ts` — curator action +
+    public latest-run query; reuse WP21 helpers in `shared/researchWatch.ts`,
+    `shared/researchScoring.ts`.
+  - `convex/crons.ts` — append monthly dispatcher (rebase after WP31).
+  - `src/components/app/research-agent.tsx`, `research/profile-*.tsx` —
+    curator status strip only; no AppShell rewrite.
+  - `shared/accountData.ts` + `convex/account.ts` — cascade/export.
+  - `docs/wp/wp33-stories.md`, `docs/wp/wp33-progress.md`.
+  Do **not** auto-add to `watchedHandles` without explicit user click. Do not
+  edit `scannerActions.ts`, ranking, or publish paths. No new npm deps unless
+  escalated. Demo mode must return deterministic curator output.
+
