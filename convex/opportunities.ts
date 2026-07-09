@@ -42,6 +42,7 @@ export const list = query({
         q.eq("userId", user._id).eq("status", "new")
       )
       .collect();
+    const now = Date.now();
     return rows
       .filter(
         (opp) =>
@@ -54,7 +55,12 @@ export const list = query({
             opp.topicRelevance
           )
       )
-      .sort((a, b) => b.score - a.score)
+      .map((opp) => ({
+        ...opp,
+        effectiveScore: effectiveDisplayScore(opp.score, opp.postedAt, now),
+        freshnessLabel: freshnessLabel(opp.postedAt, now),
+      }))
+      .sort((a, b) => b.effectiveScore - a.effectiveScore)
       .slice(0, limit ?? 20);
   },
 });
