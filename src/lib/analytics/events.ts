@@ -33,6 +33,9 @@ export type OptionSelectedAction = "copied" | "saved" | "published";
 /** What triggered a generation call. */
 export type GenerationTrigger = "initial" | "more";
 
+export type NotificationAlertChannel = "push" | "digest";
+export type NotificationAlertTier = "golden15" | "hot";
+
 export type AnalyticsEventProperties = {
   /** Fired once per user per scan run when new opportunities were inserted. */
   opportunity_surfaced: {
@@ -74,6 +77,28 @@ export type AnalyticsEventProperties = {
     scheduled: boolean;
     editBucket?: ObservedEditBucket;
     editDistanceNormalized?: number;
+  };
+  /** Fired when a hot-window alert is delivered (push or digest). */
+  notification_alert_delivered: {
+    alertId: string;
+    opportunityId: string;
+    tier: NotificationAlertTier;
+    channel: NotificationAlertChannel;
+    score: number;
+    source?: FunnelSource;
+  };
+  /** Fired when a user opens an alert deep link. */
+  notification_alert_opened: {
+    alertId: string;
+    opportunityId: string;
+    tier: NotificationAlertTier;
+  };
+  /** Fired when a user publishes after opening an alert. */
+  notification_alert_sent: {
+    alertId: string;
+    opportunityId: string;
+    tier: NotificationAlertTier;
+    draftId?: string;
   };
 };
 
