@@ -16,8 +16,8 @@ import { toast } from "sonner";
 import {
   deleteDraftAction,
   retryDraftAsStandaloneAction,
-  updateDraftAction,
 } from "@/app/actions";
+import { updateDraftWithOffline } from "@/lib/saveDraftWithOffline";
 import { XLogo } from "@/components/app/x-logo";
 import { ReplyPacingWarning } from "@/components/app/reply-pacing/reply-pacing-warning";
 import { DuplicateReplyWarning } from "@/components/app/reply-pacing/duplicate-reply-warning";
@@ -104,9 +104,17 @@ export function DraftDetail({
 
   const save = () =>
     startTransition(async () => {
-      await updateDraftAction(draft._id, text);
-      setEditing(false);
-      toast.success("Draft updated");
+      try {
+        const result = await updateDraftWithOffline(draft._id, text);
+        setEditing(false);
+        if (result.queued) {
+          toast.message("Saved offline — will sync when you're back online");
+        } else {
+          toast.success("Draft updated");
+        }
+      } catch {
+        toast.error("Could not update draft");
+      }
     });
 
   const remove = () =>

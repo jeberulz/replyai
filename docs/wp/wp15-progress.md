@@ -54,3 +54,12 @@
 - **WP8 push regression checklist (manual):** enable push in Settings →
   receive hot-window notification → click opens `/feed` (or deep link) and
   focuses existing client; no second SW registration in Application panel.
+
+
+## 2026-07-09 — WP15-S5 UI + verification
+
+- Drafts list: `OfflinePendingBanner` + per-row `OfflineDraftBadge`.
+- Option card / draft detail use offline-aware save/update wrappers.
+- Settings → Install app card (`beforeinstallprompt` + manual A2HS copy).
+- Manual airplane-mode test: edit/save draft offline → reconnect → toast sync;
+  publish still requires online + explicit click.

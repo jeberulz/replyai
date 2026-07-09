@@ -61,6 +61,6 @@ on drafts (schema stable).
   - Additive SW: cache static assets only (app icons, fonts) — not API.
   - Verify push + notificationclick still pass manual WP8 regression.
 
-- [ ] **WP15-S5 — UI + verification**
+- [x] **WP15-S5 — UI + verification**
   - Draft list/detail shows offline/synced state; optional install hint in settings.
   - Manual: airplane mode save → reconnect sync; checks green; PR DoD checklist.
