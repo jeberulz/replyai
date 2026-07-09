@@ -8,10 +8,12 @@
  * @module
  */
 
-import type * as analyses from "../analyses.js";
 import type * as account from "../account.js";
+import type * as analyses from "../analyses.js";
 import type * as billing from "../billing.js";
 import type * as billingNode from "../billingNode.js";
+import type * as briefingActions from "../briefingActions.js";
+import type * as briefings from "../briefings.js";
 import type * as cache from "../cache.js";
 import type * as crons from "../crons.js";
 import type * as drafts from "../drafts.js";
@@ -34,6 +36,7 @@ import type * as scanner from "../scanner.js";
 import type * as scannerActions from "../scannerActions.js";
 import type * as scannerSemantic from "../scannerSemantic.js";
 import type * as semanticActions from "../semanticActions.js";
+import type * as tokenSecurity from "../tokenSecurity.js";
 import type * as usage from "../usage.js";
 import type * as users from "../users.js";
 import type * as voiceProfiles from "../voiceProfiles.js";
@@ -46,10 +49,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  analyses: typeof analyses;
   account: typeof account;
+  analyses: typeof analyses;
   billing: typeof billing;
   billingNode: typeof billingNode;
+  briefingActions: typeof briefingActions;
+  briefings: typeof briefings;
   cache: typeof cache;
   crons: typeof crons;
   drafts: typeof drafts;
@@ -72,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   scannerActions: typeof scannerActions;
   scannerSemantic: typeof scannerSemantic;
   semanticActions: typeof semanticActions;
+  tokenSecurity: typeof tokenSecurity;
   usage: typeof usage;
   users: typeof users;
   voiceProfiles: typeof voiceProfiles;

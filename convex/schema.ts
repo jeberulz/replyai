@@ -563,4 +563,66 @@ export default defineSchema({
     dateKey: v.string(),
     deliveredCount: v.number(),
   }).index("by_user_date", ["userId", "dateKey"]),
+
+  // WP12 — daily briefing agent settings (disabled until opt-in).
+  briefingSettings: defineTable({
+    userId: v.id("users"),
+    enabled: v.boolean(),
+    /** Local hour 0–23 when the briefing should run. */
+    hourLocal: v.number(),
+    timezone: v.string(),
+    emailOptIn: v.boolean(),
+    optedInAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  // WP12 — one run record per local calendar day (mirror researchRuns).
+  briefingRuns: defineTable({
+    userId: v.id("users"),
+    /** Local calendar day key (YYYY-MM-DD in user timezone). */
+    localDay: v.string(),
+    status: v.union(
+      v.literal("running"),
+      v.literal("complete"),
+      v.literal("failed")
+    ),
+    error: v.optional(v.string()),
+    opportunityCount: v.number(),
+    outcomeCount: v.number(),
+    /** Structured briefing artifact (JSON-serializable). */
+    artifact: v.optional(
+      v.object({
+        opportunities: v.array(
+          v.object({
+            opportunityId: v.optional(v.string()),
+            authorHandle: v.string(),
+            textPreview: v.string(),
+            angle: v.string(),
+            reason: v.string(),
+          })
+        ),
+        outcomes: v.object({
+          analyzed: v.number(),
+          sent: v.number(),
+          responded: v.number(),
+          summary: v.string(),
+        }),
+        coachingInsight: v.string(),
+        generatedAt: v.number(),
+        demo: v.boolean(),
+      })
+    ),
+    emailStatus: v.optional(
+      v.union(
+        v.literal("skipped"),
+        v.literal("sent"),
+        v.literal("failed")
+      )
+    ),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_user_local_day", ["userId", "localDay"]),
 });

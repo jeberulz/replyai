@@ -20,6 +20,8 @@ describe("account data inventory contract", () => {
       "notificationSettings",
       "notificationDailyCounts",
       "notificationAlerts",
+      "briefingSettings",
+      "briefingRuns",
       "usage",
       "opportunities",
       "savedDrafts",
