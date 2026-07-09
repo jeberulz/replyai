@@ -44,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ReplyPacingWarning } from "@/components/app/reply-pacing/reply-pacing-warning";
+import { DuplicateReplyWarning } from "@/components/app/reply-pacing/duplicate-reply-warning";
 import { cn } from "@/lib/utils";
 import {
   measureObservedEdit,
@@ -374,6 +375,7 @@ export function OptionCard({
 
         <div className="space-y-2 border-t pt-3">
           <ReplyPacingWarning />
+          <DuplicateReplyWarning text={content} />
           <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"

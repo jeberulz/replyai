@@ -3,6 +3,7 @@ import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { requireUser } from "./helpers";
+import { assertFairUseAllowed } from "./lib/fairUse";
 import { tweetAncestorSnapshot, tweetSnapshot } from "./schema";
 
 const STALE_PIPELINE_MS = 15 * 60 * 1000;
@@ -54,6 +55,7 @@ export const start = mutation({
   },
   handler: async (ctx, { sessionToken, projectId, ...args }) => {
     const user = await requireUser(ctx, sessionToken);
+    await assertFairUseAllowed(ctx, user, "start_analysis");
     if (projectId) {
       await requireOwnedProject(ctx, user._id, projectId);
     }
