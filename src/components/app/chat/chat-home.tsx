@@ -7,6 +7,7 @@ import { AnalysisThread } from "./analysis-thread";
 import { ChatComposer } from "./chat-composer";
 import { PersonalAnalyticsCard } from "./personal-analytics-card";
 import { ReplyPacingCard } from "./reply-pacing-card";
+import { FairUseBanner } from "@/components/app/fair-use/fair-use-banner";
 import { StatStrip } from "./stat-strip";
 import { SuggestionChips } from "./suggestion-chips";
 import { type AnalyzeInput, useAnalysisPipeline } from "./use-analysis-pipeline";
@@ -85,6 +86,7 @@ export function ChatHome({
             error={startError}
             initialValue={initialUrl}
           />
+          <FairUseBanner className="w-full max-w-xl" />
           <SuggestionChips onPick={submit} disabled={starting} />
           <ReplyPacingCard />
           <PersonalAnalyticsCard />

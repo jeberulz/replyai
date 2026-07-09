@@ -2,6 +2,10 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { currentMonth, requireUser } from "./helpers";
 import {
+  assertFairUseAllowed,
+  getFairUseStatus,
+} from "./lib/fairUse";
+import {
   opportunityToAnalyzeRate,
   type OpportunityFunnelRow,
 } from "../shared/rankingWeights";
@@ -13,6 +17,7 @@ import {
   chooseObservedAngle,
   type ObservedAnalyticsRow,
 } from "../shared/personalAnalytics";
+import { assessDuplicateReplyRisk, DUPLICATE_REPLY_LOOKBACK_MS } from "../shared/duplicateReply";
 
 const PERSONAL_ANALYTICS_SCAN_LIMIT = 400;
 const PERSONAL_ANALYTICS_COMPLETED_LIMIT = 250;
@@ -27,6 +32,12 @@ export const record = mutation({
   },
   handler: async (ctx, { sessionToken, tokensIn, tokensOut, analyses, generations }) => {
     const user = await requireUser(ctx, sessionToken);
+    if (analyses > 0) {
+      await assertFairUseAllowed(ctx, user, "run_analysis");
+    }
+    if (generations > 0) {
+      await assertFairUseAllowed(ctx, user, "generate");
+    }
     const month = currentMonth();
     const row = await ctx.db
       .query("usage")
@@ -53,6 +64,59 @@ export const record = mutation({
         generations,
       });
     }
+  },
+});
+
+export const fairUseStatus = query({
+  args: {
+    sessionToken: v.string(),
+    action: v.optional(
+      v.union(
+        v.literal("start_analysis"),
+        v.literal("run_analysis"),
+        v.literal("generate")
+      )
+    ),
+  },
+  handler: async (ctx, { sessionToken, action }) => {
+    const user = await requireUser(ctx, sessionToken);
+    return await getFairUseStatus(ctx, user, action ?? "start_analysis");
+  },
+});
+
+export const duplicateReplyCheck = query({
+  args: {
+    sessionToken: v.string(),
+    text: v.string(),
+  },
+  handler: async (ctx, { sessionToken, text }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const nowMs = Date.now();
+    const lookbackStart = nowMs - DUPLICATE_REPLY_LOOKBACK_MS;
+
+    const publishedDrafts = await ctx.db
+      .query("savedDrafts")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", user._id).eq("status", "published")
+      )
+      .order("desc")
+      .take(80);
+
+    return assessDuplicateReplyRisk({
+      candidateText: text,
+      nowMs,
+      recentPublished: publishedDrafts
+        .filter(
+          (draft) =>
+            draft.kind === "reply" &&
+            Boolean(draft.publishedAt) &&
+            draft.publishedAt! >= lookbackStart
+        )
+        .map((draft) => ({
+          text: draft.text,
+          publishedAt: draft.publishedAt!,
+        })),
+    });
   },
 });
 

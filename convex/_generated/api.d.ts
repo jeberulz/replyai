@@ -21,6 +21,7 @@ import type * as evals from "../evals.js";
 import type * as helpers from "../helpers.js";
 import type * as http from "../http.js";
 import type * as lib_analytics from "../lib/analytics.js";
+import type * as lib_fairUse from "../lib/fairUse.js";
 import type * as lib_sentry from "../lib/sentry.js";
 import type * as notifications from "../notifications.js";
 import type * as notificationsActions from "../notificationsActions.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   helpers: typeof helpers;
   http: typeof http;
   "lib/analytics": typeof lib_analytics;
+  "lib/fairUse": typeof lib_fairUse;
   "lib/sentry": typeof lib_sentry;
   notifications: typeof notifications;
   notificationsActions: typeof notificationsActions;

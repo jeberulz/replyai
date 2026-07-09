@@ -18,6 +18,7 @@ import {
 } from "@/app/actions";
 import { XLogo } from "@/components/app/x-logo";
 import { ReplyPacingWarning } from "@/components/app/reply-pacing/reply-pacing-warning";
+import { DuplicateReplyWarning } from "@/components/app/reply-pacing/duplicate-reply-warning";
 import { Badge } from "@/components/ds/badge";
 import { Button } from "@/components/ds/button";
 import { Card } from "@/components/ds/card";
@@ -277,6 +278,9 @@ export function DraftDetail({
         }
       >
         <ReplyPacingWarning className="w-full" />
+        {draft.kind === "reply" && draft.status !== "published" && (
+          <DuplicateReplyWarning text={text} className="w-full" />
+        )}
         {canReplyOnX && (
           <Button
             label="Reply on X"

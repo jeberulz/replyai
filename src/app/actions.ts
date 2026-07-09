@@ -64,6 +64,28 @@ async function requireSession() {
   return session;
 }
 
+function actionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return fallback;
+}
+
+async function assertFairUseInAction(
+  sessionToken: string,
+  action: "start_analysis" | "run_analysis" | "generate"
+): Promise<{ error: string } | null> {
+  const convex = convexServer();
+  const status = await convex.query(api.usage.fairUseStatus, {
+    sessionToken,
+    action,
+  });
+  if (status.blocked && status.message) {
+    return { error: status.message };
+  }
+  return null;
+}
+
 async function resolveXAccessToken(sessionToken: string): Promise<string | null> {
   const convex = convexServer();
   const serverSecret = process.env.CONVEX_SERVER_TOKEN_ACCESS_SECRET;
@@ -297,6 +319,9 @@ export async function startAnalysisAction(input: {
     };
   }
 
+  const fairUseBlock = await assertFairUseInAction(sessionToken, "start_analysis");
+  if (fairUseBlock) return fairUseBlock;
+
   try {
     let bundle: TweetBundle;
     let replySettings: string | undefined;
@@ -388,7 +413,10 @@ export async function startAnalysisAction(input: {
   } catch (error) {
     console.error("Start analysis failed:", error);
     return {
-      error: "Couldn't capture that tweet. Check that Convex is running and try again.",
+      error: actionErrorMessage(
+        error,
+        "Couldn't capture that tweet. Check that Convex is running and try again."
+      ),
     };
   }
 }
@@ -412,6 +440,24 @@ export async function continueAnalysisAction(
   if (!doc) return { error: "Analysis not found." };
   if (doc.status === "complete" || doc.status === undefined) {
     return { ok: true };
+  }
+
+  const needsAnalysis = !doc.summary;
+  const existingReplies = await convex.query(api.replies.listByAnalysis, {
+    sessionToken,
+    analysisId: id,
+  });
+  const needsGeneration =
+    !existingReplies.some((r) => r.kind === "reply") ||
+    !existingReplies.some((r) => r.kind === "quote");
+
+  if (needsAnalysis) {
+    const fairUseBlock = await assertFairUseInAction(sessionToken, "run_analysis");
+    if (fairUseBlock) return fairUseBlock;
+  }
+  if (needsGeneration) {
+    const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
+    if (fairUseBlock) return fairUseBlock;
   }
 
   try {
@@ -445,10 +491,7 @@ export async function continueAnalysisAction(
     // Stage 2: initial options, 3 per kind (PRD: exactly 3 + "generate
     // more"). Each set is inserted the moment it resolves so the thread
     // shows replies while quotes are still generating.
-    const existing = await convex.query(api.replies.listByAnalysis, {
-      sessionToken,
-      analysisId: id,
-    });
+    const existing = existingReplies;
     const { profile } = await defaultVoice(sessionToken);
     const voice = (profile?.style as VoiceStyle | undefined) ?? null;
     const examples = profile?.examples ?? [];
@@ -530,6 +573,9 @@ export async function generateMoreAction(args: {
   const convex = convexServer();
   const analysisId = args.analysisId as Id<"tweetAnalyses">;
 
+  const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
+  if (fairUseBlock) throw new Error(fairUseBlock.error);
+
   const analysis = await convex.query(api.analyses.get, {
     sessionToken,
     analysisId,
@@ -598,6 +644,9 @@ export async function rewriteAction(args: {
 }) {
   const { sessionToken } = await requireSession();
   const convex = convexServer();
+  const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
+  if (fairUseBlock) throw new Error(fairUseBlock.error);
+
   const direction = REWRITE_DIRECTIONS.find((d) => d === args.direction);
   if (!direction) throw new Error("Unknown rewrite direction");
 
