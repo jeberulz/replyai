@@ -34,6 +34,13 @@
 
 ## 2026-07-09 — WP36-S5
 
+- Verified: `tsc --noEmit`, `eslint .` (pre-existing `_generated` unused-disable
+  warnings only), `vitest run` (398 passed), `next build` green.
+- Quarterly cron stub skipped (MVP on-demand only; stretch deferred).
+- Worktree-only: `replyai-wp36` — primary checkout left to WP14.
+
+## 2026-07-09 — WP36-S5
+
 - Verified: `tsc --noEmit`, `eslint .` (0 errors; pre-existing generated warnings),
   `vitest run` (398 pass / 1 skip), `next build` green.
 - Quarterly cron skipped (MVP on-demand only) — stretch left for later.
