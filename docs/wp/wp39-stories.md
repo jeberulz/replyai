@@ -55,7 +55,7 @@ groundwork" — this WP ships the MVP agent path.
   - Additive run table; get latest run for session user.
   - `requireUser` on all public functions; account delete/export.
 
-- [ ] **WP39-S3 — Concierge action**
+- [x] **WP39-S3 — Concierge action**
   - Fetch bio + recent tweets (or demo); LLM or heuristic proposal.
   - Missing keys → demo proposal; failures → failed run row + graceful UI.
 

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import {
   internalMutation,
+  internalQuery,
   mutation,
   query,
 } from "./_generated/server";
@@ -310,6 +311,30 @@ export const acceptWatch = mutation({
       acceptedHandles: [...(run.acceptedHandles ?? []), normalized],
     });
     return { accepted: true };
+  },
+});
+
+/** Lightweight user fields for the concierge action prompt. */
+export const userContext = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.union(
+    v.object({
+      xUserId: v.string(),
+      username: v.string(),
+      displayName: v.string(),
+      isDemo: v.boolean(),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) return null;
+    return {
+      xUserId: user.xUserId,
+      username: user.username,
+      displayName: user.displayName,
+      isDemo: user.isDemo,
+    };
   },
 });
 

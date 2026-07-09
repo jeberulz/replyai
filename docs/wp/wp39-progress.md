@@ -23,3 +23,12 @@
 - Account delete/export: `onboardingConciergeRuns` in `ACCOUNT_USER_TABLES`
   + `convex/account.ts` switch arms.
 - Action stub in `onboardingConciergeActions.ts` (demo proposal) — filled in S3.
+
+## 2026-07-09 — WP39-S3
+
+- `runConcierge`: X bio+tweets when credentials present; else demo fixtures.
+- LLM via Anthropic + Zod (`LlmProposalSchema`); missing key → heuristic;
+  empty signal / demo user → `demoOnboardingProposal`.
+- Failures write `failed` run row via `failRun`; never throw past the action.
+- Server actions: `runOnboardingConciergeAction`, `skipOnboardingConciergeAction`,
+  `applyOnboardingConciergeProposalAction`, `acceptOnboardingConciergeWatchAction`.
