@@ -97,3 +97,13 @@ Append-only. Newest entries at the bottom.
   automatically exported and deleted. Verified `tests/accountData.test.ts` green.
 - README: added a "Research curator (Pro)" bullet (monthly cron, idempotent per
   UTC month, suggest-only human gate).
+
+## 2026-07-09 — S8 code-review fix
+
+- /security-review: no findings.
+- /code-review caught one real bug: the curator demo trigger was
+  `scanCtx?.isDemo || !hasAnthropicKey()`, which would insert fake demo profiles
+  (@sarahbuilds …) into a *real* user's suggestions when `ANTHROPIC_API_KEY` was
+  unset. Fixed to `scanCtx?.isDemo` only — matches manual `runResearch`;
+  `synthesizeReasons` already falls back to template reasons with no key, so real
+  users still get real discovery. Typecheck + tests green.

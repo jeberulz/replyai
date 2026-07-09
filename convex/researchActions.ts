@@ -297,8 +297,12 @@ export const runMonthlyCurator = internalAction({
         userId,
       });
 
-      // 2a. Demo path — deterministic replacement candidates, no keys needed.
-      if (scanCtx?.isDemo || !hasAnthropicKey()) {
+      // 2a. Demo path — deterministic candidates for demo accounts only.
+      // A missing Anthropic key is NOT a demo trigger: real users still get
+      // real discovery, with template reasons via synthesizeReasons (matches
+      // the manual runResearch pipeline). Otherwise demo profiles would leak
+      // into a real user's suggestions.
+      if (scanCtx?.isDemo) {
         const { candidates } = demoCuratorArtifact(nowMs, prunedCount);
         await ctx.runMutation(internal.research.saveCuratorResults, {
           runId,
