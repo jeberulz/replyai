@@ -20,3 +20,13 @@
   (4) theme_color, (5) registered service worker controlling page (after S4),
   (6) HTTPS or localhost. Installability may still require user engagement /
   beforeinstallprompt — banner lands in S5.
+
+## 2026-07-09 — WP15-S2 offline draft queue (client)
+
+- `src/lib/offlineDrafts.ts`: IndexedDB store `replypilot-offline-drafts` /
+  `queue` keyed by `clientId`; memory fallback for SSR/tests.
+- Pure helpers: `mergeQueuedOp` (LWW by `updatedAt`, merge same draftId updates),
+  `shouldQueueOffline` / `isNetworkError`, `flushOfflineQueue` (draft create/
+  update only — never publish).
+- `tests/offlineDrafts.test.ts` — 14 cases covering merge, dequeue, offline
+  no-op, create/update flush, error retention, network stop.

@@ -49,7 +49,7 @@ on drafts (schema stable).
   - Manifest + icons; linked from root/app layout.
   - Lighthouse installable criteria documented in progress.md.
 
-- [ ] **WP15-S2 — Offline draft queue (client)**
+- [x] **WP15-S2 — Offline draft queue (client)**
   - IndexedDB store: pending draft saves/edits with client idempotency key.
   - Vitest for enqueue/dequeue/merge logic.
 
