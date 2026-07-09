@@ -53,7 +53,7 @@ on drafts (schema stable).
   - IndexedDB store: pending draft saves/edits with client idempotency key.
   - Vitest for enqueue/dequeue/merge logic.
 
-- [ ] **WP15-S3 — Sync layer**
+- [x] **WP15-S3 — Sync layer**
   - On online: flush queue via existing draft mutations; resolve conflicts last-write-wins with toast.
   - Surface sync errors; never drop queued text silently.
 

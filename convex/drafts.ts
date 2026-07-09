@@ -68,9 +68,45 @@ export const save = mutation({
     variantLabel: v.optional(
       v.union(v.literal("A"), v.literal("B"), v.literal("C"))
     ),
+    /** WP15 offline queue idempotency key — create-once on sync. */
+    clientId: v.optional(v.string()),
   },
-  handler: async (ctx, { sessionToken, ...args }) => {
+  handler: async (ctx, { sessionToken, clientId, ...args }) => {
     const user = await requireUser(ctx, sessionToken);
+    if (clientId) {
+      const existing = await ctx.db
+        .query("savedDrafts")
+        .withIndex("by_user_client", (q) =>
+          q.eq("userId", user._id).eq("clientId", clientId)
+        )
+        .unique();
+      if (existing) {
+        // Last-write-wins text if the queued create was edited before sync.
+        if (existing.status !== "published" && existing.text !== args.text) {
+          const observedEdit = await getObservedEditForDraft(
+            ctx,
+            user._id,
+            args.replyId ?? existing.replyId,
+            args.text
+          );
+          await ctx.db.patch(existing._id, {
+            text: args.text,
+            ...observedEdit.draftPatch,
+          });
+          return {
+            draftId: existing._id,
+            ...observedEdit.analytics,
+            deduped: true as const,
+          };
+        }
+        return {
+          draftId: existing._id,
+          editBucket: existing.editBucket,
+          editDistanceNormalized: existing.editDistanceNormalized,
+          deduped: true as const,
+        };
+      }
+    }
     if (args.variantGroupId) {
       const group = await ctx.db.get(args.variantGroupId);
       if (!group || group.userId !== user._id) {
@@ -86,6 +122,7 @@ export const save = mutation({
     const draftId = await ctx.db.insert("savedDrafts", {
       userId: user._id,
       ...args,
+      ...(clientId ? { clientId } : {}),
       ...observedEdit.draftPatch,
       status: "draft",
       createdAt: Date.now(),
@@ -93,6 +130,7 @@ export const save = mutation({
     return {
       draftId,
       ...observedEdit.analytics,
+      deduped: false as const,
     };
   },
 });

@@ -30,3 +30,14 @@
   update only — never publish).
 - `tests/offlineDrafts.test.ts` — 14 cases covering merge, dequeue, offline
   no-op, create/update flush, error retention, network stop.
+
+
+## 2026-07-09 — WP15-S3 sync layer
+
+- Optional `savedDrafts.clientId` + `by_user_client` index; `drafts.save` dedupes
+  offline creates (LWW text patch if already exists).
+- Named actions: `syncOfflineDraftCreateAction` / `syncOfflineDraftUpdateAction`
+  (WP15 group in `actions.ts` — no concierge collision).
+- `offlineDraftSync.ts` + `OfflineDraftSync` in app layout: flush on online,
+  focus, visibility, SW message. Toasts on sync/conflict/error; never drops text.
+- `saveDraftWithOffline` / `updateDraftWithOffline` wrap save/update for queueing.

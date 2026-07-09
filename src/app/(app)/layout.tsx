@@ -3,6 +3,7 @@ import { AnalyticsProvider } from "@/components/app/analytics-provider";
 import { AstryxThemeProvider } from "@/components/app/astryx-theme-provider";
 import { ConvexClientProvider } from "@/components/app/convex-provider";
 import { CommandMenu } from "@/components/app/command-menu";
+import { OfflineDraftSync } from "@/components/app/offline-draft-sync";
 import { AppNav } from "@/components/app/nav";
 import { SidebarProvider } from "@/components/app/sidebar/sidebar-provider";
 import {
@@ -38,6 +39,7 @@ export default async function AppLayout({
             </main>
           </div>
           <CommandMenu />
+          <OfflineDraftSync />
         </SidebarProvider>
       </AstryxThemeProvider>
     </ConvexClientProvider>
