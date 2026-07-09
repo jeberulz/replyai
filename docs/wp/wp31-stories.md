@@ -33,7 +33,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP31**.
 
 ## Stories
 
-- [ ] **WP31-S1 — Shared freshness helpers**
+- [x] **WP31-S1 — Shared freshness helpers**
   - Add `shared/feedFreshness.ts`:
     - `REPLY_WINDOW_FULL_MINUTES = 120`, `REPLY_WINDOW_DEAD_MINUTES = 480`
     - `replyTimingFactor(ageMinutes)` — same curve as `shared/scoring.ts`
@@ -43,7 +43,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP31**.
     - `freshnessLabel(postedAt, nowMs)` → short user string or null when fresh
   - Vitest: boundary at 120m/480m, monotonic decay, effective score drops.
 
-- [ ] **WP31-S2 — Schema + archive mutation**
+- [x] **WP31-S2 — Schema + archive mutation**
   - Extend `opportunities.status` union with `v.literal("archived")`.
   - Add optional `archivedAt: v.number()` on opportunities (set on archive).
   - `internal.opportunities.archiveExpiredForUser` in `convex/opportunities.ts`:
@@ -51,12 +51,12 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP31**.
   - `internal.opportunities.archiveExpiredAll` — iterate users with scanner
     settings enabled (same pattern as other fan-out crons).
 
-- [ ] **WP31-S3 — Cron**
+- [x] **WP31-S3 — Cron**
   - Append to `convex/crons.ts`: interval ~30 min →
     `internal.opportunities.archiveExpiredAll`.
   - Idempotent; safe if run overlaps with scanner upserts.
 
-- [ ] **WP31-S4 — Feed query + sort**
+- [x] **WP31-S4 — Feed query + sort**
   - `opportunities.list`: exclude `archived`; compute `effectiveScore` +
     `freshnessLabel` in handler (or shared helper) for each returned row.
   - Sort by `effectiveScore` desc (fallback `score` if helper unavailable).
@@ -64,7 +64,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP31**.
   - Optional `includeArchived` arg on an **internal** query only if needed for
     debugging — not exposed to client.
 
-- [ ] **WP31-S5 — Feed UI**
+- [x] **WP31-S5 — Feed UI**
   - `src/components/app/feed/opportunity-row.tsx` + `opportunity-detail.tsx`:
     show `freshnessLabel` when present; muted styling when window closed
     (before cron archives, during the brief gap, or if cron lagging).
@@ -72,16 +72,16 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP31**.
     progress if unchanged or align label copy with WP31 helpers.
   - Use `ds/` components already in feed paths; landing untouched.
 
-- [ ] **WP31-S6 — Notifications guard (minimal)**
+- [x] **WP31-S6 — Notifications guard (minimal)**
   - In `internal.notifications.evaluateOpportunity` (or shared helper it
     calls): skip enqueue when `isOpportunityExpired(opp.postedAt, now)` so
     stale rows don't push after missing the archive cron.
 
-- [ ] **WP31-S7 — Account delete/export**
+- [x] **WP31-S7 — Account delete/export**
   - If export lists opportunities by status, include `archived` in JSON export
     (`shared/accountData.ts` / `convex/account.ts`) — additive only.
 
-- [ ] **WP31-S8 — Final verification + PR**
+- [x] **WP31-S8 — Final verification + PR**
   - Full CI suite green.
   - `docs/wp/wp31-progress.md` complete.
   - PR: DoD, verification per story, deviations, Found-not-fixed.
