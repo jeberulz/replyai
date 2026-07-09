@@ -31,17 +31,17 @@ clusters, WP13 is **author** dossiers.
 
 ## Stories
 
-- [ ] **WP37-S1 — Shared clustering + demo**
+- [x] **WP37-S1 — Shared clustering + demo**
   - Pure function: opportunities → ranked topic clusters with counts.
   - Vitest with fixture corpus.
 
-- [ ] **WP37-S2 — Convex query + optional run record**
+- [x] **WP37-S2 — Convex query + optional run record**
   - Query returns clusters for session user; bounded pagination.
   - Optional internal mutation to cache last run (orchestrator decides in implementation).
 
-- [ ] **WP37-S3 — Radar UI**
+- [x] **WP37-S3 — Radar UI**
   - Compact Dark Chrome strip: “3 conversations forming around …”
   - Link into feed filtered view or opportunity list.
 
-- [ ] **WP37-S4 — Verification**
+- [x] **WP37-S4 — Verification**
   - Demo mode; no fake engagement %; checks green.

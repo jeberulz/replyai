@@ -39,6 +39,7 @@ import type * as scannerSemantic from "../scannerSemantic.js";
 import type * as semanticActions from "../semanticActions.js";
 import type * as timing from "../timing.js";
 import type * as tokenSecurity from "../tokenSecurity.js";
+import type * as trends from "../trends.js";
 import type * as usage from "../usage.js";
 import type * as users from "../users.js";
 import type * as voiceProfiles from "../voiceProfiles.js";
@@ -82,6 +83,7 @@ declare const fullApi: ApiFromModules<{
   semanticActions: typeof semanticActions;
   timing: typeof timing;
   tokenSecurity: typeof tokenSecurity;
+  trends: typeof trends;
   usage: typeof usage;
   users: typeof users;
   voiceProfiles: typeof voiceProfiles;

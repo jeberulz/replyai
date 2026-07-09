@@ -35,6 +35,7 @@ import { trackClient } from "@/lib/analytics/client";
 import { type Opportunity } from "@/components/app/opportunity-card";
 import { OpportunityRow } from "@/components/app/feed/opportunity-row";
 import { OpportunityDetail } from "@/components/app/feed/opportunity-detail";
+import { TrendRadarStrip } from "@/components/app/feed/trend-radar-strip";
 import { MasterDetail } from "@/components/app/split/master-detail";
 import {
   FilterChips,
@@ -55,6 +56,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { timeAgo } from "@/lib/utils";
+import { opportunityMatchesTopic } from "../../../shared/trends";
 
 const SCAN_TIMEOUT_MS = 45_000;
 
@@ -82,6 +84,10 @@ const QUICK_FILTERS: { value: QuickFilter; label: string }[] = [
 export function FeedScanner() {
   const sessionToken = useSessionToken();
   const searchParams = useSearchParams();
+  const topicSlug = searchParams.get("topic");
+  // Always-on clock for freshness + trend radar. Lazy initializer keeps
+  // Date.now() out of the render body (interval is the only in-effect update).
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const settings = useQuery(
     api.scanner.settings,
     sessionToken ? { sessionToken } : "skip"
@@ -89,6 +95,10 @@ export function FeedScanner() {
   const opportunities = useQuery(
     api.opportunities.list,
     sessionToken ? { sessionToken } : "skip"
+  );
+  const radar = useQuery(
+    api.trends.radar,
+    sessionToken ? { sessionToken, nowMs, limit: 3 } : "skip"
   );
   const [draftKeywords, setDraftKeywords] = useState<string | null>(null);
   const [draftSearchKeywords, setDraftSearchKeywords] = useState<string | null>(
@@ -99,9 +109,6 @@ export function FeedScanner() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [changelogDismissed, setChangelogDismissed] = useState(false);
-  // Always-on clock for the "fresh" filter. Lazy initializer keeps Date.now()
-  // out of the render body (the interval callback is the only in-effect update).
-  const [nowMs, setNowMs] = useState(() => Date.now());
   const [pending, startTransition] = useTransition();
   const scanBaselineRef = useRef<number>(0);
   const deepLinkHandledRef = useRef(false);
@@ -137,9 +144,21 @@ export function FeedScanner() {
   const parsedSearchKeywords = () =>
     searchKeywords.split(",").map((k) => k.trim()).filter(Boolean);
 
+  const activeTopic =
+    topicSlug && radar?.topics
+      ? (radar.topics.find((t) => t.slug === topicSlug) ?? null)
+      : null;
+
   const filteredOpportunities = useMemo(() => {
     if (!opportunities) return undefined;
     return opportunities.filter((opp) => {
+      if (activeTopic) {
+        if (
+          !opportunityMatchesTopic(opp.text, activeTopic, String(opp._id))
+        ) {
+          return false;
+        }
+      }
       if (quickFilter === "watched") return opp.source === "watched";
       if (quickFilter === "fresh") {
         if (nowMs === 0) return true;
@@ -150,7 +169,7 @@ export function FeedScanner() {
       }
       return true;
     });
-  }, [opportunities, quickFilter, nowMs]);
+  }, [opportunities, quickFilter, nowMs, activeTopic]);
 
   const rows: Opportunity[] = (filteredOpportunities ?? []).map((opp) => ({
     ...(opp as unknown as Opportunity),
@@ -399,6 +418,17 @@ export function FeedScanner() {
         </div>
       )}
 
+      <div className="mx-4 mt-4 sm:mx-6">
+        {radar && radar.topics.length > 0 ? (
+          <TrendRadarStrip
+            topics={radar.topics}
+            corpusSize={radar.corpusSize}
+            demo={radar.demo}
+            activeTopicSlug={topicSlug}
+          />
+        ) : null}
+      </div>
+
       {/* Scroll body */}
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
         {opportunities && opportunities.length > 0 && (
@@ -411,6 +441,7 @@ export function FeedScanner() {
 
         <PaneEyebrow className="text-primary">
           Opportunities
+          {activeTopic ? ` · ${activeTopic.label}` : ""}
           {!scanning &&
             filteredOpportunities !== undefined &&
             ` · ${filteredOpportunities.length}${quickFilter !== "all" && opportunities ? ` of ${opportunities.length}` : ""}`}
@@ -431,6 +462,12 @@ export function FeedScanner() {
             <OatmealEmptyState
               title="No matches for this filter"
               description='Try "All" to see every opportunity from the last scan.'
+              isCompact
+            />
+          ) : activeTopic && (opportunities?.length ?? 0) > 0 ? (
+            <OatmealEmptyState
+              title={`No conversations around ${activeTopic.label}`}
+              description="Clear the topic filter or scan again for fresher threads."
               isCompact
             />
           ) : settings?.lastScanError ? (
