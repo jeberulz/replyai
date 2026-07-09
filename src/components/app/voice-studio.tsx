@@ -14,6 +14,7 @@ import {
 } from "@/app/actions";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { PageHeader } from "@/components/app/page-header";
+import { VoiceDriftPanel } from "@/components/app/voice-drift-panel";
 import { Badge } from "@/components/ds/badge";
 import { Button } from "@/components/ds/button";
 import { Card } from "@/components/ds/card";
@@ -349,6 +350,7 @@ export function VoiceStudio({ xConnected }: { xConnected: boolean }) {
                     </>
                   )}
                 </div>
+                <VoiceDriftPanel profileId={profile._id} />
               </div>
             </Card>
           ))}

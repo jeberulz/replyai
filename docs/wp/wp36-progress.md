@@ -25,3 +25,9 @@
   fixtures when corpus thin / keys missing; optional zod-validated LLM summary.
 - Fair-use: one drift run increments `usage.analyses` (analysis bucket).
 - Cron quarterly skipped (MVP on-demand only).
+
+## 2026-07-09 — WP36-S4
+
+- `VoiceDriftPanel` on each Voice Studio profile card: Check / field checkboxes /
+  Apply selected / Dismiss. Never auto-applies.
+- Diff shows before→after for changed style fields + phrase deltas.

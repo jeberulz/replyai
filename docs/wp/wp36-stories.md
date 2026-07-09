@@ -52,7 +52,7 @@ view in Voice Studio.
   - Demo path when `ANTHROPIC_API_KEY` / X missing — never throw to user.
   - Optional LLM one-paragraph summary of diff (zod-validated); skip if no key.
 
-- [ ] **WP36-S4 — Voice Studio UI**
+- [x] **WP36-S4 — Voice Studio UI**
   - “Check for voice drift” button; shows diff + Apply / Dismiss.
   - Apply patches profile style/examples per user selection only.
 
