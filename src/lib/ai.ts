@@ -22,6 +22,15 @@ import {
   MAX_WEIGHTED_LENGTH,
   weightedLength,
 } from "../../shared/evals";
+import {
+  COMPOSE_OPTION_COUNT,
+  THREAD_MAX_POSTS,
+  THREAD_MIN_POSTS,
+  demoComposeBundle,
+  type ComposeBundle,
+  type ComposeFormat,
+  type TopicCluster,
+} from "../../shared/compose";
 
 let anthropic: Anthropic | null = null;
 function client(): Anthropic {
@@ -820,5 +829,332 @@ function demoRewrite(text: string, direction: RewriteDirection): string {
       return text.replace(/—/g, ",").replace(/;\s/g, ". ");
     case "more human":
       return `Honestly? ${text.charAt(0).toLowerCase()}${text.slice(1)}`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// WP23 — reply-to-post ladder compose generation
+// ---------------------------------------------------------------------------
+
+const COMPOSE_SYSTEM = `You are ReplyPilot's compose ladder. You turn a user's winning replies (conversations that got a reply-back) and unused missing-angles into original posts in their voice. Never invent fake engagement scores or percentages. Never suggest auto-publishing. Be specific and concrete.`;
+
+const ComposeStandaloneSchema = z.object({
+  options: z
+    .array(
+      z.object({
+        category: z.string(),
+        content: z.string(),
+        reason: z.string(),
+      })
+    )
+    .length(COMPOSE_OPTION_COUNT),
+});
+
+const ComposeThreadSchema = z.object({
+  options: z
+    .array(
+      z.object({
+        category: z.string(),
+        posts: z.array(z.string()).min(THREAD_MIN_POSTS).max(THREAD_MAX_POSTS),
+        reason: z.string(),
+      })
+    )
+    .length(COMPOSE_OPTION_COUNT),
+});
+
+const ComposeLongformSchema = z.object({
+  options: z
+    .array(
+      z.object({
+        category: z.string(),
+        title: z.string(),
+        content: z.string(),
+        reason: z.string(),
+      })
+    )
+    .length(COMPOSE_OPTION_COUNT),
+});
+
+function clusterContextBlock(cluster: TopicCluster): Anthropic.TextBlockParam {
+  const replies = cluster.replies
+    .map(
+      (r, i) =>
+        `${i + 1}. ${r.targetAuthorHandle ? `(@${r.targetAuthorHandle}) ` : ""}"""\n${r.replyText}\n"""${r.usedAngle ? `\n   Used angle: ${r.usedAngle}` : ""}`
+    )
+    .join("\n");
+  const angles =
+    cluster.unusedAngles.length > 0
+      ? cluster.unusedAngles.map((a) => `- ${a}`).join("\n")
+      : "(none listed — compound the winning replies into a clearer thesis)";
+  return {
+    type: "text",
+    text: `TOPIC CLUSTER
+Topic: ${cluster.topic}
+Why compose: ${cluster.reason}
+
+Winning replies (user already sent; author responded):
+${replies}
+
+Unused missing-angles still open:
+${angles}`,
+    cache_control: { type: "ephemeral" },
+  };
+}
+
+function emptyComposeBundle(format: ComposeFormat): ComposeBundle {
+  return {
+    format,
+    standalone: [],
+    thread: [],
+    longform: [],
+  };
+}
+
+function enforceComposeStandalone(
+  options: Array<{ category: string; content: string; reason: string }>
+) {
+  if (options.length !== COMPOSE_OPTION_COUNT) {
+    throw new Error(
+      `Compose guardrail: expected ${COMPOSE_OPTION_COUNT} standalone options`
+    );
+  }
+  return options.map((opt, i) => {
+    const content = opt.content.trim();
+    const reason = opt.reason.trim();
+    if (!content || !reason) {
+      throw new Error(`Compose guardrail: standalone option ${i + 1} empty`);
+    }
+    if (/%\s*(engagement|score|viral)/i.test(reason) || /\d{2}%/.test(reason)) {
+      throw new Error(
+        `Compose guardrail: standalone option ${i + 1} has fake-score reason`
+      );
+    }
+    const length = weightedLength(content);
+    if (length > MAX_WEIGHTED_LENGTH) {
+      throw new Error(
+        `Compose guardrail: standalone option ${i + 1} exceeds ${MAX_WEIGHTED_LENGTH} weighted chars`
+      );
+    }
+    return {
+      category: opt.category.trim() || "insight",
+      content,
+      reason,
+    };
+  });
+}
+
+function enforceComposeThread(
+  options: Array<{ category: string; posts: string[]; reason: string }>
+) {
+  if (options.length !== COMPOSE_OPTION_COUNT) {
+    throw new Error(
+      `Compose guardrail: expected ${COMPOSE_OPTION_COUNT} thread options`
+    );
+  }
+  return options.map((opt, i) => {
+    const posts = opt.posts.map((p) => p.trim()).filter(Boolean);
+    const reason = opt.reason.trim();
+    if (
+      posts.length < THREAD_MIN_POSTS ||
+      posts.length > THREAD_MAX_POSTS
+    ) {
+      throw new Error(
+        `Compose guardrail: thread option ${i + 1} must have ${THREAD_MIN_POSTS}–${THREAD_MAX_POSTS} posts`
+      );
+    }
+    if (!reason) {
+      throw new Error(`Compose guardrail: thread option ${i + 1} missing reason`);
+    }
+    for (const [j, post] of posts.entries()) {
+      if (weightedLength(post) > MAX_WEIGHTED_LENGTH) {
+        throw new Error(
+          `Compose guardrail: thread option ${i + 1} post ${j + 1} over limit`
+        );
+      }
+    }
+    return {
+      category: opt.category.trim() || "insight",
+      posts,
+      reason,
+    };
+  });
+}
+
+function enforceComposeLongform(
+  options: Array<{
+    category: string;
+    title: string;
+    content: string;
+    reason: string;
+  }>
+) {
+  if (options.length !== COMPOSE_OPTION_COUNT) {
+    throw new Error(
+      `Compose guardrail: expected ${COMPOSE_OPTION_COUNT} longform options`
+    );
+  }
+  return options.map((opt, i) => {
+    const title = opt.title.trim();
+    const content = opt.content.trim();
+    const reason = opt.reason.trim();
+    if (!title || !content || !reason) {
+      throw new Error(`Compose guardrail: longform option ${i + 1} incomplete`);
+    }
+    return {
+      category: opt.category.trim() || "essay",
+      title,
+      content,
+      reason,
+    };
+  });
+}
+
+/**
+ * Generate 3 voice-matched options for one compose format from a topic cluster.
+ * Demo mode (no ANTHROPIC_API_KEY) returns deterministic fixtures — never throws.
+ */
+export async function generateComposeOptions(args: {
+  cluster: TopicCluster;
+  format: ComposeFormat;
+  voice: VoiceStyle | null;
+  voiceExamples: string[];
+  voiceNegativeConstraints?: VoiceNegativeConstraints | null;
+  model?: string;
+}): Promise<{ bundle: ComposeBundle; usage: Usage; demo: boolean }> {
+  if (!hasAnthropicKey()) {
+    return {
+      bundle: demoComposeBundle(args.cluster, args.format),
+      usage: { tokensIn: 0, tokensOut: 0 },
+      demo: true,
+    };
+  }
+
+  const model = args.model ?? env.anthropicGenerateModel;
+  const targetText = [
+    args.cluster.topic,
+    ...args.cluster.unusedAngles,
+    ...args.cluster.replies.map((r) => r.replyText),
+  ].join("\n");
+  const voiceBlock = buildVoiceInstructions({
+    voice: args.voice,
+    examples: args.voiceExamples,
+    targetText,
+    negativeConstraints: args.voiceNegativeConstraints,
+  });
+
+  try {
+    if (args.format === "standalone") {
+      const response = await client().messages.parse({
+        model,
+        max_tokens: 2048,
+        system: [
+          { type: "text", text: COMPOSE_SYSTEM },
+          clusterContextBlock(args.cluster),
+        ],
+        messages: [
+          {
+            role: "user",
+            content: `${voiceBlock}
+
+Generate exactly ${COMPOSE_OPTION_COUNT} standalone short posts (aim ~71–100 chars when natural; hard cap 280 weighted). Each needs a distinct category and a short reason worth sending — never fake engagement scores or percentages. Prefer unused angles when present.`,
+          },
+        ],
+        output_config: { format: zodOutputFormat(ComposeStandaloneSchema) },
+      });
+      const parsed = response.parsed_output;
+      if (!parsed) throw new Error("Compose standalone parse failed");
+      const standalone = enforceComposeStandalone(parsed.options);
+      const bundle = emptyComposeBundle("standalone");
+      bundle.standalone = standalone;
+      // Fill sibling formats with demo so schema always has 3×3 shape for storage.
+      const demo = demoComposeBundle(args.cluster, "standalone");
+      bundle.thread = demo.thread;
+      bundle.longform = demo.longform;
+      return {
+        bundle,
+        usage: {
+          tokensIn: response.usage.input_tokens,
+          tokensOut: response.usage.output_tokens,
+        },
+        demo: false,
+      };
+    }
+
+    if (args.format === "thread") {
+      const response = await client().messages.parse({
+        model,
+        max_tokens: 4096,
+        system: [
+          { type: "text", text: COMPOSE_SYSTEM },
+          clusterContextBlock(args.cluster),
+        ],
+        messages: [
+          {
+            role: "user",
+            content: `${voiceBlock}
+
+Generate exactly ${COMPOSE_OPTION_COUNT} threads. Each thread must have ${THREAD_MIN_POSTS}–${THREAD_MAX_POSTS} posts, each under 280 weighted characters. Distinct categories + a short reason (no fake scores).`,
+          },
+        ],
+        output_config: { format: zodOutputFormat(ComposeThreadSchema) },
+      });
+      const parsed = response.parsed_output;
+      if (!parsed) throw new Error("Compose thread parse failed");
+      const thread = enforceComposeThread(parsed.options);
+      const bundle = emptyComposeBundle("thread");
+      const demo = demoComposeBundle(args.cluster, "thread");
+      bundle.thread = thread;
+      bundle.standalone = demo.standalone;
+      bundle.longform = demo.longform;
+      return {
+        bundle,
+        usage: {
+          tokensIn: response.usage.input_tokens,
+          tokensOut: response.usage.output_tokens,
+        },
+        demo: false,
+      };
+    }
+
+    const response = await client().messages.parse({
+      model,
+      max_tokens: 8192,
+      system: [
+        { type: "text", text: COMPOSE_SYSTEM },
+        clusterContextBlock(args.cluster),
+      ],
+      messages: [
+        {
+          role: "user",
+          content: `${voiceBlock}
+
+Generate exactly ${COMPOSE_OPTION_COUNT} long-form / Article drafts (markdown ok). Each needs title, body, category, and a short reason. These are copy-out drafts — do not imply API publish. No fake engagement scores.`,
+        },
+      ],
+      output_config: { format: zodOutputFormat(ComposeLongformSchema) },
+    });
+    const parsed = response.parsed_output;
+    if (!parsed) throw new Error("Compose longform parse failed");
+    const longform = enforceComposeLongform(parsed.options);
+    const bundle = emptyComposeBundle("longform");
+    const demo = demoComposeBundle(args.cluster, "longform");
+    bundle.longform = longform;
+    bundle.standalone = demo.standalone;
+    bundle.thread = demo.thread;
+    return {
+      bundle,
+      usage: {
+        tokensIn: response.usage.input_tokens,
+        tokensOut: response.usage.output_tokens,
+      },
+      demo: false,
+    };
+  } catch (error) {
+    console.error("compose generation failed, falling back to demo:", error);
+    return {
+      bundle: demoComposeBundle(args.cluster, args.format),
+      usage: { tokensIn: 0, tokensOut: 0 },
+      demo: true,
+    };
   }
 }

@@ -21,9 +21,11 @@ import { buildXIntentUrl } from "../../../../shared/xPublish";
 export type Draft = {
   _id: string;
   text: string;
-  kind: "reply" | "quote";
+  kind: "reply" | "quote" | "standalone" | "thread" | "longform";
   status: "draft" | "scheduled" | "published" | "failed";
   publishMode?: "threaded" | "standalone" | "url_quote";
+  threadPosts?: string[];
+  title?: string;
   targetTweetId?: string;
   targetTweetUrl?: string;
   scheduledFor?: number;
@@ -35,8 +37,14 @@ export type Draft = {
 
 export type DraftStatus = Draft["status"];
 
-export function draftKindLabel(draft: Pick<Draft, "kind" | "publishMode">): string {
-  if (draft.publishMode === "standalone") return "Standalone tweet";
+export function draftKindLabel(draft: Pick<Draft, "kind" | "publishMode" | "title">): string {
+  if (draft.kind === "standalone" || draft.publishMode === "standalone") {
+    return "Standalone tweet";
+  }
+  if (draft.kind === "thread") return "Thread draft";
+  if (draft.kind === "longform") {
+    return draft.title ? `Long-form · ${draft.title}` : "Long-form / Article";
+  }
   if (draft.publishMode === "url_quote") return "Quote (link card)";
   return draft.kind === "quote" ? "Quote tweet" : "Reply";
 }
@@ -80,7 +88,9 @@ export function DraftRow({
     draft.publishMode !== "standalone" &&
     Boolean(draft.targetTweetId);
   const canRetryStandalone =
-    draft.status === "failed" && draft.publishMode !== "standalone";
+    draft.status === "failed" &&
+    (draft.kind === "reply" || draft.kind === "quote") &&
+    draft.publishMode !== "standalone";
 
   return (
     <Card

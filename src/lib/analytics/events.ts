@@ -22,7 +22,7 @@
 /** Feed-scanner source a surfaced/opened opportunity came from. */
 export type FunnelSource = "following" | "list" | "watched" | "search";
 
-export type OptionKind = "reply" | "quote";
+export type OptionKind = "reply" | "quote" | "standalone" | "thread" | "longform";
 
 export type PublishMode = "threaded" | "standalone" | "url_quote";
 export type ObservedEditBucket = "no_edit" | "minor_edit" | "major_edit";
@@ -31,7 +31,7 @@ export type ObservedEditBucket = "no_edit" | "minor_edit" | "major_edit";
 export type OptionSelectedAction = "copied" | "saved" | "published";
 
 /** What triggered a generation call. */
-export type GenerationTrigger = "initial" | "more";
+export type GenerationTrigger = "initial" | "more" | "compose";
 
 export type NotificationAlertChannel = "push" | "digest";
 export type NotificationAlertTier = "golden15" | "hot";

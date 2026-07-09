@@ -2,6 +2,7 @@ import {
   FileText,
   Mic2,
   Newspaper,
+  PenLine,
   Plus,
   Radar,
   Search,
@@ -21,6 +22,7 @@ export type NavLink = {
 // row in the Library list instead of a nav link.
 export const navLinks: NavLink[] = [
   { href: "/dashboard", label: "New analysis", icon: Plus },
+  { href: "/compose", label: "Compose", icon: PenLine },
   { href: "/drafts", label: "Drafts", icon: FileText },
   { href: "/feed", label: "Feed scanner", icon: Radar },
   { href: "/briefing", label: "Briefing", icon: Newspaper },
