@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Download } from "lucide-react";
 
 import { Button } from "@/components/ds/button";
@@ -11,44 +11,51 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
+function subscribeStandalone(onStoreChange: () => void): () => void {
+  const mq = window.matchMedia("(display-mode: standalone)");
+  mq.addEventListener("change", onStoreChange);
+  window.addEventListener("appinstalled", onStoreChange);
+  return () => {
+    mq.removeEventListener("change", onStoreChange);
+    window.removeEventListener("appinstalled", onStoreChange);
+  };
+}
+
+function getStandaloneSnapshot(): boolean {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    ("standalone" in navigator &&
+      Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
+  );
+}
+
 /**
  * Optional install hint (WP15-S5). Uses beforeinstallprompt when available;
  * otherwise shows manual Add-to-Home-Screen copy.
  */
 export function InstallAppCard() {
+  const installed = useSyncExternalStore(
+    subscribeStandalone,
+    getStandaloneSnapshot,
+    () => false
+  );
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
     null
   );
-  const [installed, setInstalled] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      // iOS Safari
-      ("standalone" in navigator &&
-        Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
-    if (standalone) {
-      setInstalled(true);
-      return;
-    }
+    if (installed) return;
 
     const onBip = (event: Event) => {
       event.preventDefault();
       setDeferred(event as BeforeInstallPromptEvent);
     };
-    const onInstalled = () => {
-      setInstalled(true);
-      setDeferred(null);
-      setMessage("Installed");
-    };
     window.addEventListener("beforeinstallprompt", onBip);
-    window.addEventListener("appinstalled", onInstalled);
     return () => {
       window.removeEventListener("beforeinstallprompt", onBip);
-      window.removeEventListener("appinstalled", onInstalled);
     };
-  }, []);
+  }, [installed]);
 
   if (installed) {
     return (
