@@ -27,3 +27,17 @@ Append-only. Decisions, dead ends, gotchas for the next iteration.
 - `classifyBatch` zod schema + prompt now emit angle in the same call;
   empty LLM angle falls back to `demoSuggestedAngle`.
 - Verified: `npm run typecheck && npm test -- tests/semanticRelevance.test.ts`.
+
+## 2026-07-09 — WP9-S3
+
+- Scanner maps `suggestedAngle` via `resolveSuggestedAngle(semantic, text, niche)`.
+- Deleted template `suggestAngle()` from `scannerActions.ts`.
+- Cache hits attach `demoSuggestedAngle(target.text, nicheContext)` (no schema).
+- Fingerprint dedupe tests still pass (`tests/scannerActions.test.ts`).
+- Verified: `npm run typecheck && npm test -- tests/semanticRelevance.test.ts tests/scannerActions.test.ts`.
+
+## 2026-07-09 — WP9-S4
+
+- Full suite: `npm run typecheck && npm run lint && npm test && npm run build` — pass
+  (lint: 0 errors, 4 pre-existing warnings in `convex/_generated/*`).
+- All stories checked. Opening PR.

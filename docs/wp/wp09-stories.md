@@ -41,7 +41,7 @@ regressed; demo mode stays unbroken.
     resurrect hot-take/`?`/digit templates.
   - Fingerprint dedupe path unchanged (no regression).
 
-- [ ] **WP9-S4** — Final verification
+- [x] **WP9-S4** — Final verification
   - `npm run typecheck && npm run lint && npm test && npm run build` all pass.
   - All stories above checked; `docs/wp/wp09-progress.md` complete.
   - PR opened with DoD, verification, deviations, and "Found, not fixed".
