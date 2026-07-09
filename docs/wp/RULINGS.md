@@ -83,3 +83,34 @@ Ruling:
   - Working artifacts `docs/wp/wp09-stories.md` and `docs/wp/wp09-progress.md`.
   Do not edit schema, UI, billing, crons, or generated files unless WP9
   stops and escalates again. No new dependencies.
+
+## 2026-07-09 - WP12 - Daily briefing agent file boundary
+
+- Question: WP12's §14 key-files column says "agent action + briefing
+  surface/email". Satisfying the DoD (run at user hour, run record,
+  human-readable artifact, optional email) requires schema, cron, account
+  cascade, and a nav surface beyond a single action file.
+- Ruling: WP12 may edit these areas, only as needed to satisfy the DoD:
+  - `convex/schema.ts` — additive tables/fields for briefing settings +
+    `briefingRuns` (mirror `researchRuns`: status, error, counts, artifact).
+  - `convex/briefings.ts` / `convex/briefingActions.ts` (new) — queries,
+    mutations, internal cron dispatch, LLM artifact generation. No publish
+    path. Auth via `requireUser` on public functions.
+  - `convex/crons.ts` — schedule the briefing dispatcher (hourly is fine;
+    filter to users whose local hour matches).
+  - `shared/briefings.ts` (+ tests) — pure helpers: hour matching, demo
+    artifact builder, ranking-changelog snippet if cheap.
+  - `shared/accountData.ts` + `convex/account.ts` — include new tables in
+    delete/export cascade.
+  - UI: `src/app/(app)/briefing/page.tsx` (or dashboard module) + minimal
+    nav link in existing sidebar; settings card for hour / email opt-in /
+    enable. Prefer `ds/` primitives; Dialog/Select may stay on `ui/`.
+  - Optional email: reuse Resend pattern from `notificationsActions`
+    (env-gated; demo/no-key = no-op). Do not add npm deps if fetch+Resend
+    already works.
+  - Analytics: only typed events via existing catalog if a new event is
+    needed (`src/lib/analytics/events.ts` + Convex mirror).
+  - Working artifacts `docs/wp/wp12-stories.md`, `docs/wp/wp12-progress.md`.
+  Do not touch publish mutations, scanner internals, billing, or landing.
+  No auto-publish. No fake engagement scores. Demo mode never breaks.
+  No new dependencies unless escalated.
