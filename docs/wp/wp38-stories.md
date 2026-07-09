@@ -39,23 +39,23 @@ on `main`.
 
 ## Stories
 
-- [ ] **WP38-S1 — URL paste → analyze**
+- [x] **WP38-S1 — URL paste → analyze**
   - Detect tweet URL in command input; on Enter/select, deep-link to dashboard with `auto=1`.
   - Vitest for URL detection + query string builder.
 
-- [ ] **WP38-S2 — Jump to opportunity**
+- [x] **WP38-S2 — Jump to opportunity**
   - Command group “Opportunities” with debounced search (reuse feed index or add
     `opportunities.search` capped at 8).
   - Navigate to `/feed` with opportunity selected or direct detail if route exists.
 
-- [ ] **WP38-S3 — Switch voice profile**
+- [x] **WP38-S3 — Switch voice profile**
   - List voice profiles in palette; switching calls existing set-default mutation.
   - Show active profile badge in palette footer or group heading.
 
-- [ ] **WP38-S4 — Polish + accessibility**
+- [x] **WP38-S4 — Polish + accessibility**
   - Placeholder copy reflects three powers; empty state hints.
   - Keyboard roving focus works; no horizontal scroll on mobile palette.
 
-- [ ] **WP38-S5 — Verification**
+- [x] **WP38-S5 — Verification**
   - Manual ⌘K flows in demo mode; typecheck/lint/test/build green.
   - PR maps each story to acceptance criteria.
