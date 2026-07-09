@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, type ComponentProps } from "react";
-import { Copy, History, Loader2, Star } from "lucide-react";
+import { Copy, History, Star } from "lucide-react";
 
 import { ModelEval } from "@/components/app/model-eval";
 import { OptionsPanel } from "@/components/app/options-panel";
 import type { Option } from "@/components/app/option-card";
+import { Banner } from "@/components/ds/banner";
+import { ProgressBar } from "@/components/ds/progress-bar";
+import { Spinner } from "@/components/ds/spinner";
 import {
   Pane,
   PaneActionBar,
@@ -101,14 +104,18 @@ export function ReplyWorkbench({
             </div>
 
             {apiNotice && (
-              <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                {apiNotice}
-              </div>
+              <Banner
+                status="info"
+                title="Publish note"
+                description={apiNotice}
+              />
             )}
             {restrictionWarning && (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
-                {restrictionWarning}
-              </div>
+              <Banner
+                status="warning"
+                title="Reply restriction"
+                description={restrictionWarning}
+              />
             )}
 
             <OptionsPanel
@@ -122,10 +129,18 @@ export function ReplyWorkbench({
             />
 
             {status === "generating" && (
-              <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="size-3 animate-spin" />
-                Still drafting the remaining options…
-              </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Spinner size="sm" />
+                  Still drafting the remaining options…
+                </div>
+                <ProgressBar
+                  label="Drafting options"
+                  isLabelHidden
+                  isIndeterminate
+                  variant="accent"
+                />
+              </div>
             )}
 
             {status === "complete" && hasOptions && (

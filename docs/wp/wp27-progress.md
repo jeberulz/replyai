@@ -22,3 +22,15 @@ Append-only. Newest entries at the bottom.
 - option-card → ds Card/Badge/Button/TextArea; Dialog/Select stay on ui/.
 - SelectableCard not used for OptionCard (multi-action card ≠ checkbox select).
 - Landing + split breakpoints untouched.
+
+## 2026-07-09 — DoD closeout
+
+- ReplyPacingWarning → ds Banner (warning/error by level).
+- Feed/drafts list + detail empties → OatmealEmptyState (ds EmptyState +
+  oatmeal/liner per design.md). Allow-list bump: feed-scanner, drafts-list,
+  reply-pacing-warning, oatmeal-empty-state.
+- OptionCard: keep ds Card as SelectableCard equivalent — SelectableCard is
+  checkbox selection; OptionCard is multi-action publish chrome. Documented
+  ruling; 3 options + reason + explicit publish unchanged.
+- Chat restriction banners left for WP28 (out of allow-list).
+- Mobile suite re-run after closeout.

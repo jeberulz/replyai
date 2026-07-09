@@ -19,9 +19,10 @@ import {
   PaneTitleRow,
 } from "@/components/app/split/pane-chrome";
 import { XLogo } from "@/components/app/x-logo";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ds/badge";
+import { Button } from "@/components/ds/button";
+import { Card } from "@/components/ds/card";
+import { IconButton } from "@/components/ds/icon-button";
 import { formatCount } from "@/lib/utils";
 import type { ResearchProfile } from "./profile-row";
 
@@ -64,29 +65,30 @@ export function ProfileDetail({
           </PaneTabPill>
         }
         actions={
-          <a
+          <IconButton
+            label={`Open @${profile.handle} on X`}
+            icon={<ArrowUpRight className="size-[17px]" />}
+            variant="ghost"
+            size="sm"
             href={`https://x.com/${profile.handle}`}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={`Open @${profile.handle} on X`}
-            className="transition-colors hover:text-foreground"
-          >
-            <ArrowUpRight className="size-[17px]" />
-          </a>
+          />
         }
       />
       <PaneTitleRow title="Profile suggestion">
         {profile.status === "watching" && (
-          <Badge variant="secondary">
-            <Eye className="size-3" />
-            Watching
-          </Badge>
+          <Badge
+            variant="neutral"
+            label="Watching"
+            icon={<Eye className="size-3" />}
+          />
         )}
       </PaneTitleRow>
 
       <PaneBody className="space-y-4">
-        <Card>
-          <CardContent className="space-y-3 p-4">
+        <Card padding={3}>
+          <div className="space-y-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div className="min-w-0 text-sm">
                 <span className="font-semibold">{profile.displayName}</span>{" "}
@@ -103,11 +105,11 @@ export function ProfileDetail({
                 {profile.bio}
               </p>
             )}
-          </CardContent>
+          </div>
         </Card>
 
-        <Card>
-          <CardContent className="space-y-3 p-4">
+        <Card padding={3}>
+          <div className="space-y-3">
             <PaneEyebrow>Why this account</PaneEyebrow>
             <p className="text-[15px] leading-normal">{profile.reason}</p>
             {profile.topicTags.length > 0 && (
@@ -115,25 +117,21 @@ export function ProfileDetail({
                 {profile.topicTags.map((tag) => (
                   <Badge
                     key={tag}
-                    variant="outline"
+                    variant="neutral"
+                    label={tag}
                     className="font-mono text-[0.65rem]"
-                  >
-                    {tag}
-                  </Badge>
+                  />
                 ))}
               </div>
             )}
-          </CardContent>
+          </div>
         </Card>
 
         {profile.exampleTweets.length > 0 && (
           <div className="space-y-2.5">
             <PaneEyebrow>Recent posts</PaneEyebrow>
             {profile.exampleTweets.map((tweet) => (
-              <blockquote
-                key={tweet.tweetId}
-                className="rounded-xl border border-border bg-card px-4 py-3"
-              >
+              <Card key={tweet.tweetId} padding={3}>
                 <p className="whitespace-pre-wrap text-sm leading-normal text-muted-foreground">
                   {tweet.text}
                 </p>
@@ -141,7 +139,7 @@ export function ProfileDetail({
                   <Heart className="size-3" />
                   {formatCount(tweet.likes)} likes
                 </p>
-              </blockquote>
+              </Card>
             ))}
           </div>
         )}
@@ -149,32 +147,32 @@ export function ProfileDetail({
 
       <PaneActionBar note="Suggest only — watching never follows or posts anything on your behalf.">
         {profile.status === "suggested" && (
-          <Button onClick={watch} disabled={pending} className="w-full sm:flex-1">
-            <Eye />
-            Watch
-          </Button>
+          <Button
+            label="Watch"
+            icon={<Eye className="size-3.5" />}
+            onClick={watch}
+            isDisabled={pending}
+            className="w-full sm:flex-1"
+          />
         )}
         <Button
-          variant="outline"
-          asChild
-          disabled={pending}
+          variant="secondary"
+          label="Analyze top tweet"
+          icon={<ArrowRight className="size-3.5" />}
+          href={analyzeUrl}
+          as={Link}
+          isDisabled={pending}
           className="w-full sm:w-auto"
-        >
-          <Link href={analyzeUrl}>
-            <ArrowRight />
-            Analyze top tweet
-          </Link>
-        </Button>
+        />
         {profile.status === "suggested" && (
           <Button
             variant="ghost"
+            label="Pass"
+            icon={<X className="size-3.5" />}
             onClick={pass}
-            disabled={pending}
+            isDisabled={pending}
             className="w-full sm:w-auto"
-          >
-            <X />
-            Pass
-          </Button>
+          />
         )}
       </PaneActionBar>
     </Pane>

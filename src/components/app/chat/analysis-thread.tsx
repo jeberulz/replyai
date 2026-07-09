@@ -2,19 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
-import { Check, Info, Loader2, RotateCcw } from "lucide-react";
+import { Check, Info, RotateCcw } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { ModelEval } from "@/components/app/model-eval";
 import { OptionsPanel } from "@/components/app/options-panel";
+import { Banner } from "@/components/ds/banner";
+import { Button } from "@/components/ds/button";
+import { ProgressBar } from "@/components/ds/progress-bar";
+import { Spinner } from "@/components/ds/spinner";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
@@ -45,7 +47,7 @@ function ProgressStep({
       )}
     >
       {state === "running" ? (
-        <Loader2 className="size-3 animate-spin text-primary" />
+        <Spinner size="sm" className="text-primary" />
       ) : (
         <Check
           className={cn("size-3", state === "done" ? "text-primary" : "opacity-0")}
@@ -193,28 +195,36 @@ export function AnalysisThread({
   const banners = (
     <>
       {status === "failed" && (
-        <Card className="border-destructive/40">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <p className="text-sm text-destructive">
-              {analysis.error ?? "Analysis failed partway through."}
-            </p>
-            <Button variant="outline" size="sm" onClick={() => onRetry(analysisId)}>
-              <RotateCcw /> Retry
-            </Button>
-          </CardContent>
-        </Card>
+        <Banner
+          status="error"
+          title="Analysis failed"
+          description={analysis.error ?? "Analysis failed partway through."}
+          endContent={
+            <Button
+              size="sm"
+              variant="secondary"
+              label="Retry"
+              icon={<RotateCcw className="size-3.5" />}
+              onClick={() => onRetry(analysisId)}
+            />
+          }
+        />
       )}
       {isStale && (
-        <Card>
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <p className="text-sm text-muted-foreground">
-              This analysis stalled — the tab running it probably closed.
-            </p>
-            <Button variant="outline" size="sm" onClick={() => onRetry(analysisId)}>
-              <RotateCcw /> Resume
-            </Button>
-          </CardContent>
-        </Card>
+        <Banner
+          status="warning"
+          title="Analysis stalled"
+          description="This analysis stalled — the tab running it probably closed."
+          endContent={
+            <Button
+              size="sm"
+              variant="secondary"
+              label="Resume"
+              icon={<RotateCcw className="size-3.5" />}
+              onClick={() => onRetry(analysisId)}
+            />
+          }
+        />
       )}
     </>
   );
@@ -297,13 +307,21 @@ export function AnalysisThread({
         {hasOptions ? (
           <div>
             {apiNotice && (
-              <div className="mb-4 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                {apiNotice}
+              <div className="mb-4">
+                <Banner
+                  status="info"
+                  title="Publish note"
+                  description={apiNotice}
+                />
               </div>
             )}
             {restrictionWarning && (
-              <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
-                {restrictionWarning}
+              <div className="mb-4">
+                <Banner
+                  status="warning"
+                  title="Reply restriction"
+                  description={restrictionWarning}
+                />
               </div>
             )}
             <OptionsPanel
@@ -316,10 +334,18 @@ export function AnalysisThread({
               defaultModel={me?.defaultModel}
             />
             {status === "generating" && (
-              <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="size-3 animate-spin" />
-                Still drafting the remaining options…
-              </p>
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Spinner size="sm" />
+                  Still drafting the remaining options…
+                </div>
+                <ProgressBar
+                  label="Drafting options"
+                  isLabelHidden
+                  isIndeterminate
+                  variant="accent"
+                />
+              </div>
             )}
             <p className="mt-4 text-center text-xs text-muted-foreground">
               Nothing is posted without your explicit click on that specific reply.
@@ -338,6 +364,12 @@ export function AnalysisThread({
             <div className="space-y-3">
               <Skeleton className="h-28 w-full" />
               <Skeleton className="h-28 w-full" />
+              <ProgressBar
+                label="Drafting replies"
+                isLabelHidden
+                isIndeterminate
+                variant="accent"
+              />
               <p className="text-xs text-muted-foreground">
                 Drafting 3 replies and 3 quote tweets in your voice…
               </p>
