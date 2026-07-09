@@ -119,10 +119,75 @@ Append-only. Newest entries at the bottom.
   skip), production build compiled including `/feed`.
 - No auth/token/publish/prompt surface touched by this WP, so skipped
   `/security-review` per the DoD's scoped trigger condition.
-- Found, not fixed: `convex/opportunities.ts`'s existing `pruneStale`
-  (8h-from-`postedAt` dismiss, called from `scannerActions.ts` after each
-  user scan) now overlaps with the new `archiveExpiredAll` cron — both fire
-  around the same age threshold, one sets `dismissed` and the other
-  `archived`. Harmless (idempotent, first one to run wins for that row) but
-  worth consolidating in a later WP once `scannerActions.ts` is back in
-  scope for someone.
+
+## Code review (`/code-review medium`, 8 parallel finder angles)
+
+Ran the full review before opening the PR — it caught two real correctness
+bugs and confirmed my own "found, not fixed" note understated the severity
+of the `pruneStale` overlap. Fixed both in-boundary bugs; documented the
+rest as found-not-fixed below.
+
+**Fixed:**
+1. **`pruneStale` almost always beat the new archive cron, so `"archived"`
+   was effectively unreachable.** My initial note called this "harmless
+   overlap"; three independent review angles (cross-file trace, efficiency,
+   line-by-line) confirmed it's worse than that — `pruneStale` runs after
+   every scan (~15min, `scannerActions.ts:470`) using the identical 8h
+   cutoff as the 30-min archive cron, so it wins the race almost every
+   time and flips expired rows to `"dismissed"` before `archiveExpiredAll`
+   ever sees them as `"new"`. That made the entire archived/dismissed
+   distinction — the actual point of this WP — dead code for
+   actively-scanning users. Fixed by making `pruneStale` an alias for
+   `archiveExpiredForUser`, so both the per-scan call and the cron funnel
+   through the same `archiveExpiredForUserImpl` and always land on
+   `"archived"`. Kept the exported name `pruneStale` so `scannerActions.ts`
+   (out of my file boundary) needed no changes.
+2. **`upsertMany`'s rescan dedupe guard didn't check `"archived"`**
+   (`convex/opportunities.ts`, was `existing.status === "analyzed" ||
+   existing.status === "dismissed"`), so rescanning a tweet that had
+   already been archived would resurrect it to `status: "new"` — undoing
+   the auto-archive and re-injecting a stale opportunity into the live
+   feed. Added the missing check.
+3. **Cleanup:** added `opportunityFreshness()` to
+   `shared/feedFreshness.ts` — a combined helper computing age once and
+   returning `effectiveScore`/`freshnessLabel`/`windowClosed` together.
+   Replaces two independent age computations in the `list` query and
+   removes the fragile `freshness === "Window closed"` string-match that
+   both feed UI components used to recover a boolean that's now sent
+   directly on the wire.
+
+**Found, not fixed (outside WP31's file boundary):**
+- `convex/briefings.ts:516` (WP12-owned file) — the overnight-opportunities
+  filter is `row.status !== "dismissed"`, which doesn't exclude the new
+  `"archived"` status. An auto-archived opportunity (window closed
+  unattended) will still show up in the daily briefing as if it were live.
+  This directly contradicts what WP31 is for, but `briefings.ts` isn't in
+  my ruling's edit list — needs a follow-up WP12/briefings fix.
+- `src/components/app/chat/suggestion-chips.tsx` — still renders
+  `ScoreBadge value={opp.score}` (raw, undecayed) instead of
+  `effectiveScore`. Not in the WP31 feed-UI file boundary
+  (`opportunity-row.tsx`/`opportunity-detail.tsx`/`feed-scanner.tsx` only).
+  Same opportunity now shows a different score on `/feed` vs. this surface.
+- `convex/ranking.ts` and `convex/usage.ts` both independently inline
+  `status === "archived" ? "dismissed" : status` with near-identical
+  comments. Consolidating this into a shared classifier
+  (`shared/opportunityStatus.ts` with something like
+  `countsAsDismissed(status)`) would remove the duplication, but doing it
+  properly means widening `shared/rankingWeights.ts`'s
+  `OpportunityFunnelRow.status` union — that file is explicitly on the
+  "do not edit" list in the WP31 ruling. Left as-is; worth a small
+  follow-up WP once that boundary is lifted.
+- Reviewers also flagged that `effectiveDisplayScore` decays the *entire*
+  stored score by the timing factor, even though in `scoreConversation`
+  timing is only one weighted component (~0.22–0.3) alongside
+  non-decaying factors (relevance, audience, velocity). This is not a bug
+  relative to spec — `wp31-stories.md`'s "Defaults (settled)" section
+  explicitly rules "multiply stored `score` by the same timing factor" —
+  so I did not deviate from an already-settled default. Flagging here in
+  case the owner wants to revisit the default itself in a later WP (a
+  component-weighted decay would preserve more score for strong,
+  non-timing-driven opportunities near the window's end).
+
+All fixes verified: `npm run typecheck && npm run lint && npm test && npm
+run build` green after applying them (314 tests passed, up from 311 —
+added `opportunityFreshness` coverage).
