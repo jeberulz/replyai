@@ -8,14 +8,11 @@ import {
   type DeleteAccountActionState,
 } from "@/app/actions";
 import type { AccountInventory } from "../../../shared/accountData";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Button } from "@/components/ds/button";
+import { Card } from "@/components/ds/card";
+import { Heading } from "@/components/ds/heading";
+import { Text } from "@/components/ds/text";
+import { TextInput } from "@/components/ds/text-input";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +22,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { formatCount } from "@/lib/utils";
 
 type AccountDataControlsProps = {
@@ -78,36 +74,39 @@ export function AccountDataControls({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Data export & deletion</CardTitle>
-        <CardDescription>
-          Download your account data or permanently remove the account and its
-          related rows.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+    <Card padding={3}>
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <Heading level={3} className="text-base">
+            Data export & deletion
+          </Heading>
+          <Text type="supporting" color="secondary" display="block">
+            Download your account data or permanently remove the account and its
+            related rows.
+          </Text>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
           <div>
             <div className="text-sm font-medium">JSON export</div>
             <div className="text-xs text-muted-foreground">
-              {formatCount(inventory.totalRows)} account rows currently in
-              scope.
+              {formatCount(inventory.totalRows)} account rows currently in scope.
             </div>
           </div>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
+            label="Download JSON"
+            icon={
+              isExportPending ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )
+            }
+            isDisabled={isExportPending}
             onClick={onExport}
-            disabled={isExportPending}
-          >
-            {isExportPending ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Download />
-            )}
-            Download JSON
-          </Button>
+          />
         </div>
 
         {exportError && (
@@ -126,10 +125,12 @@ export function AccountDataControls({
             </div>
             <Dialog>
               <DialogTrigger asChild>
-                <Button type="button" variant="destructive">
-                  <Trash2 />
-                  Delete account
-                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  label="Delete account"
+                  icon={<Trash2 className="size-4" />}
+                />
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
@@ -166,17 +167,17 @@ export function AccountDataControls({
                 </div>
 
                 <form action={deleteFormAction} className="space-y-3">
-                  <label className="block space-y-2 text-sm">
-                    <span className="text-muted-foreground">
-                      Type <span className="font-mono text-foreground">{username}</span>
-                    </span>
-                    <Input
-                      name="confirmationUsername"
-                      value={confirmation}
-                      onChange={(event) => setConfirmation(event.target.value)}
-                      autoComplete="off"
-                    />
-                  </label>
+                  <input
+                    type="hidden"
+                    name="confirmationUsername"
+                    value={confirmation}
+                    readOnly
+                  />
+                  <TextInput
+                    label={`Type ${username}`}
+                    value={confirmation}
+                    onChange={setConfirmation}
+                  />
                   {deleteState.error && (
                     <p className="text-sm text-destructive">
                       {deleteState.error}
@@ -186,22 +187,25 @@ export function AccountDataControls({
                     <Button
                       type="submit"
                       variant="destructive"
-                      disabled={confirmation !== username || isDeletePending}
-                    >
-                      {isDeletePending ? (
-                        <Loader2 className="animate-spin" />
-                      ) : (
-                        <Trash2 />
-                      )}
-                      Permanently delete
-                    </Button>
+                      label="Permanently delete"
+                      icon={
+                        isDeletePending ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <Trash2 className="size-4" />
+                        )
+                      }
+                      isDisabled={
+                        confirmation !== username || isDeletePending
+                      }
+                    />
                   </DialogFooter>
                 </form>
               </DialogContent>
             </Dialog>
           </div>
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 }
