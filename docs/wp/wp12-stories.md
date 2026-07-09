@@ -35,7 +35,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP12**.
     artifact builder, optional ranking-changelog sentence helper.
   - Vitest coverage for hour/day matching + demo artifact shape.
 
-- [ ] **WP12-S2 — Convex queries/mutations + account cascade**
+- [x] **WP12-S2 — Convex queries/mutations + account cascade**
   - `convex/briefings.ts`: get/update settings, list/latest run; all public
     functions use `requireUser(ctx, sessionToken)`.
   - Internal helpers for cron/action to read settings + write run records.

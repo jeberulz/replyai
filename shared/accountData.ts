@@ -49,6 +49,20 @@ export const ACCOUNT_USER_TABLES = [
     deletionOrder: 45,
   },
   {
+    table: "briefingSettings",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId"],
+    deletionOrder: 46,
+  },
+  {
+    table: "briefingRuns",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "localDay"],
+    deletionOrder: 47,
+  },
+  {
     table: "usage",
     ownershipField: "userId",
     indexName: "by_user_month",

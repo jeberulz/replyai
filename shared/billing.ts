@@ -2,7 +2,7 @@ export const FREE_PLAN = "free";
 export const PRO_PLAN = "pro";
 
 export type BillingPlan = typeof FREE_PLAN | typeof PRO_PLAN;
-export type PaidFeature = "scanner" | "notifications";
+export type PaidFeature = "scanner" | "notifications" | "briefing";
 
 const ACTIVE_PRO_STATUSES = new Set([
   "active",
@@ -34,6 +34,8 @@ export function paidFeatureLabel(feature: PaidFeature): string {
       return "Feed scanner";
     case "notifications":
       return "Hot-window notifications";
+    case "briefing":
+      return "Daily briefing";
   }
 }
 

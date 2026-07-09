@@ -225,3 +225,21 @@ export function demoBriefingArtifact(
 export function parseBriefingArtifact(value: unknown): BriefingArtifact {
   return BriefingArtifactSchema.parse(value);
 }
+
+export function briefingSettingsDefaults(): BriefingSettingsSnapshot {
+  return {
+    enabled: BRIEFING_DEFAULTS.enabled,
+    hourLocal: BRIEFING_DEFAULTS.hourLocal,
+    timezone: BRIEFING_DEFAULTS.timezone,
+    emailOptIn: BRIEFING_DEFAULTS.emailOptIn,
+  };
+}
+
+export function defaultBriefingSettings(
+  nowMs: number
+): BriefingSettingsSnapshot & { updatedAt: number } {
+  return {
+    ...briefingSettingsDefaults(),
+    updatedAt: nowMs,
+  };
+}

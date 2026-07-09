@@ -72,6 +72,20 @@ async function countByUser(
         if (row._id) count += 1;
       }
       return count;
+    case "briefingSettings":
+      for await (const row of ctx.db
+        .query("briefingSettings")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
+    case "briefingRuns":
+      for await (const row of ctx.db
+        .query("briefingRuns")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
     case "usage":
       for await (const row of ctx.db
         .query("usage")
@@ -202,6 +216,20 @@ async function listByUser(
         rows.push(row as unknown as Record<string, unknown>);
       }
       return rows;
+    case "briefingSettings":
+      for await (const row of ctx.db
+        .query("briefingSettings")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
+    case "briefingRuns":
+      for await (const row of ctx.db
+        .query("briefingRuns")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
     case "usage":
       for await (const row of ctx.db
         .query("usage")
@@ -327,6 +355,20 @@ async function takeDeletionBatch(
       return (
         await ctx.db
           .query("notificationAlerts")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "briefingSettings":
+      return (
+        await ctx.db
+          .query("briefingSettings")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "briefingRuns":
+      return (
+        await ctx.db
+          .query("briefingRuns")
           .withIndex("by_user", (q) => q.eq("userId", userId))
           .take(ACCOUNT_DELETION_BATCH_SIZE)
       ).map((row) => row._id);
