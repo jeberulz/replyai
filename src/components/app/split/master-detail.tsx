@@ -67,7 +67,11 @@ export function MasterDetail({
       autoSaveId={autoSaveId}
       className="min-h-0"
     >
-      <ResizablePanel minSize={40} className="min-w-0">
+      <ResizablePanel
+        defaultSize={100 - defaultDetailSize}
+        minSize={40}
+        className="min-w-0"
+      >
         {list}
       </ResizablePanel>
       <ResizableHandle />

@@ -261,7 +261,7 @@ export function AnalysisThread({
         autoSaveId="reply-workbench"
         className="h-full"
       >
-        <ResizablePanel minSize={38} className="min-w-0">
+        <ResizablePanel defaultSize={58} minSize={38} className="min-w-0">
           {left}
         </ResizablePanel>
         <ResizableHandle />

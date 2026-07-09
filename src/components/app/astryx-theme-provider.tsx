@@ -13,9 +13,11 @@ export function AstryxThemeProvider({
 }: {
   children: React.ReactNode;
 }) {
+  // Theme wrapper is display:contents; keep a real flex child so body
+  // (flex-col) + app shell (min-h-screen) don't collapse before hydrate.
   return (
     <Theme theme={darkChromeTheme} mode="dark">
-      {children}
+      <div className="flex min-h-full flex-1 flex-col">{children}</div>
     </Theme>
   );
 }

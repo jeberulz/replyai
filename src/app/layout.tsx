@@ -38,9 +38,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-theme="dark"
       className={`${inter.variable} ${geistMono.variable} ${instrumentSerif.variable} dark h-full antialiased`}
+      // Extensions (Grammarly, scribe, etc.) mutate <html>/<body> before hydrate.
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-sans">
+      <body
+        className="min-h-full flex flex-col font-sans"
+        suppressHydrationWarning
+      >
         {children}
         <Toaster position="bottom-right" richColors theme="dark" />
       </body>
