@@ -27,6 +27,9 @@ from there — no ad-hoc event-name strings anywhere else.
 | 4 | `option_selected` | `src/components/app/option-card.tsx` (copy) + `src/app/actions.ts` (`saveDraftAction`, `publishAction`) | user id | `replyId`, `kind`, `category`, `action` (`"copied"` \| `"saved"` \| `"published"`), `editBucket`, `editDistanceNormalized` |
 | 5 | `draft_saved` | `src/app/actions.ts` (`saveDraftAction`) | user id | `analysisId`, `replyId`, `kind` |
 | 6 | `published` | `convex/publish.ts` (`run`, every successful branch incl. demo mode) | user id | `draftId`, `kind`, `publishMode`, `scheduled`, `editBucket`, `editDistanceNormalized` |
+| 7 | `notification_alert_delivered` | `convex/notificationsActions.ts` (push + digest delivery) | user id | `alertId`, `opportunityId`, `tier`, `channel`, `score`, `source?` |
+| 8 | `notification_alert_opened` | `src/components/app/feed-scanner.tsx` (deep link) + `convex/notificationsActions.ts` (server echo) | user id | `alertId`, `opportunityId`, `tier` |
+| 9 | `notification_alert_sent` | `convex/notificationsActions.ts` (after publish from alerted opportunity) | user id | `alertId`, `opportunityId`, `tier`, `draftId?` |
 
 Distinct id is always the Convex `users._id` string — never the session
 token (a bearer credential with no reason to also hand it to a third-party
@@ -108,6 +111,9 @@ Settings:
 - **Time-to-send:** Time between `opportunity_opened` and `published` for
   matching sessions — the PRD's "time from URL to copy or send" supporting
   metric (§5 success metrics).
+- **Notification open→send:** Funnel `notification_alert_opened` →
+  `notification_alert_sent` broken down by `tier` (`golden15` vs `hot`) —
+  tracks alert quality without fake engagement percentages.
 
 ## Sentry setup
 
