@@ -86,6 +86,6 @@ scanner keyword graph auto-rewrite, daily curator cadence.
   - Export/delete includes new optional fields.
   - README or `docs/observability.md` one line on curator cron if appropriate.
 
-- [ ] **WP33-S8 — Final verification + PR**
+- [x] **WP33-S8 — Final verification + PR**
   - Full CI suite green.
   - `docs/wp/wp33-progress.md` complete; PR per playbook §1.
