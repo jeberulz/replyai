@@ -3,7 +3,7 @@
 /**
  * WP24 brand-lock proof — low-risk Astryx Banner in the app shell.
  * Confirms accent orange, charcoal surface tokens, and Theme wiring.
- * Remove or replace once WP25 adapters land real call sites.
+ * Imports via ds/ strangler (WP25+), not core directly.
  */
 
 import { Banner } from "@/components/ds/banner";
