@@ -47,7 +47,7 @@ view in Voice Studio.
   - Additive `voiceDriftRuns` (or reuse pattern on existing table).
   - Internal write on run complete/fail; account delete/export.
 
-- [ ] **WP36-S3 — Measure action**
+- [x] **WP36-S3 — Measure action**
   - Convex action: gather examples (DB + optional X read), compute suggestion object.
   - Demo path when `ANTHROPIC_API_KEY` / X missing — never throw to user.
   - Optional LLM one-paragraph summary of diff (zod-validated); skip if no key.
