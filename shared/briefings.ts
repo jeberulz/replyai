@@ -9,7 +9,9 @@ import {
   dateKeyForTimezone,
   localTimeParts,
 } from "./notifications";
-import type { RankingWeights } from "./rankingWeights";
+import { RANKING_CHANGELOG_MAX_AGE_MS, rankingChangelogSentence } from "./rankingChangelog";
+
+export { rankingChangelogSentence };
 
 export const BRIEFING_DEFAULTS = {
   enabled: false,
@@ -17,7 +19,7 @@ export const BRIEFING_DEFAULTS = {
   timezone: "UTC",
   emailOptIn: false,
   /** Include ranking changelog when weights updated within this window. */
-  rankingChangelogMaxAgeMs: 7 * 24 * 60 * 60 * 1000,
+  rankingChangelogMaxAgeMs: RANKING_CHANGELOG_MAX_AGE_MS,
   topOpportunityCount: 5,
 } as const;
 
@@ -91,65 +93,6 @@ export function shouldEnqueueBriefing(input: {
     input.settings.hourLocal,
     input.settings.timezone
   );
-}
-
-const SOURCE_LABELS: Record<string, string> = {
-  following: "accounts you follow",
-  list: "list sources",
-  watched: "watched handles",
-  search: "keyword search",
-};
-
-const BAND_LABELS: Record<string, string> = {
-  micro: "micro accounts",
-  small: "small accounts",
-  medium: "mid-size accounts",
-  large: "large accounts",
-};
-
-/**
- * One plain-language sentence when ranking weights were recomputed recently.
- * Returns null when there is no data — never invents numbers or ML %.
- */
-export function rankingChangelogSentence(
-  weights: RankingWeights | null | undefined,
-  nowMs: number,
-  maxAgeMs: number = BRIEFING_DEFAULTS.rankingChangelogMaxAgeMs
-): string | null {
-  if (!weights?.updatedAt) return null;
-  if (nowMs - weights.updatedAt > maxAgeMs) return null;
-
-  const sourceEntries = Object.entries(weights.sourceMultipliers ?? {}).filter(
-    ([, mult]) => typeof mult === "number" && mult !== 1
-  ) as [string, number][];
-  sourceEntries.sort((a, b) => b[1] - a[1]);
-
-  const bandEntries = Object.entries(
-    weights.followerBandMultipliers ?? {}
-  ).filter(([, mult]) => typeof mult === "number" && mult !== 1) as [
-    string,
-    number,
-  ][];
-  bandEntries.sort((a, b) => b[1] - a[1]);
-
-  const topSource = sourceEntries[0];
-  const topBand = bandEntries[0];
-
-  if (topSource && topSource[1] > 1) {
-    const label = SOURCE_LABELS[topSource[0]] ?? topSource[0];
-    if (topBand && topBand[1] > 1) {
-      const bandLabel = BAND_LABELS[topBand[0]] ?? topBand[0];
-      return `Your feed ranking recently leaned toward ${label} and ${bandLabel} based on what you actually engage with.`;
-    }
-    return `Your feed ranking recently leaned toward ${label} based on what you actually engage with.`;
-  }
-
-  if (topBand && topBand[1] > 1) {
-    const bandLabel = BAND_LABELS[topBand[0]] ?? topBand[0];
-    return `Your feed ranking recently leaned toward ${bandLabel} based on what you actually engage with.`;
-  }
-
-  return "Your opportunity ranking was refreshed recently from your recent reply outcomes.";
 }
 
 export type DemoBriefingInput = {
