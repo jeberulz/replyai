@@ -40,3 +40,12 @@
   for watches, voice snippet preview (not full train until voice step).
 - Confirm → `acceptProposal` then jump to voice; Manual → `skipRun` → goal step.
 - Watches never auto-added (RULINGS Wave 3).
+
+## 2026-07-09 — WP39-S5
+
+- Full checks: typecheck, lint (warnings only in `_generated`), test (415 pass),
+  build green after `npm ci` in worktree.
+- Demo path: missing X/Anthropic → `demoOnboardingProposal`; UI shows demo banner.
+- X-connected path: needs live tokens + keys; verified via code path
+  (`fetchUserBioAndTweets` → LLM/heuristic) — manual smoke on deployed preview.
+- Fair-use bucket: **analysis** (one run = +1 analyses), same as voice-drift.

@@ -63,6 +63,6 @@ groundwork" — this WP ships the MVP agent path.
   - Show proposal as editable chips/cards; Accept applies goal/keywords/watch seeds.
   - "Use manual setup instead" skips to current wizard behavior.
 
-- [ ] **WP39-S5 — Verification**
+- [x] **WP39-S5 — Verification**
   - Demo mode end-to-end; X-connected path manual note in PR.
   - Checks green; PR DoD checklist.
