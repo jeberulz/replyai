@@ -57,6 +57,10 @@ export const seedPublishedDraft = internalMutation({
     const targetAuthorHandle =
       opportunity?.authorHandle ?? analysis?.tweet.authorHandle;
 
+    if (draft.kind !== "reply" && draft.kind !== "quote") {
+      return;
+    }
+
     const base = {
       userId: draft.userId,
       opportunityId: opportunity?._id,

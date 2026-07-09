@@ -199,9 +199,14 @@ export const run = internalAction({
       let result: PostResult;
       let successMode = publishMode;
 
-      if (publishMode === "standalone") {
+      if (publishMode === "standalone" || draft.kind === "standalone") {
         ensureWeightedPublishLength(draft.text);
         result = await postTweet(accessToken, { text: draft.text });
+        successMode = "standalone";
+      } else if (draft.kind === "thread" || draft.kind === "longform") {
+        throw new Error(
+          "Thread and long-form drafts are copy-out only — no API publish."
+        );
       } else if (draft.kind === "quote") {
         const permalink = draft.targetTweetUrl;
         if (!permalink) {
