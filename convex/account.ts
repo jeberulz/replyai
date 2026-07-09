@@ -86,6 +86,13 @@ async function countByUser(
         if (row._id) count += 1;
       }
       return count;
+    case "composeRuns":
+      for await (const row of ctx.db
+        .query("composeRuns")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
     case "authors":
       for await (const row of ctx.db
         .query("authors")
@@ -237,6 +244,13 @@ async function listByUser(
         rows.push(row as unknown as Record<string, unknown>);
       }
       return rows;
+    case "composeRuns":
+      for await (const row of ctx.db
+        .query("composeRuns")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
     case "authors":
       for await (const row of ctx.db
         .query("authors")
@@ -383,6 +397,13 @@ async function takeDeletionBatch(
       return (
         await ctx.db
           .query("briefingRuns")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "composeRuns":
+      return (
+        await ctx.db
+          .query("composeRuns")
           .withIndex("by_user", (q) => q.eq("userId", userId))
           .take(ACCOUNT_DELETION_BATCH_SIZE)
       ).map((row) => row._id);

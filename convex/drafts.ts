@@ -21,6 +21,14 @@ const publishModeValidator = v.optional(
   )
 );
 
+const draftKindValidator = v.union(
+  v.literal("reply"),
+  v.literal("quote"),
+  v.literal("standalone"),
+  v.literal("thread"),
+  v.literal("longform")
+);
+
 export const list = query({
   args: { sessionToken: v.string() },
   handler: async (ctx, { sessionToken }) => {
@@ -47,12 +55,15 @@ export const save = mutation({
   args: {
     sessionToken: v.string(),
     text: v.string(),
-    kind: v.union(v.literal("reply"), v.literal("quote")),
+    kind: draftKindValidator,
     analysisId: v.optional(v.id("tweetAnalyses")),
     replyId: v.optional(v.id("generatedReplies")),
     targetTweetId: v.optional(v.string()),
     targetTweetUrl: v.optional(v.string()),
     publishMode: publishModeValidator,
+    threadPosts: v.optional(v.array(v.string())),
+    title: v.optional(v.string()),
+    composeRunId: v.optional(v.id("composeRuns")),
   },
   handler: async (ctx, { sessionToken, ...args }) => {
     const user = await requireUser(ctx, sessionToken);
@@ -85,18 +96,36 @@ export const publish = mutation({
   args: {
     sessionToken: v.string(),
     text: v.string(),
-    kind: v.union(v.literal("reply"), v.literal("quote")),
+    kind: draftKindValidator,
     analysisId: v.optional(v.id("tweetAnalyses")),
     replyId: v.optional(v.id("generatedReplies")),
     targetTweetId: v.optional(v.string()),
     targetTweetUrl: v.optional(v.string()),
     scheduledFor: v.optional(v.number()),
     publishMode: publishModeValidator,
+    threadPosts: v.optional(v.array(v.string())),
+    title: v.optional(v.string()),
+    composeRunId: v.optional(v.id("composeRuns")),
   },
   handler: async (ctx, { sessionToken, scheduledFor, publishMode, kind, ...args }) => {
     const user = await requireUser(ctx, sessionToken);
+    if (kind === "longform") {
+      throw new Error(
+        "Long-form / Article drafts are copy-out only — paste into X yourself."
+      );
+    }
+    if (kind === "thread") {
+      throw new Error(
+        "Thread drafts are saved for copy-out; publish each post with a human click as standalone when ready."
+      );
+    }
     const resolvedMode =
-      publishMode ?? (kind === "quote" ? "url_quote" : "threaded");
+      publishMode ??
+      (kind === "standalone"
+        ? "standalone"
+        : kind === "quote"
+          ? "url_quote"
+          : "threaded");
     const observedEdit = await getObservedEditForDraft(
       ctx,
       user._id,
@@ -119,7 +148,10 @@ export const publish = mutation({
         scheduled: true,
       });
     } else {
-      await ctx.scheduler.runAfter(0, internal.publish.run, { draftId, scheduled: false });
+      await ctx.scheduler.runAfter(0, internal.publish.run, {
+        draftId,
+        scheduled: false,
+      });
     }
     return {
       draftId,
@@ -241,11 +273,15 @@ export const markResult = internalMutation({
           draftId,
         });
       }
-      await ctx.runMutation(internal.outcomes.seedPublishedDraft, {
-        draftId,
-        publishedTweetId,
-        publishMode,
-      });
+      // Outcome trackers are reply/quote only — compose standalone posts
+      // skip the reply-back poller (no in_reply_to target).
+      if (draft.kind === "reply" || draft.kind === "quote") {
+        await ctx.runMutation(internal.outcomes.seedPublishedDraft, {
+          draftId,
+          publishedTweetId,
+          publishMode,
+        });
+      }
     } else {
       await ctx.db.patch(draftId, { status: "failed", error });
     }

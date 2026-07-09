@@ -10,6 +10,7 @@ import type { Doc, Id } from "../../convex/_generated/dataModel";
 import type { AccountExportPayload } from "../../shared/accountData";
 import {
   analyzeTweet,
+  generateComposeOptions,
   generateOptions,
   judgeModelEval,
   refineVoiceStyleLabels,
@@ -17,6 +18,7 @@ import {
   REWRITE_DIRECTIONS,
   type RewriteDirection,
 } from "@/lib/ai";
+import type { ComposeFormat, TopicCluster } from "../../shared/compose";
 import { estimateCostUsd, isKnownModel, MODELS } from "../../shared/models";
 import { hasProAccess } from "../../shared/billing";
 import {
@@ -1414,4 +1416,143 @@ export async function saveBriefingSettingsAction(patch: {
     emailOptIn:
       typeof patch.emailOptIn === "boolean" ? patch.emailOptIn : undefined,
   });
+}
+
+// ---------------------------------------------------------------------------
+// WP23 — reply-to-post ladder (compose)
+// ---------------------------------------------------------------------------
+
+export async function startComposeAction(args: {
+  format: ComposeFormat;
+  cluster: TopicCluster;
+  voiceProfileId?: string;
+}): Promise<{ runId: string; error?: string }> {
+  const { sessionToken, user } = await requireSession();
+  const convex = convexServer();
+
+  const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
+  if (fairUseBlock) return { runId: "", error: fairUseBlock.error };
+
+  const { profile } = await defaultVoice(sessionToken, args.voiceProfileId);
+  const { model } = await resolveGenerationPrefs(sessionToken);
+  const negativeConstraints = negativeConstraintsForProfile(profile);
+
+  const clustersResult = await convex.query(api.compose.listClusters, {
+    sessionToken,
+  });
+  const demo = clustersResult.demo;
+
+  const runId = await convex.mutation(api.compose.start, {
+    sessionToken,
+    format: args.format,
+    clusterId: args.cluster.id,
+    topic: args.cluster.topic,
+    reason: args.cluster.reason,
+    draftIds: args.cluster.replies.map((r) => r.draftId),
+    unusedAngles: args.cluster.unusedAngles,
+    voiceProfileId: profile?._id,
+    demo,
+  });
+
+  try {
+    const result = await generateComposeOptions({
+      cluster: args.cluster,
+      format: args.format,
+      voice: (profile?.style as VoiceStyle | undefined) ?? null,
+      voiceExamples: profile?.examples ?? [],
+      voiceNegativeConstraints: negativeConstraints,
+      model,
+    });
+
+    await convex.mutation(api.compose.completeRun, {
+      sessionToken,
+      runId,
+      outputs: {
+        standalone: result.bundle.standalone,
+        thread: result.bundle.thread,
+        longform: result.bundle.longform,
+      },
+    });
+
+    await convex.mutation(api.usage.record, {
+      sessionToken,
+      tokensIn: result.usage.tokensIn,
+      tokensOut: result.usage.tokensOut,
+      analyses: 0,
+      generations: 3,
+    });
+
+    revalidatePath("/compose");
+    return { runId };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Compose generation failed";
+    await convex.mutation(api.compose.failRun, {
+      sessionToken,
+      runId,
+      error: message,
+    });
+    await captureServerException(error, {
+      action: "startCompose",
+      userId: user._id,
+    });
+    return { runId, error: message };
+  }
+}
+
+export async function generateMoreComposeAction(args: {
+  runId: string;
+  format: ComposeFormat;
+  cluster: TopicCluster;
+  voiceProfileId?: string;
+}): Promise<{ runId: string; error?: string }> {
+  // "Generate more" starts a fresh run for the same cluster/format.
+  return startComposeAction({
+    format: args.format,
+    cluster: args.cluster,
+    voiceProfileId: args.voiceProfileId,
+  });
+}
+
+export async function saveComposeDraftAction(args: {
+  runId: string;
+  format: ComposeFormat;
+  text: string;
+  threadPosts?: string[];
+  title?: string;
+}): Promise<{ draftId: string }> {
+  const { sessionToken } = await requireSession();
+  const draftId = await convexServer().mutation(api.compose.saveDraftFromOption, {
+    sessionToken,
+    runId: args.runId as Id<"composeRuns">,
+    format: args.format,
+    text: args.text,
+    threadPosts: args.threadPosts,
+    title: args.title,
+  });
+  revalidatePath("/drafts");
+  revalidatePath("/compose");
+  return { draftId };
+}
+
+/**
+ * Publish a compose standalone option via the existing drafts.publish path.
+ * Requires an explicit user click — no auto-publish.
+ */
+export async function publishComposeStandaloneAction(args: {
+  runId: string;
+  text: string;
+  scheduledFor?: number;
+}): Promise<{ draftId: string }> {
+  const { sessionToken } = await requireSession();
+  const result = await convexServer().mutation(api.drafts.publish, {
+    sessionToken,
+    text: args.text,
+    kind: "standalone",
+    publishMode: "standalone",
+    composeRunId: args.runId as Id<"composeRuns">,
+    scheduledFor: args.scheduledFor,
+  });
+  revalidatePath("/drafts");
+  return { draftId: result.draftId };
 }

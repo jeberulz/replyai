@@ -197,8 +197,20 @@ export default defineSchema({
     userId: v.id("users"),
     analysisId: v.optional(v.id("tweetAnalyses")),
     replyId: v.optional(v.id("generatedReplies")),
-    kind: v.union(v.literal("reply"), v.literal("quote")),
+    // WP23: standalone / thread / longform are compose ladder kinds.
+    kind: v.union(
+      v.literal("reply"),
+      v.literal("quote"),
+      v.literal("standalone"),
+      v.literal("thread"),
+      v.literal("longform")
+    ),
     text: v.string(),
+    /** WP23 thread drafts: ordered posts (text remains a joined preview). */
+    threadPosts: v.optional(v.array(v.string())),
+    /** WP23: optional title for longform / Article copy-out. */
+    title: v.optional(v.string()),
+    composeRunId: v.optional(v.id("composeRuns")),
     targetTweetId: v.optional(v.string()),
     targetTweetUrl: v.optional(v.string()),
     publishMode: v.optional(
@@ -229,7 +241,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"]),
+    .index("by_user_status", ["userId", "status"])
+    .index("by_compose_run", ["composeRunId"]),
 
   replyOutcomeTrackers: defineTable({
     userId: v.id("users"),
@@ -646,6 +659,66 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_created", ["userId", "createdAt"])
     .index("by_user_local_day", ["userId", "localDay"]),
+
+  // WP23 — reply-to-post ladder compose runs.
+  composeRuns: defineTable({
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("generating"),
+      v.literal("complete"),
+      v.literal("failed")
+    ),
+    error: v.optional(v.string()),
+    format: v.union(
+      v.literal("standalone"),
+      v.literal("thread"),
+      v.literal("longform")
+    ),
+    clusterId: v.string(),
+    topic: v.string(),
+    inputSummary: v.object({
+      replyCount: v.number(),
+      unusedAngleCount: v.number(),
+      draftIds: v.array(v.string()),
+      unusedAngles: v.array(v.string()),
+      reason: v.string(),
+    }),
+    outputs: v.optional(
+      v.object({
+        standalone: v.array(
+          v.object({
+            category: v.string(),
+            content: v.string(),
+            reason: v.string(),
+          })
+        ),
+        thread: v.array(
+          v.object({
+            category: v.string(),
+            posts: v.array(v.string()),
+            reason: v.string(),
+          })
+        ),
+        longform: v.array(
+          v.object({
+            category: v.string(),
+            title: v.string(),
+            content: v.string(),
+            reason: v.string(),
+          })
+        ),
+      })
+    ),
+    voiceProfileId: v.optional(v.id("voiceProfiles")),
+    demo: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_user_status", ["userId", "status"]),
 
   // WP13 — per-author relationship memory (observed interactions only).
   authors: defineTable({
