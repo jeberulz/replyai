@@ -36,7 +36,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP32**.
 
 ## Stories
 
-- [ ] **WP32-S1 — Outcome-weighted funnel score**
+- [x] **WP32-S1 — Outcome-weighted funnel score**
   - In `shared/rankingWeights.ts`:
     - Replace `opportunityWasAnalyzed` success signal in `bucketRate` with
       `funnelOutcomeScore(row)` using weights above.
