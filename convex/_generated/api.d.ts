@@ -37,6 +37,7 @@ import type * as scanner from "../scanner.js";
 import type * as scannerActions from "../scannerActions.js";
 import type * as scannerSemantic from "../scannerSemantic.js";
 import type * as semanticActions from "../semanticActions.js";
+import type * as timing from "../timing.js";
 import type * as tokenSecurity from "../tokenSecurity.js";
 import type * as usage from "../usage.js";
 import type * as users from "../users.js";
@@ -79,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   scannerActions: typeof scannerActions;
   scannerSemantic: typeof scannerSemantic;
   semanticActions: typeof semanticActions;
+  timing: typeof timing;
   tokenSecurity: typeof tokenSecurity;
   usage: typeof usage;
   users: typeof users;

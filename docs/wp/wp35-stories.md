@@ -31,11 +31,11 @@ reply-back data, show **data-backed** timing guidance (e.g. “window closes in
 
 ## Stories
 
-- [ ] **WP35-S1 — Shared window curve math + tests**
+- [x] **WP35-S1 — Shared window curve math + tests**
   - Compute median/min/max time-to-response or time-to-peak from tracker rows.
   - Vitest fixtures for sparse vs sufficient data.
 
-- [ ] **WP35-S2 — Convex query**
+- [x] **WP35-S2 — Convex query**
   - Authenticated query returning curves + sample sizes per bucket for current user.
   - Uses indexes on `replyOutcomeTrackers`; no unbounded collect.
 
