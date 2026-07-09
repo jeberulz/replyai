@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { dismissOpportunityAction } from "@/app/actions";
+import { AuthorDossier } from "@/components/app/author-dossier";
 import { ScoreBadge } from "@/components/app/score-badge";
 import { Badge } from "@/components/ds/badge";
 import { Button } from "@/components/ds/button";
@@ -113,6 +114,8 @@ export function OpportunityDetail({
             </div>
           </div>
         </Card>
+
+        <AuthorDossier authorHandle={opportunity.authorHandle} />
 
         <Card padding={3}>
           <div className="space-y-3">

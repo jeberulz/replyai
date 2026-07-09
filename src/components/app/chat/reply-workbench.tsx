@@ -3,6 +3,7 @@
 import { useState, type ComponentProps } from "react";
 import { Copy, History, Star } from "lucide-react";
 
+import { AuthorDossier } from "@/components/app/author-dossier";
 import { ModelEval } from "@/components/app/model-eval";
 import { OptionsPanel } from "@/components/app/options-panel";
 import type { Option } from "@/components/app/option-card";
@@ -102,6 +103,8 @@ export function ReplyWorkbench({
               <PaneEyebrow>Replying to</PaneEyebrow>
               <TweetBlock tweet={tweet} tweetUrl={tweetUrl} />
             </div>
+
+            <AuthorDossier authorHandle={tweet.authorHandle} compact />
 
             {apiNotice && (
               <Banner
