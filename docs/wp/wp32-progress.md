@@ -39,3 +39,72 @@ Append-only. Newest entries at the bottom.
   recent version. Had to pick outcome mixes that don't saturate the
   ±0.85-1.15 clamp, otherwise the "old rows weigh less" assertion is
   untestable (both sides clamp to the same value).
+
+## 2026-07-09 — WP32-S2 done
+
+- Moved `rankingChangelogSentence` (+ its label maps and default max-age
+  constant) from `shared/briefings.ts` into new `shared/rankingChangelog.ts`.
+  `shared/briefings.ts` now imports and re-exports it, and its
+  `BRIEFING_DEFAULTS.rankingChangelogMaxAgeMs` reads from the new
+  `RANKING_CHANGELOG_MAX_AGE_MS` constant — same 7-day value, single source.
+  No behavior change: existing `tests/briefings.test.ts` assertions on
+  `rankingChangelogSentence` still pass unmodified.
+- Added `tests/rankingChangelog.test.ts` importing directly from the new
+  module (missing/stale/no-delta/source+band/custom-maxAge cases).
+
+## 2026-07-09 — WP32-S3 done
+
+- Additive `scannerSettings.rankingChangelog` (string) and
+  `rankingChangelogAt` (number) in `convex/schema.ts`.
+- `convex/ranking.ts`: both `recomputeForUser` and `recomputeAll` now compute
+  `rankingChangelogSentence(weights, now)` alongside `rankingWeights` and
+  patch both. **Decision:** set on every successful recompute, not only on
+  "material" changes — `rankingChangelogSentence` already has a plain
+  fallback sentence ("...refreshed recently...") when there's no meaningful
+  multiplier delta, so every recompute with enough funnel data produces a
+  truthful sentence; when `computeRankingWeights` returns null (not enough
+  data), both fields are cleared (patched to `undefined`, matching the
+  existing `rankingWeights: weights ?? undefined` pattern). No convex-test
+  added for `ranking.ts` — this repo has no `convex/*.test.ts` files at all;
+  its testing convention is pure-function unit tests in `shared/`, which
+  already covers the actual logic (`computeRankingWeights`,
+  `rankingChangelogSentence`).
+
+## 2026-07-09 — WP32-S4 done
+
+- Added a dismissible banner in `feed-scanner.tsx` (Option A from the
+  stories doc) between the top bar and the scroll body. Shows
+  `settings.rankingChangelog` verbatim, gated on `rankingChangelogAt` being
+  within `RANKING_CHANGELOG_MAX_AGE_MS` (client-side belt-and-suspenders
+  check on top of the server already only ever setting a fresh sentence).
+  Dismiss is local `useState` (session-only) — no persistence story was
+  asked for, and the sentence rotates out naturally after 7 days or the
+  next weekly recompute.
+- Did not touch `feed-scanner.tsx`'s settings dialog, sources config, or any
+  freshness/decay copy — that's WP31's surface in the same file. Kept this
+  change to one self-contained block (import, one state var, one computed
+  bool, one JSX block) to minimize overlap risk with their concurrent edits.
+- **Not verified in a running browser.** The shared Convex dev deployment
+  (`shiny-crow-162`, from `.env.local` in the main checkout) is a singleton
+  resource; a concurrent WP31 agent may have `npx convex dev` pushing its
+  own in-progress schema/functions against it right now. Pushing my schema
+  change from this worktree risked clobbering their live dev session (the
+  same class of collision as the git working-directory issue above).
+  Verified instead via `npm run typecheck` (confirms `settings.rankingChangelog`
+  types flow through end-to-end from schema → query → component) and a
+  manual read-through of the JSX. Flagging this so the PR reviewer/gate
+  session does a real browser pass once WP31/WP32 aren't racing the same
+  dev deployment.
+
+## 2026-07-09 — WP32-S5 / WP32-S6: no code needed
+
+- **S5 (query exposure):** `api.scanner.settings` already does
+  `return { ...row, needsListScope, scannerLocked }` — spreading the whole
+  `scannerSettings` doc. Once the schema fields exist, `rankingChangelog`
+  and `rankingChangelogAt` are already exposed, still behind the existing
+  `requireUser` auth. Confirmed via typecheck (the UI reads
+  `settings.rankingChangelog` with no cast).
+- **S6 (account export):** `shared/accountData.ts`'s
+  `sanitizeAccountExportRow` has no special case for `scannerSettings` — it
+  falls through to a whole-row export, so the new fields are included
+  automatically. No changes to `shared/accountData.ts` or `convex/account.ts`.

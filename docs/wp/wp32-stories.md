@@ -59,7 +59,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP32**.
     when new weights computed (null weights → clear changelog).
   - `normalizeRankingWeights` unchanged for scoring path.
 
-- [ ] **WP32-S4 — Minimal UI surface**
+- [x] **WP32-S4 — Minimal UI surface**
   - One surface only (choose smallest diff):
     - **Option A:** `feed-scanner.tsx` banner when `rankingChangelogAt` within
       7 days and sentence non-empty, or
@@ -67,12 +67,12 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP32**.
   - Copy is the stored sentence verbatim; no multiplier numbers in UI.
   - Demo users see deterministic demo sentence when demo weights present.
 
-- [ ] **WP32-S5 — Query exposure**
+- [x] **WP32-S5 — Query exposure**
   - Extend existing scanner settings query (or `scanner.getSettings`) to return
     `rankingChangelog` + `rankingChangelogAt` for the UI — auth via
     `requireUser`.
 
-- [ ] **WP32-S6 — Account export**
+- [x] **WP32-S6 — Account export**
   - Include new settings fields in export payload if scanner settings exported.
 
 - [ ] **WP32-S7 — Final verification + PR**
