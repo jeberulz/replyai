@@ -35,7 +35,7 @@ clusters, WP13 is **author** dossiers.
   - Pure function: opportunities → ranked topic clusters with counts.
   - Vitest with fixture corpus.
 
-- [ ] **WP37-S2 — Convex query + optional run record**
+- [x] **WP37-S2 — Convex query + optional run record**
   - Query returns clusters for session user; bounded pagination.
   - Optional internal mutation to cache last run (orchestrator decides in implementation).
 

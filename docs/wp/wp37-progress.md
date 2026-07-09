@@ -13,3 +13,13 @@
 - Demo: `demoTrendTopics()` seeds DEMO_TWEETS ×2 so clusters clear min size;
   deterministic for a fixed `nowMs`.
 - Tests: 9 cases in `tests/trends.test.ts` — all green.
+
+## 2026-07-09 — WP37-S2
+
+- Additive `trendRuns` table (topic clusters only; separate from WP13).
+- `convex/trends.ts`: `radar` query via `requireUser`; client passes `nowMs`
+  (no Date.now in queries). Demo users → `demoTrendTopics`. Live users cluster
+  last 7d opportunities (max 200), niche keywords from scanner settings.
+- Optional `recordRun` internalMutation for future cache/cron — MVP path is
+  on-demand only.
+- Codegen + typecheck green.
