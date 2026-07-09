@@ -182,6 +182,66 @@ Return structured JSON: top opportunities (prefer real ids/handles from the list
   };
 }
 
+function configuredAppUrl(): string | null {
+  const value =
+    process.env.APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    "";
+  return value ? value.replace(/\/$/, "") : null;
+}
+
+function formatBriefingEmailText(artifact: BriefingArtifact, appUrl: string | null): string {
+  const oppLines = artifact.opportunities
+    .map(
+      (o, i) =>
+        `${i + 1}. @${o.authorHandle}\n   ${o.textPreview}\n   Angle: ${o.angle}\n   Why: ${o.reason}`
+    )
+    .join("\n\n");
+  const link = appUrl ? `\n\nOpen in ReplyPilot: ${appUrl}/briefing` : "";
+  return `Your daily ReplyPilot briefing
+
+Overnight opportunities:
+${oppLines || "(none)"}
+
+Yesterday's outcomes:
+${artifact.outcomes.summary}
+
+Coaching insight:
+${artifact.coachingInsight}
+
+Agents prepare — you decide. Every reply still needs your explicit click to send.${link}`;
+}
+
+async function maybeSendBriefingEmail(input: {
+  emailOptIn: boolean;
+  toEmail: string | undefined;
+  artifact: BriefingArtifact;
+}): Promise<"skipped" | "sent" | "failed"> {
+  if (!input.emailOptIn || !input.toEmail?.trim()) return "skipped";
+  const resendKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+  if (!resendKey || !from) return "skipped";
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [input.toEmail.trim()],
+        subject: "Your ReplyPilot daily briefing",
+        text: formatBriefingEmailText(input.artifact, configuredAppUrl()),
+      }),
+    });
+    return response.ok ? "sent" : "failed";
+  } catch {
+    return "failed";
+  }
+}
+
 /**
  * Generate a daily briefing artifact for a running briefingRuns row.
  * Demo / missing API key → deterministic artifact. Never publishes.
@@ -270,6 +330,12 @@ export const generateBriefing = internalAction({
         }
       }
 
+      const emailStatus = await maybeSendBriefingEmail({
+        emailOptIn: context.emailOptIn,
+        toEmail: context.notificationEmail,
+        artifact,
+      });
+
       await ctx.runMutation(internal.briefings.completeRun, {
         runId,
         opportunityCount: artifact.opportunities.length,
@@ -278,7 +344,7 @@ export const generateBriefing = internalAction({
           context.yesterdayOutcomes.sent +
           context.yesterdayOutcomes.responded,
         artifact,
-        emailStatus: "skipped",
+        emailStatus,
       });
     } catch (error) {
       const message =

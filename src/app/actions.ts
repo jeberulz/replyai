@@ -1344,3 +1344,25 @@ export async function markNotificationAlertOpenedAction(alertId: string) {
     alertId: alertId as Id<"notificationAlerts">,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Daily briefing (WP12)
+// ---------------------------------------------------------------------------
+
+export async function saveBriefingSettingsAction(patch: {
+  enabled?: boolean;
+  hourLocal?: number;
+  timezone?: string;
+  emailOptIn?: boolean;
+}) {
+  const { sessionToken } = await requireSession();
+  return convexServer().mutation(api.briefings.updateSettings, {
+    sessionToken,
+    enabled: typeof patch.enabled === "boolean" ? patch.enabled : undefined,
+    hourLocal:
+      typeof patch.hourLocal === "number" ? patch.hourLocal : undefined,
+    timezone: typeof patch.timezone === "string" ? patch.timezone : undefined,
+    emailOptIn:
+      typeof patch.emailOptIn === "boolean" ? patch.emailOptIn : undefined,
+  });
+}

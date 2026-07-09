@@ -13,6 +13,7 @@ import { Text } from "@/components/ds/text";
 import { DefaultModelCard } from "@/components/app/default-model-card";
 import { AccountDataControls } from "@/components/app/account-data-controls";
 import { NotificationSettingsCard } from "@/components/app/notification-settings-card";
+import { BriefingSettingsCard } from "@/components/app/briefing-settings-card";
 import { PageHeader } from "@/components/app/page-header";
 import { convexServer } from "@/lib/convex";
 import { hasAnthropicKey, hasXCredentials } from "@/lib/env";
@@ -210,6 +211,13 @@ export default async function SettingsPage() {
         description="Capped, quiet-hours-aware alerts when a young opportunity crosses your threshold. Golden-15 covers watched/list authors in the first ~15 minutes."
       >
         <NotificationSettingsCard hasProAccess={billing.hasProAccess} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Daily briefing"
+        description="Morning artifact at your hour: overnight opportunities, yesterday's outcomes, one coaching insight. Optional email. Agents prepare — you decide."
+      >
+        <BriefingSettingsCard hasProAccess={billing.hasProAccess} />
       </SettingsSection>
 
       <SettingsSection

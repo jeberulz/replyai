@@ -60,7 +60,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP12**.
   - Free plan: surface visible with upgrade copy; no fake scores.
   - Minimal nav link; Dark Chrome / `ds/` adapters; landing untouched.
 
-- [ ] **WP12-S6 — Settings + optional email**
+- [x] **WP12-S6 — Settings + optional email**
   - Settings card: enable, hour, timezone, email opt-in.
   - On successful run, if email opt-in: Resend delivery (env-gated; no-op
     without keys / demo). Does not block run completion on email failure.
