@@ -17,6 +17,7 @@ import {
   defaultNotificationSettings,
   evaluateNotificationEnqueue,
   isInQuietHours,
+  notificationSettingsDefaults,
   type NotificationSettingsSnapshot,
 } from "../shared/notifications";
 import { requireUser } from "./helpers";
@@ -137,9 +138,8 @@ export const settings = query({
       : null;
 
     if (!row) {
-      const defaults = defaultNotificationSettings(Date.now());
       return {
-        ...defaults,
+        ...notificationSettingsDefaults(),
         optedInAt: undefined,
         permissionGrantedAt: undefined,
         notificationsLocked: !hasProAccess(user),
@@ -197,8 +197,9 @@ export const updateSettings = mutation({
     const patch: Partial<Doc<"notificationSettings">> = { updatedAt: now };
 
     if (args.masterEnabled !== undefined) {
-      patch.masterEnabled = args.masterEnabled;
-      if (args.masterEnabled) patch.optedInAt = row.optedInAt ?? now;
+      patch.masterEnabled =
+        args.masterEnabled && Boolean(row.permissionGrantedAt);
+      if (patch.masterEnabled) patch.optedInAt = row.optedInAt ?? now;
     }
     if (args.pushEnabled !== undefined) patch.pushEnabled = args.pushEnabled;
     if (args.digestEnabled !== undefined) {

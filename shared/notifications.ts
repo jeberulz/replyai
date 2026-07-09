@@ -219,9 +219,7 @@ export function evaluateNotificationEnqueue(args: {
   return { action: "enqueue", tier };
 }
 
-export function defaultNotificationSettings(
-  nowMs: number
-): NotificationSettingsSnapshot & { updatedAt: number } {
+export function notificationSettingsDefaults(): NotificationSettingsSnapshot {
   return {
     masterEnabled: false,
     pushEnabled: true,
@@ -233,6 +231,14 @@ export function defaultNotificationSettings(
     timezone: NOTIFICATION_DEFAULTS.timezone,
     youngWindowHours: NOTIFICATION_DEFAULTS.youngWindowHours,
     enabledSources: [...ALL_NOTIFICATION_SOURCES],
+  };
+}
+
+export function defaultNotificationSettings(
+  nowMs: number
+): NotificationSettingsSnapshot & { updatedAt: number } {
+  return {
+    ...notificationSettingsDefaults(),
     updatedAt: nowMs,
   };
 }

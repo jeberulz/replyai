@@ -147,7 +147,9 @@ export function NotificationSettingsCard({
         description="Off until you opt in and grant push permission."
         value={settings.masterEnabled}
         onChange={(checked) => savePatch({ masterEnabled: checked })}
-        isDisabled={pending || locked}
+        isDisabled={
+          pending || locked || (!settings.hasPushSubscription && !settings.masterEnabled)
+        }
       />
 
       <Switch
