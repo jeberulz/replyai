@@ -41,3 +41,16 @@
 - `offlineDraftSync.ts` + `OfflineDraftSync` in app layout: flush on online,
   focus, visibility, SW message. Toasts on sync/conflict/error; never drops text.
 - `saveDraftWithOffline` / `updateDraftWithOffline` wrap save/update for queueing.
+
+
+## 2026-07-09 — WP15-S4 service worker shell cache
+
+- Extended `public/push-sw.js` additively: install/activate shell cache
+  (`replypilot-shell-v1`) for `/icons/*` + manifest only.
+- Fetch handler allowlists static shell assets; never intercepts Convex /
+  `/api/` / `_next/data`.
+- WP8 `push` + `notificationclick` handlers preserved (icon paths updated to
+  PWA icons). SW posts `replypilot-sync-drafts` to nudge page flush.
+- **WP8 push regression checklist (manual):** enable push in Settings →
+  receive hot-window notification → click opens `/feed` (or deep link) and
+  focuses existing client; no second SW registration in Application panel.

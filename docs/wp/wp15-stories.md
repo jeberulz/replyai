@@ -57,7 +57,7 @@ on drafts (schema stable).
   - On online: flush queue via existing draft mutations; resolve conflicts last-write-wins with toast.
   - Surface sync errors; never drop queued text silently.
 
-- [ ] **WP15-S4 — Service worker shell cache (minimal)**
+- [x] **WP15-S4 — Service worker shell cache (minimal)**
   - Additive SW: cache static assets only (app icons, fonts) — not API.
   - Verify push + notificationclick still pass manual WP8 regression.
 
