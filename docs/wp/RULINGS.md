@@ -200,3 +200,21 @@ Ruling:
 6. Workers use **Grok 4.5 Fast** (`grok-4.5-fast-xhigh`) for the Phase 2 sprint
    unless orchestrator escalates after repeated gate failure.
 
+## 2026-07-09 - Wave 3 — WP15 service worker + WP39 watch proposals
+
+Question: WP15 needs a service worker for installability/offline; WP8 already
+registered `public/push-sw.js` for hot-window push. WP39 proposes watch handles
+from concierge output.
+
+Ruling:
+
+1. **WP15 must extend `public/push-sw.js` additively** — one SW registration,
+   no second worker file. Push + notificationclick handlers from WP8 must remain
+   functional; Gate 3 includes manual push regression.
+2. **Offline queue is draft-only** — no queued publish, no background sync to X.
+3. **WP39 watch proposals** require explicit user accept per handle (same rule
+   as WP33 research curator). Concierge never auto-adds watches or changes goal
+   without confirm click.
+4. **WP15 and WP39 may run in parallel** — disjoint file boundaries; if both
+   need `src/app/actions.ts`, each WP owns named action groups only.
+
