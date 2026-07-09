@@ -39,7 +39,7 @@ view in Voice Studio.
 
 ## Stories
 
-- [ ] **WP36-S1 — Shared drift diff + demo**
+- [x] **WP36-S1 — Shared drift diff + demo**
   - Compare stored profile style vs newly measured style from example set.
   - Vitest: no drift, minor drift, major drift fixtures.
 
