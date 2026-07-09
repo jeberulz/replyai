@@ -65,3 +65,11 @@ Append-only. Newest entries at the bottom.
   reorder existing crons. WP31 archive cron already present on `main` (branched
   after PR #35), so no rebase conflict.
 - Typecheck green.
+
+## 2026-07-09 — S5 public query
+
+- `research.latestCuratorRun` (public, `requireUser`): returns `{ locked, run }`
+  where `run` = last `monthly_curator` run's status + `newSuggestionCount`
+  (resultCount) + `prunedCount` (curatorPrunedCount). `locked` = not Pro/demo.
+- Manual `startRun` and existing queries unchanged.
+- Typed `returns` validator on the new query (matches WP12 briefings style).

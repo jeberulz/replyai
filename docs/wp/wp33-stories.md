@@ -71,7 +71,7 @@ scanner keyword graph auto-rewrite, daily curator cadence.
   - Hourly alternative acceptable if documented — prefer true monthly +
     idempotent month key.
 
-- [ ] **WP33-S5 — Convex public queries**
+- [x] **WP33-S5 — Convex public queries**
   - `research.latestCuratorRun` — last monthly run status + counts for UI.
   - Keep existing manual `startRun` unchanged.
 

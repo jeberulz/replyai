@@ -102,6 +102,59 @@ export const latestRun = query({
   },
 });
 
+/**
+ * WP33 — last monthly curator run for the current user, plus a `locked` flag
+ * for free-plan users. Powers the research "Monthly curator" status strip.
+ */
+export const latestCuratorRun = query({
+  args: { sessionToken: v.string() },
+  returns: v.object({
+    locked: v.boolean(),
+    run: v.union(
+      v.object({
+        _id: v.id("researchRuns"),
+        status: v.union(
+          v.literal("running"),
+          v.literal("complete"),
+          v.literal("failed")
+        ),
+        newSuggestionCount: v.number(),
+        prunedCount: v.number(),
+        error: v.optional(v.string()),
+        createdAt: v.number(),
+      }),
+      v.null()
+    ),
+  }),
+  handler: async (ctx, { sessionToken }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const locked = !hasProAccess({ plan: user.plan, isDemo: user.isDemo });
+
+    const runs = await ctx.db
+      .query("researchRuns")
+      .withIndex("by_user_created", (q) => q.eq("userId", user._id))
+      .collect();
+    const curatorRuns = runs
+      .filter((r) => r.runKind === "monthly_curator")
+      .sort((a, b) => b.createdAt - a.createdAt);
+    const latest = curatorRuns[0];
+
+    if (!latest) return { locked, run: null };
+
+    return {
+      locked,
+      run: {
+        _id: latest._id,
+        status: latest.status,
+        newSuggestionCount: latest.resultCount,
+        prunedCount: latest.curatorPrunedCount ?? 0,
+        error: latest.error,
+        createdAt: latest.createdAt,
+      },
+    };
+  },
+});
+
 export const runStatus = query({
   args: { sessionToken: v.string(), runId: v.id("researchRuns") },
   handler: async (ctx, { sessionToken, runId }) => {
