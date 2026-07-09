@@ -10,6 +10,7 @@ import { OatmealEmptyState } from "@/components/app/oatmeal-empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DraftRow, type Draft } from "@/components/app/drafts/draft-row";
 import { DraftDetail } from "@/components/app/drafts/draft-detail";
+import { OfflinePendingBanner } from "@/components/app/drafts/offline-pending-banner";
 
 type StatusFilter = "all" | "scheduled" | "published" | "failed";
 
@@ -56,13 +57,15 @@ export function DraftsList() {
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
+        <OfflinePendingBanner />
         <FilterChips
           value={filter}
           onValueChange={setFilter}
           options={STATUS_FILTERS}
         />
         <p className="text-xs text-muted-foreground">
-          Scheduled posts publish automatically; statuses update live.
+          Scheduled posts publish automatically; statuses update live. Offline
+          draft edits sync when you reconnect — never auto-publish.
         </p>
 
         {drafts === undefined ? (

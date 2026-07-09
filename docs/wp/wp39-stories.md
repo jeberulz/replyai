@@ -47,22 +47,22 @@ groundwork" — this WP ships the MVP agent path.
 
 ## Stories
 
-- [ ] **WP39-S1 — Shared proposal types + demo**
+- [x] **WP39-S1 — Shared proposal types + demo**
   - Proposal validator + demo fixture from static onboarding data.
   - Vitest: demo shape, fallback when empty input.
 
-- [ ] **WP39-S2 — Schema + Convex run API**
+- [x] **WP39-S2 — Schema + Convex run API**
   - Additive run table; get latest run for session user.
   - `requireUser` on all public functions; account delete/export.
 
-- [ ] **WP39-S3 — Concierge action**
+- [x] **WP39-S3 — Concierge action**
   - Fetch bio + recent tweets (or demo); LLM or heuristic proposal.
   - Missing keys → demo proposal; failures → failed run row + graceful UI.
 
-- [ ] **WP39-S4 — Onboarding review UI**
+- [x] **WP39-S4 — Onboarding review UI**
   - Show proposal as editable chips/cards; Accept applies goal/keywords/watch seeds.
   - "Use manual setup instead" skips to current wizard behavior.
 
-- [ ] **WP39-S5 — Verification**
+- [x] **WP39-S5 — Verification**
   - Demo mode end-to-end; X-connected path manual note in PR.
   - Checks green; PR DoD checklist.

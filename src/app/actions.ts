@@ -865,13 +865,15 @@ export async function retryDraftAsStandaloneAction(draftId: string) {
 
 export async function saveDraftAction(args: {
   text: string;
-  kind: "reply" | "quote";
+  kind: "reply" | "quote" | "standalone" | "thread" | "longform";
   analysisId?: string;
   replyId?: string;
   targetTweetId?: string;
   targetTweetUrl?: string;
   category?: string;
-}) {
+  /** WP15 offline queue idempotency key. */
+  clientId?: string;
+}): Promise<{ draftId: string }> {
   const { sessionToken, user } = await requireSession();
   const result = await convexServer().mutation(api.drafts.save, {
     sessionToken,
@@ -881,8 +883,9 @@ export async function saveDraftAction(args: {
     replyId: args.replyId as Id<"generatedReplies"> | undefined,
     targetTweetId: args.targetTweetId,
     targetTweetUrl: args.targetTweetUrl,
+    clientId: args.clientId,
   });
-  if (args.replyId) {
+  if (args.replyId && !result.deduped) {
     await trackServer("option_selected", user._id, {
       analysisId: args.analysisId,
       replyId: args.replyId,
@@ -893,12 +896,16 @@ export async function saveDraftAction(args: {
       editDistanceNormalized: result.editDistanceNormalized,
     });
   }
-  await trackServer("draft_saved", user._id, {
-    analysisId: args.analysisId,
-    replyId: args.replyId,
-    kind: args.kind,
-  });
+  if (!result.deduped) {
+    await trackServer("draft_saved", user._id, {
+      analysisId: args.analysisId,
+      replyId: args.replyId,
+      kind: args.kind,
+    });
+  }
   revalidatePath("/dashboard");
+  revalidatePath("/drafts");
+  return { draftId: String(result.draftId) };
 }
 
 export async function deleteDraftAction(draftId: string) {
@@ -918,6 +925,37 @@ export async function updateDraftAction(draftId: string, text: string) {
     text,
   });
   revalidatePath("/drafts");
+}
+
+// ---------------------------------------------------------------------------
+// WP15 — offline draft sync (creates/updates only; never publish)
+// ---------------------------------------------------------------------------
+
+export async function syncOfflineDraftCreateAction(args: {
+  clientId: string;
+  text: string;
+  kind: "reply" | "quote" | "standalone" | "thread" | "longform";
+  analysisId?: string;
+  replyId?: string;
+  targetTweetId?: string;
+  targetTweetUrl?: string;
+}): Promise<{ draftId: string }> {
+  return saveDraftAction({
+    text: args.text,
+    kind: args.kind,
+    analysisId: args.analysisId,
+    replyId: args.replyId,
+    targetTweetId: args.targetTweetId,
+    targetTweetUrl: args.targetTweetUrl,
+    clientId: args.clientId,
+  });
+}
+
+export async function syncOfflineDraftUpdateAction(args: {
+  draftId: string;
+  text: string;
+}): Promise<void> {
+  await updateDraftAction(args.draftId, args.text);
 }
 
 // ---------------------------------------------------------------------------
@@ -1265,6 +1303,56 @@ export async function buildWritingModelAction(args: {
 export async function skipOnboardingAction() {
   const { sessionToken } = await requireSession();
   await convexServer().mutation(api.users.completeOnboarding, { sessionToken });
+}
+
+// ---------------------------------------------------------------------------
+// WP39 — Onboarding concierge (named action group; do not mix with WP15)
+// ---------------------------------------------------------------------------
+
+export async function runOnboardingConciergeAction(): Promise<{
+  runId: Id<"onboardingConciergeRuns">;
+}> {
+  const { sessionToken } = await requireSession();
+  const runId = await convexServer().mutation(
+    api.onboardingConcierge.startRun,
+    { sessionToken }
+  );
+  return { runId };
+}
+
+export async function skipOnboardingConciergeAction() {
+  const { sessionToken } = await requireSession();
+  await convexServer().mutation(api.onboardingConcierge.skipRun, {
+    sessionToken,
+  });
+}
+
+export async function applyOnboardingConciergeProposalAction(args: {
+  runId: Id<"onboardingConciergeRuns">;
+  goalId: GoalId;
+  keywords: string[];
+}) {
+  const { sessionToken } = await requireSession();
+  if (!isGoalId(args.goalId)) throw new Error("Unknown goal");
+  await convexServer().mutation(api.onboardingConcierge.acceptProposal, {
+    sessionToken,
+    runId: args.runId,
+    goalId: args.goalId,
+    keywords: args.keywords,
+  });
+}
+
+/** Explicit per-handle watch accept — never batch-auto-add. */
+export async function acceptOnboardingConciergeWatchAction(args: {
+  runId: Id<"onboardingConciergeRuns">;
+  handle: string;
+}) {
+  const { sessionToken } = await requireSession();
+  return await convexServer().mutation(api.onboardingConcierge.acceptWatch, {
+    sessionToken,
+    runId: args.runId,
+    handle: args.handle,
+  });
 }
 
 export async function dismissSetupChecklistAction() {

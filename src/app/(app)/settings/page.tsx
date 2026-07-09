@@ -14,6 +14,7 @@ import { DefaultModelCard } from "@/components/app/default-model-card";
 import { AccountDataControls } from "@/components/app/account-data-controls";
 import { NotificationSettingsCard } from "@/components/app/notification-settings-card";
 import { BriefingSettingsCard } from "@/components/app/briefing-settings-card";
+import { InstallAppCard } from "@/components/app/install-app-card";
 import { PageHeader } from "@/components/app/page-header";
 import { convexServer } from "@/lib/convex";
 import { hasAnthropicKey, hasXCredentials } from "@/lib/env";
@@ -204,6 +205,13 @@ export default async function SettingsPage() {
             </form>
           )}
         </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Install app"
+        description="Add ReplyPilot to your home screen. Offline draft queue syncs when you reconnect — publishing always needs network + an explicit click."
+      >
+        <InstallAppCard />
       </SettingsSection>
 
       <SettingsSection

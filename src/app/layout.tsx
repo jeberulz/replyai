@@ -24,6 +24,19 @@ export const metadata: Metadata = {
   title: "ReplyPilot AI",
   description:
     "Find the conversations worth joining on X, and reply in your own voice before the window closes.",
+  applicationName: "ReplyPilot AI",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "ReplyPilot",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
 };
 
 export const viewport: Viewport = {

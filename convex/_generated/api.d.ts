@@ -27,6 +27,8 @@ import type * as lib_fairUse from "../lib/fairUse.js";
 import type * as lib_sentry from "../lib/sentry.js";
 import type * as notifications from "../notifications.js";
 import type * as notificationsActions from "../notificationsActions.js";
+import type * as onboardingConcierge from "../onboardingConcierge.js";
+import type * as onboardingConciergeActions from "../onboardingConciergeActions.js";
 import type * as opportunities from "../opportunities.js";
 import type * as outcomes from "../outcomes.js";
 import type * as projects from "../projects.js";
@@ -76,6 +78,8 @@ declare const fullApi: ApiFromModules<{
   "lib/sentry": typeof lib_sentry;
   notifications: typeof notifications;
   notificationsActions: typeof notificationsActions;
+  onboardingConcierge: typeof onboardingConcierge;
+  onboardingConciergeActions: typeof onboardingConciergeActions;
   opportunities: typeof opportunities;
   outcomes: typeof outcomes;
   projects: typeof projects;

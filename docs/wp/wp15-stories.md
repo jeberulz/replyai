@@ -45,22 +45,22 @@ on drafts (schema stable).
 
 ## Stories
 
-- [ ] **WP15-S1 — Web app manifest + install metadata**
+- [x] **WP15-S1 — Web app manifest + install metadata**
   - Manifest + icons; linked from root/app layout.
   - Lighthouse installable criteria documented in progress.md.
 
-- [ ] **WP15-S2 — Offline draft queue (client)**
+- [x] **WP15-S2 — Offline draft queue (client)**
   - IndexedDB store: pending draft saves/edits with client idempotency key.
   - Vitest for enqueue/dequeue/merge logic.
 
-- [ ] **WP15-S3 — Sync layer**
+- [x] **WP15-S3 — Sync layer**
   - On online: flush queue via existing draft mutations; resolve conflicts last-write-wins with toast.
   - Surface sync errors; never drop queued text silently.
 
-- [ ] **WP15-S4 — Service worker shell cache (minimal)**
+- [x] **WP15-S4 — Service worker shell cache (minimal)**
   - Additive SW: cache static assets only (app icons, fonts) — not API.
   - Verify push + notificationclick still pass manual WP8 regression.
 
-- [ ] **WP15-S5 — UI + verification**
+- [x] **WP15-S5 — UI + verification**
   - Draft list/detail shows offline/synced state; optional install hint in settings.
   - Manual: airplane mode save → reconnect sync; checks green; PR DoD checklist.
