@@ -11,7 +11,7 @@ regressed; demo mode stays unbroken.
 
 ## Stories
 
-- [ ] **WP9-S1** — Curated-source relaxed relevance gate
+- [x] **WP9-S1** — Curated-source relaxed relevance gate
   - Introduce `CURATED_SOURCE_MIN_RELEVANCE = 0.3` in `shared/semanticRelevance.ts`.
   - `passesCombinedFeedFilter` for `list` / `watched` / `search` requires
     combined keyword+semantic relevance ≥ 0.3 (not auto-pass).

@@ -16,7 +16,25 @@ export const SEMANTIC_RESCUE_LIMIT = 8;
 /** Hard cap on tweets sent to the classifier per scan. */
 export const SEMANTIC_BATCH_LIMIT = 25;
 
+/**
+ * Relaxed bar for list / watched / search — curated sources deserve a lower
+ * bar than following, not no bar (WP9).
+ */
+export const CURATED_SOURCE_MIN_RELEVANCE = 0.3;
+
 export const SEMANTIC_HAIKU_MODEL = "claude-haiku-4-5";
+
+export function isCuratedOpportunitySource(
+  source?: OpportunitySource
+): boolean {
+  return source === "list" || source === "watched" || source === "search";
+}
+
+export function minRelevanceForSource(source?: OpportunitySource): number {
+  return isCuratedOpportunitySource(source)
+    ? CURATED_SOURCE_MIN_RELEVANCE
+    : FEED_SCANNER_MIN_RELEVANCE;
+}
 
 export type NicheContext = {
   keywords: string[];
@@ -110,7 +128,7 @@ export function selectSemanticClassificationTargets(
   return deduped.slice(0, SEMANTIC_BATCH_LIMIT);
 }
 
-/** Whether a following-timeline tweet should surface after semantic scoring. */
+/** Whether a tweet should surface after semantic scoring (source-aware bar). */
 export function passesCombinedFeedFilter(
   text: string,
   keywords: string[],
@@ -121,15 +139,12 @@ export function passesCombinedFeedFilter(
   if (typeof semantic !== "number" && semantic?.brandSafety === "unsafe") {
     return false;
   }
-  if (source === "list" || source === "watched" || source === "search") {
-    return true;
-  }
   const semanticScore =
     typeof semantic === "number"
       ? semantic
       : effectiveSemanticRelevance(semantic);
   const combined = combineTopicRelevance(keywordScore, semanticScore);
-  return combined >= FEED_SCANNER_MIN_RELEVANCE;
+  return combined >= minRelevanceForSource(source);
 }
 
 const TECH_POLICY_SIGNAL =
@@ -246,11 +261,9 @@ export function opportunityStillRelevant(
   source: OpportunitySource | undefined,
   storedTopicRelevance?: number
 ): boolean {
-  if (source === "list" || source === "watched" || source === "search") {
-    return true;
-  }
+  const min = minRelevanceForSource(source);
   if (storedTopicRelevance !== undefined) {
-    return storedTopicRelevance >= FEED_SCANNER_MIN_RELEVANCE;
+    return storedTopicRelevance >= min;
   }
-  return topicRelevanceForKeywords(text, keywords) >= FEED_SCANNER_MIN_RELEVANCE;
+  return topicRelevanceForKeywords(text, keywords) >= min;
 }

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { topicRelevanceForKeywords } from "../shared/scoring";
 import {
   combineTopicRelevance,
+  CURATED_SOURCE_MIN_RELEVANCE,
   demoSemanticRelevance,
+  opportunityStillRelevant,
   passesCombinedFeedFilter,
   resolveManualTopicRelevance,
   selectSemanticClassificationTargets,
@@ -55,7 +57,7 @@ describe("passesCombinedFeedFilter", () => {
     ).toBe(true);
   });
 
-  it("passes curated sources when the semantic screen does not flag them unsafe", () => {
+  it("rejects off-topic curated sources below the relaxed relevance bar", () => {
     expect(
       passesCombinedFeedFilter(
         "random pasta recipe",
@@ -64,6 +66,58 @@ describe("passesCombinedFeedFilter", () => {
         { relevance: 0.1, reason: "off-topic", brandSafety: "safe" },
         "watched"
       )
+    ).toBe(false);
+  });
+
+  it("passes curated sources that clear the relaxed relevance bar", () => {
+    expect(
+      passesCombinedFeedFilter(
+        "Shipping an AI agent for support teams",
+        keywords,
+        0,
+        {
+          relevance: CURATED_SOURCE_MIN_RELEVANCE / 0.9,
+          reason: "weak but on-niche",
+          brandSafety: "safe",
+        },
+        "list"
+      )
+    ).toBe(true);
+  });
+
+  it("still blocks unsafe curated sources even when relevance is high", () => {
+    expect(
+      passesCombinedFeedFilter(
+        "boycott this founder",
+        keywords,
+        0.9,
+        {
+          relevance: 0.9,
+          reason: "outrage",
+          brandSafety: "unsafe",
+        },
+        "search"
+      )
+    ).toBe(false);
+  });
+});
+
+describe("opportunityStillRelevant", () => {
+  it("applies the curated bar to stored topic relevance", () => {
+    expect(
+      opportunityStillRelevant("pasta", ["ai"], "watched", 0.2)
+    ).toBe(false);
+    expect(
+      opportunityStillRelevant("ai agents", ["ai"], "watched", 0.35)
+    ).toBe(true);
+  });
+
+  it("keeps the following bar at FEED_SCANNER_MIN_RELEVANCE", () => {
+    expect(
+      opportunityStillRelevant("x", ["ai"], "following", 0.4)
+    ).toBe(false);
+    expect(
+      opportunityStillRelevant("x", ["ai"], "following", 0.5)
     ).toBe(true);
   });
 });
