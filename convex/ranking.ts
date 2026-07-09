@@ -8,7 +8,7 @@ function toFunnelRow(row: {
   authorFollowers: number;
   score: number;
   scannedAt: number;
-  status: "new" | "dismissed" | "analyzed";
+  status: "new" | "dismissed" | "analyzed" | "archived";
   outcome?: "ignored" | "analyzed" | "sent" | "responded";
 }): OpportunityFunnelRow {
   return {
@@ -16,7 +16,9 @@ function toFunnelRow(row: {
     authorFollowers: row.authorFollowers,
     score: row.score,
     scannedAt: row.scannedAt,
-    status: row.status,
+    // Auto-archived rows behave like dismissed for the ranking funnel — the
+    // window closed unattended, same as a user-dismissed row.
+    status: row.status === "archived" ? "dismissed" : row.status,
     outcome: row.outcome,
   };
 }

@@ -38,6 +38,9 @@ export function OpportunityDetail({
 }) {
   const [pending, startTransition] = useTransition();
   const note = sourceNote(opportunity);
+  const freshness = opportunity.freshnessLabel;
+  const windowClosed = opportunity.windowClosed ?? false;
+  const displayScore = opportunity.effectiveScore ?? opportunity.score;
 
   const dismiss = () =>
     startTransition(async () => {
@@ -70,6 +73,13 @@ export function OpportunityDetail({
             variant="neutral"
             label={note}
             className="font-normal text-muted-foreground"
+          />
+        )}
+        {freshness && (
+          <Badge
+            variant={windowClosed ? "neutral" : "warning"}
+            label={freshness}
+            className="font-normal"
           />
         )}
       </PaneTitleRow>
@@ -108,7 +118,7 @@ export function OpportunityDetail({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">Worth replying?</h3>
-              <ScoreBadge value={opportunity.score} reason={opportunity.reason} />
+              <ScoreBadge value={displayScore} reason={opportunity.reason} />
             </div>
             <p className="text-sm leading-normal text-muted-foreground">
               {opportunity.reason}

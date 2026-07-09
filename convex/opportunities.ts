@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import type { QueryCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import {
   internalMutation,
   internalQuery,
@@ -14,6 +14,10 @@ import {
   normalizeHandle,
   pruneExpiredDismissedAuthors,
 } from "../shared/feedFilters";
+import {
+  isOpportunityExpired,
+  opportunityFreshness,
+} from "../shared/feedFreshness";
 import { opportunityStillRelevant } from "../shared/semanticRelevance";
 import { requireUser } from "./helpers";
 
@@ -37,6 +41,7 @@ export const list = query({
         q.eq("userId", user._id).eq("status", "new")
       )
       .collect();
+    const now = Date.now();
     return rows
       .filter(
         (opp) =>
@@ -49,7 +54,11 @@ export const list = query({
             opp.topicRelevance
           )
       )
-      .sort((a, b) => b.score - a.score)
+      .map((opp) => ({
+        ...opp,
+        ...opportunityFreshness(opp.score, opp.postedAt, now),
+      }))
+      .sort((a, b) => b.effectiveScore - a.effectiveScore)
       .slice(0, limit ?? 20);
   },
 });
@@ -114,29 +123,64 @@ export const scanFilterContext = internalQuery({
   },
 });
 
-const STALE_OPPORTUNITY_AGE_MS = 8 * 60 * 60 * 1000;
-
-/** Drop "new" opportunities older than the reply window (8h). */
-export const pruneStale = internalMutation({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, { userId }) => {
-    const cutoff = Date.now() - STALE_OPPORTUNITY_AGE_MS;
-    const rows = await ctx.db
-      .query("opportunities")
-      .withIndex("by_user_status", (q) =>
-        q.eq("userId", userId).eq("status", "new")
-      )
-      .collect();
-    for (const row of rows) {
-      if (row.postedAt < cutoff) {
-        await ctx.db.patch(row._id, {
-          status: "dismissed",
-          outcome: row.outcome ?? "ignored",
-        });
-      }
+/** Archive one user's expired "new" opportunities; returns the count archived. */
+async function archiveExpiredForUserImpl(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  now: number
+): Promise<number> {
+  const rows = await ctx.db
+    .query("opportunities")
+    .withIndex("by_user_status", (q) =>
+      q.eq("userId", userId).eq("status", "new")
+    )
+    .collect();
+  let archived = 0;
+  for (const row of rows) {
+    if (isOpportunityExpired(row.postedAt, now)) {
+      await ctx.db.patch(row._id, {
+        status: "archived",
+        outcome: row.outcome ?? "ignored",
+        archivedAt: now,
+      });
+      archived += 1;
     }
+  }
+  return archived;
+}
+
+/**
+ * Archive "new" opportunities whose reply window has expired
+ * (`isOpportunityExpired`, shared/feedFreshness.ts). Called by the archive
+ * cron (all users) and by `pruneStale` below (called from
+ * `scannerActions.ts` right after each scan — much more frequent, so it
+ * usually wins the race and archives the row before the 30-min cron sees
+ * it). Both funnel through the same implementation so an expired row always
+ * lands on `status: "archived"`, never a stale separate "dismissed" path.
+ */
+export const archiveExpiredForUser = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const archived = await archiveExpiredForUserImpl(ctx, userId, Date.now());
+    return { archived };
+  },
+});
+
+/** Alias kept for the existing `scannerActions.ts` call site post-scan. */
+export const pruneStale = archiveExpiredForUser;
+
+/** Fan out archiving across users with scanner settings enabled. */
+export const archiveExpiredAll = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const settings = await ctx.db.query("scannerSettings").collect();
+    let archived = 0;
+    for (const setting of settings) {
+      if (!setting.enabled) continue;
+      archived += await archiveExpiredForUserImpl(ctx, setting.userId, now);
+    }
+    return { archived };
   },
 });
 
@@ -214,7 +258,11 @@ export const upsertMany = internalMutation({
         )
         .unique();
       if (existing) {
-        if (existing.status === "analyzed" || existing.status === "dismissed") {
+        if (
+          existing.status === "analyzed" ||
+          existing.status === "dismissed" ||
+          existing.status === "archived"
+        ) {
           continue;
         }
         await ctx.db.patch(existing._id, {

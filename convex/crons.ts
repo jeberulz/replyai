@@ -64,4 +64,13 @@ crons.interval(
   {}
 );
 
+// Auto-archive opportunities whose reply window has expired (8h from
+// postedAt). Idempotent; safe if it overlaps with scanner upserts.
+crons.interval(
+  "archive expired opportunities",
+  { minutes: 30 },
+  internal.opportunities.archiveExpiredAll,
+  {}
+);
+
 export default crons;
