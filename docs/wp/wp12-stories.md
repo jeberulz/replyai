@@ -65,7 +65,7 @@ File boundary: `docs/wp/RULINGS.md` → **2026-07-09 - WP12**.
   - On successful run, if email opt-in: Resend delivery (env-gated; no-op
     without keys / demo). Does not block run completion on email failure.
 
-- [ ] **WP12-S7 — Final verification + PR**
+- [x] **WP12-S7 — Final verification + PR**
   - Full `npm run typecheck && npm run lint && npm test && npm run build`.
   - Push branch; open PR with DoD, verification per story, deviations,
     Found-not-fixed. Do not merge.

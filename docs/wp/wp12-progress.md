@@ -41,3 +41,17 @@
   Pro upgrade gate, empty state).
 - Nav link in `nav-links.ts` (sidebar + ⌘K).
 - Verified: `npm run typecheck`.
+
+## WP12-S6 — Settings + optional email
+
+- Added `BriefingSettingsCard` + settings page section; `saveBriefingSettingsAction`.
+- Resend email on complete when `emailOptIn` + `notificationEmail` +
+  `RESEND_*` keys; failure → `emailStatus: failed`, run still completes.
+- Verified: `npm run typecheck`.
+
+## WP12-S7 — Final verification + PR
+
+- Full suite: `npm run typecheck && npm run lint && npm test && npm run build`
+  — pass (lint: 4 pre-existing warnings in `convex/_generated/*` only).
+- Tests: 296 passed | 1 skipped.
+- PR opened; do not merge.
