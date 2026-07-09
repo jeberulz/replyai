@@ -3,8 +3,10 @@ import {
   applyRankingMultiplier,
   computeRankingWeights,
   followerBand,
+  funnelOutcomeScore,
   opportunityToAnalyzeRate,
   opportunityWasAnalyzed,
+  recencyWeight,
   scoreDecile,
 } from "../shared/rankingWeights";
 import type { OpportunityFunnelRow } from "../shared/rankingWeights";
@@ -101,6 +103,92 @@ describe("computeRankingWeights", () => {
     expect(weights).not.toBeNull();
     expect(weights!.sourceMultipliers.list).toBeGreaterThan(1);
     expect(weights!.sourceMultipliers.following).toBeLessThan(1);
+  });
+});
+
+describe("funnelOutcomeScore", () => {
+  it("ranks responded > sent > analyzed > ignored/no-outcome", () => {
+    expect(funnelOutcomeScore(row({ outcome: "responded", scannedAt: 1 }))).toBe(1);
+    expect(funnelOutcomeScore(row({ outcome: "sent", scannedAt: 1 }))).toBe(0.6);
+    expect(funnelOutcomeScore(row({ outcome: "analyzed", scannedAt: 1 }))).toBe(0.25);
+    expect(funnelOutcomeScore(row({ outcome: "ignored", scannedAt: 1 }))).toBe(0);
+    expect(funnelOutcomeScore(row({ status: "new", scannedAt: 1 }))).toBe(0);
+  });
+});
+
+describe("recencyWeight", () => {
+  it("decays toward 0 as rows age, full weight at scan time", () => {
+    const now = Date.UTC(2026, 6, 1);
+    expect(recencyWeight(now, now)).toBe(1);
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    expect(recencyWeight(sevenDaysAgo, now)).toBeCloseTo(0.5, 5);
+    const fourteenDaysAgo = now - 14 * 24 * 60 * 60 * 1000;
+    expect(recencyWeight(fourteenDaysAgo, now)).toBeLessThan(
+      recencyWeight(sevenDaysAgo, now)
+    );
+  });
+});
+
+describe("computeRankingWeights outcome + recency weighting", () => {
+  const now = Date.UTC(2026, 6, 1);
+
+  it("boosts a source whose rows responded over one whose rows were only analyzed", () => {
+    const rows: OpportunityFunnelRow[] = [];
+    for (let i = 0; i < 6; i++) {
+      rows.push(
+        row({
+          scannedAt: now - i * 60_000,
+          source: "following",
+          outcome: "analyzed",
+        })
+      );
+    }
+    for (let i = 0; i < 6; i++) {
+      rows.push(
+        row({
+          scannedAt: now - i * 60_000,
+          source: "list",
+          outcome: "responded",
+        })
+      );
+    }
+    const weights = computeRankingWeights(rows, now);
+    expect(weights).not.toBeNull();
+    expect(weights!.sourceMultipliers.list).toBeGreaterThan(1);
+    expect(weights!.sourceMultipliers.following).toBeLessThan(1);
+  });
+
+  it("weighs an old responded row less than a recent one with the same outcome mix", () => {
+    const baseRows = (): OpportunityFunnelRow[] => {
+      const rows: OpportunityFunnelRow[] = [];
+      for (let i = 0; i < 6; i++) {
+        rows.push(
+          row({ scannedAt: now - i * 60_000, source: "following", outcome: "ignored" })
+        );
+      }
+      rows.push(row({ scannedAt: now, source: "list", outcome: "responded" }));
+      for (let i = 0; i < 5; i++) {
+        rows.push(
+          row({ scannedAt: now - i * 60_000, source: "list", outcome: "ignored" })
+        );
+      }
+      return rows;
+    };
+
+    const recentWeights = computeRankingWeights(baseRows(), now);
+
+    const staleRows = baseRows().map((r) =>
+      r.source === "list" && r.outcome === "responded"
+        ? { ...r, scannedAt: r.scannedAt - 10 * 24 * 60 * 60 * 1000 }
+        : r
+    );
+    const staleWeights = computeRankingWeights(staleRows, now);
+
+    expect(recentWeights).not.toBeNull();
+    expect(staleWeights).not.toBeNull();
+    expect(staleWeights!.sourceMultipliers.list!).toBeLessThan(
+      recentWeights!.sourceMultipliers.list!
+    );
   });
 });
 

@@ -36,6 +36,16 @@ const MIN_TOTAL = 8;
 const MULT_MIN = 0.85;
 const MULT_MAX = 1.15;
 
+/** Recency decay half-life for funnel rows feeding the ranking weights. */
+const RECENCY_HALF_LIFE_MS = 7 * 24 * 60 * 60 * 1000;
+
+const OUTCOME_WEIGHT: Record<OpportunityOutcome, number> = {
+  responded: 1.0,
+  sent: 0.6,
+  analyzed: 0.25,
+  ignored: 0,
+};
+
 const SOURCES: OpportunitySource[] = [
   "following",
   "list",
@@ -72,14 +82,39 @@ export function opportunityWasAnalyzed(row: OpportunityFunnelRow): boolean {
   return row.status === "analyzed";
 }
 
+/**
+ * Outcome quality score for ranking purposes: `responded > sent > analyzed`,
+ * dismissed/ignored rows with no outcome score 0. Distinct from
+ * `opportunityWasAnalyzed`, which only answers the binary "was this looked
+ * at" question used by the dashboard conversion stat.
+ */
+export function funnelOutcomeScore(row: OpportunityFunnelRow): number {
+  if (row.outcome) return OUTCOME_WEIGHT[row.outcome];
+  return row.status === "analyzed" ? OUTCOME_WEIGHT.analyzed : 0;
+}
+
+/** Exponential recency decay (half-life ~7 days) so stale rows weigh less. */
+export function recencyWeight(scannedAt: number, nowMs: number): number {
+  const ageMs = Math.max(0, nowMs - scannedAt);
+  return Math.pow(0.5, ageMs / RECENCY_HALF_LIFE_MS);
+}
+
 function bucketRate(
   rows: OpportunityFunnelRow[],
+  now: number,
   match: (row: OpportunityFunnelRow) => boolean
 ): { rate: number; count: number } {
   const bucket = rows.filter(match);
   if (bucket.length === 0) return { rate: 0, count: 0 };
-  const analyzed = bucket.filter(opportunityWasAnalyzed).length;
-  return { rate: analyzed / bucket.length, count: bucket.length };
+  let weightedScore = 0;
+  let weightSum = 0;
+  for (const row of bucket) {
+    const w = recencyWeight(row.scannedAt, now);
+    weightedScore += funnelOutcomeScore(row) * w;
+    weightSum += w;
+  }
+  const rate = weightSum > 0 ? weightedScore / weightSum : 0;
+  return { rate, count: bucket.length };
 }
 
 function multiplierFromRate(
@@ -101,13 +136,13 @@ export function computeRankingWeights(
   const recent = rows.filter((r) => r.scannedAt >= now - LOOKBACK_MS);
   if (recent.length < MIN_TOTAL) return null;
 
-  const overall = bucketRate(recent, () => true);
+  const overall = bucketRate(recent, now, () => true);
   if (overall.count < MIN_TOTAL || overall.rate === 0) return null;
   const baseline = overall.rate;
 
   const sourceMultipliers: Partial<Record<OpportunitySource, number>> = {};
   for (const source of SOURCES) {
-    const { rate, count } = bucketRate(recent, (r) => r.source === source);
+    const { rate, count } = bucketRate(recent, now, (r) => r.source === source);
     const mult = multiplierFromRate(rate, baseline, count);
     if (mult !== undefined) sourceMultipliers[source] = mult;
   }
@@ -116,6 +151,7 @@ export function computeRankingWeights(
   for (const band of FOLLOWER_BANDS) {
     const { rate, count } = bucketRate(
       recent,
+      now,
       (r) => followerBand(r.authorFollowers) === band
     );
     const mult = multiplierFromRate(rate, baseline, count);
@@ -126,6 +162,7 @@ export function computeRankingWeights(
   for (let d = 0; d <= 9; d++) {
     const { rate, count } = bucketRate(
       recent,
+      now,
       (r) => scoreDecile(r.score) === d
     );
     const mult = multiplierFromRate(rate, baseline, count);
