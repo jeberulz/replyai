@@ -45,7 +45,7 @@ on drafts (schema stable).
 
 ## Stories
 
-- [ ] **WP15-S1 — Web app manifest + install metadata**
+- [x] **WP15-S1 — Web app manifest + install metadata**
   - Manifest + icons; linked from root/app layout.
   - Lighthouse installable criteria documented in progress.md.
 
