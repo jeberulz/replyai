@@ -39,7 +39,7 @@ reply-back data, show **data-backed** timing guidance (e.g. “window closes in
   - Authenticated query returning curves + sample sizes per bucket for current user.
   - Uses indexes on `replyOutcomeTrackers`; no unbounded collect.
 
-- [ ] **WP35-S3 — UI surface**
+- [x] **WP35-S3 — UI surface**
   - One visible card or feed hint showing window guidance when sample sufficient.
   - Demo mode shows fixture copy.
 

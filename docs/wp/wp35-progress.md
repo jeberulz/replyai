@@ -21,3 +21,10 @@
 - Index `by_user_and_publishedAt` + `.take(400)` — no unbounded collect.
 - Demo users get `demoEngagementWindowSnapshot()` deterministically.
 - Joins opportunity/analysis for followers, postedAt, topic — read-only, no schema change.
+
+## 2026-07-09 — WP35-S3
+
+- Surface: chat-home sibling card `EngagementWindowCard` (below ReplyPacingCard, above PersonalAnalyticsCard).
+- Hook `useEngagementWindow` → `api.timing.engagementWindow`.
+- Sparse buckets show "—" + need-n copy; sufficient buckets show rounded median minutes.
+- Demo badge + fixture copy when `isDemo`.

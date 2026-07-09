@@ -5,6 +5,7 @@ import { useSidebar } from "@/components/app/sidebar/sidebar-provider";
 import { parseTweetUrl } from "../../../../shared/scoring";
 import { AnalysisThread } from "./analysis-thread";
 import { ChatComposer } from "./chat-composer";
+import { EngagementWindowCard } from "./engagement-window-card";
 import { PersonalAnalyticsCard } from "./personal-analytics-card";
 import { ReplyPacingCard } from "./reply-pacing-card";
 import { FairUseBanner } from "@/components/app/fair-use/fair-use-banner";
@@ -89,6 +90,7 @@ export function ChatHome({
           <FairUseBanner className="w-full max-w-xl" />
           <SuggestionChips onPick={submit} disabled={starting} />
           <ReplyPacingCard />
+          <EngagementWindowCard />
           <PersonalAnalyticsCard />
         </div>
         <div className="py-6">
