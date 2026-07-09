@@ -44,7 +44,7 @@ voice profiles.
 
 ## Stories
 
-- [ ] **WP14-S1 — Schema + shared compare math**
+- [x] **WP14-S1 — Schema + shared compare math**
   - Additive draft fields / optional `variantGroups` table.
   - `shared/variantCompare.ts`: aggregate tracker + edit-bucket stats per group; vitest fixtures.
 

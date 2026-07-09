@@ -121,6 +121,13 @@ async function countByUser(
         if (row._id) count += 1;
       }
       return count;
+    case "variantGroups":
+      for await (const row of ctx.db
+        .query("variantGroups")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
     case "generatedReplies":
       for await (const row of ctx.db
         .query("generatedReplies")
@@ -141,6 +148,7 @@ async function countByUser(
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
         if (row._id) count += 1;
       }
+      return count;
       return count;
     case "voiceProfiles":
       for await (const row of ctx.db
@@ -279,6 +287,13 @@ async function listByUser(
         rows.push(row as unknown as Record<string, unknown>);
       }
       return rows;
+    case "variantGroups":
+      for await (const row of ctx.db
+        .query("variantGroups")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
     case "generatedReplies":
       for await (const row of ctx.db
         .query("generatedReplies")
@@ -299,6 +314,7 @@ async function listByUser(
         .withIndex("by_user", (q) => q.eq("userId", userId))) {
         rows.push(row as unknown as Record<string, unknown>);
       }
+      return rows;
       return rows;
     case "voiceProfiles":
       for await (const row of ctx.db
@@ -432,6 +448,13 @@ async function takeDeletionBatch(
       return (
         await ctx.db
           .query("savedDrafts")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "variantGroups":
+      return (
+        await ctx.db
+          .query("variantGroups")
           .withIndex("by_user", (q) => q.eq("userId", userId))
           .take(ACCOUNT_DELETION_BATCH_SIZE)
       ).map((row) => row._id);

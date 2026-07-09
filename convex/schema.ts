@@ -237,12 +237,32 @@ export default defineSchema({
         v.literal("major_edit")
       )
     ),
+    /** WP14: optional link into an A/B/C variant group. */
+    variantGroupId: v.optional(v.id("variantGroups")),
+    variantLabel: v.optional(
+      v.union(v.literal("A"), v.literal("B"), v.literal("C"))
+    ),
     error: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
-    .index("by_compose_run", ["composeRunId"]),
+    .index("by_compose_run", ["composeRunId"])
+    .index("by_variant_group", ["variantGroupId"]),
+
+  /**
+   * WP14 — A/B reply variant groups. Keyed by user + analysis + category
+   * (angle). Max 3 drafts (A/B/C). Comparison uses observed outcome counts only.
+   */
+  variantGroups: defineTable({
+    userId: v.id("users"),
+    analysisId: v.optional(v.id("tweetAnalyses")),
+    category: v.string(),
+    windowHours: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_analysis_category", ["userId", "analysisId", "category"]),
 
   replyOutcomeTrackers: defineTable({
     userId: v.id("users"),
