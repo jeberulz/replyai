@@ -890,6 +890,13 @@ npm test && npm run build`), Convex guidelines
 | WP21 | Research agent tightening | P1 | `shared/researchScoring.ts`, research UI | Band-normalized engagement scoring; timestamp-based post frequency; watched-handle dedupe + one-click watch with keyword seeding |
 | WP22 | Reply budget & pacing coach | P1 | dashboard, drafts flow, `usage` | Daily sent-reply count with 15–20 target framing; escalating warnings near ~50/day; "today's best windows" dashboard module |
 | WP23 | Reply-to-post ladder | P2 | new `convex/compose.ts`, generation prompts, drafts | Topic-clustered winning replies + unused angles → voice-matched standalone post / 4–8 thread / long-form draft; standalone publish via existing API path; Articles as copy-out drafts; human click on every send |
+| WP24 | Astryx foundation + Dark Chrome theme | P0 | `@astryxdesign/*`, `src/theme/dark-chrome.ts`, `(app)`/`(onboarding)` Theme, `globals.css` bridge | Packages + built `darkChromeTheme`; Theme on app/onboarding only; landing untouched; brand lock (orange/charcoal/serif); checks green |
+| WP25 | Astryx primitive adapters (`ds/`) | P0 | `src/components/ds/*` (strangler); leave `ui/` intact | Button/Field/Banner/Badge/Dialog/SegmentedControl/EmptyState/StatusDot adapters; prop maps documented; no feature behavior change |
+| WP26 | App shell migration | P0 | sidebar/nav/command-menu; `(app)/layout` composition | Shell consumes ds/ tokens (restyle first; AppShell only if needed); WP6 mobile suite still green; landing untouched |
+| WP27 | Lists + workbench density | P0 | feed/drafts rows+detail, option-card, score-badge, pane-chrome controls | Item/SelectableCard/SegmentedControl/StatusDot/EmptyState; 3 options + reasons; no fake scores; WP6 suite green |
+| WP28 | AI / chat surfaces (deferred) | P1 | `src/components/app/chat/**` (excl. analytics until WP11) | Chat/Tokenizer/Progress where they cut custom CSS; ReplyPreview untouched; defer until WP24–27 gate |
+
+Program brief: `docs/wp/WP24-ASTRYX-ADOPTION-PLAN.md`. Rulings: `docs/wp/RULINGS.md` (2026-07-09).
 
 ---
 
