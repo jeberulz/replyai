@@ -31,7 +31,7 @@ clusters, WP13 is **author** dossiers.
 
 ## Stories
 
-- [ ] **WP37-S1 — Shared clustering + demo**
+- [x] **WP37-S1 — Shared clustering + demo**
   - Pure function: opportunities → ranked topic clusters with counts.
   - Vitest with fixture corpus.
 
