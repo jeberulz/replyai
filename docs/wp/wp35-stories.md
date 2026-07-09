@@ -43,5 +43,5 @@ reply-back data, show **data-backed** timing guidance (e.g. “window closes in
   - One visible card or feed hint showing window guidance when sample sufficient.
   - Demo mode shows fixture copy.
 
-- [ ] **WP35-S4 — Verification**
+- [x] **WP35-S4 — Verification**
   - No numbers when n below threshold; checks green; PR DoD mapped.

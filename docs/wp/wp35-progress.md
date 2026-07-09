@@ -28,3 +28,10 @@
 - Hook `useEngagementWindow` → `api.timing.engagementWindow`.
 - Sparse buckets show "—" + need-n copy; sufficient buckets show rounded median minutes.
 - Demo badge + fixture copy when `isDemo`.
+
+## 2026-07-09 — WP35-S4
+
+- Full suite green: typecheck, lint (warnings only in generated), test (352 pass), build.
+- Verified sparse path returns null medians / "Not enough data yet"; demo fixture median 40 min.
+- No ranking/scanner/compose/drafts/authors/command-menu edits.
+- Worktree `replyai-wp35` used to isolate from parallel Wave 1A checkouts.
