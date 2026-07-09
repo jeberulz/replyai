@@ -37,6 +37,7 @@ import {
   FilterChips,
   PaneEyebrow,
 } from "@/components/app/split/pane-chrome";
+import { OatmealEmptyState } from "@/components/app/oatmeal-empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -386,23 +387,31 @@ export function FeedScanner() {
             <Skeleton className="h-40 w-full" />
           </>
         ) : rows.length === 0 ? (
-          <div className="rounded-xl border border-border py-10 text-center text-sm text-muted-foreground">
-            {quickFilter !== "all" && (opportunities?.length ?? 0) > 0 ? (
-              <p>No opportunities match this filter. Try &ldquo;All&rdquo;.</p>
-            ) : settings?.lastScanError ? (
-              <p className="text-destructive">{settings.lastScanError}</p>
-            ) : settings?.lastScanAt ? (
-              <p>
-                Last scan found no tweets matching your keywords. Try broader
-                topics like <span className="text-foreground">ai, saas, startup</span>.
-              </p>
-            ) : (
-              <p>
-                No opportunities surfaced yet. Enable the scanner or hit
-                &ldquo;Scan now&rdquo;.
-              </p>
-            )}
-          </div>
+          quickFilter !== "all" && (opportunities?.length ?? 0) > 0 ? (
+            <OatmealEmptyState
+              title="No matches for this filter"
+              description='Try "All" to see every opportunity from the last scan.'
+              isCompact
+            />
+          ) : settings?.lastScanError ? (
+            <OatmealEmptyState
+              title="Scan failed"
+              description={settings.lastScanError}
+              isCompact
+            />
+          ) : settings?.lastScanAt ? (
+            <OatmealEmptyState
+              title="No matching tweets"
+              description="Last scan found nothing for your keywords. Try broader topics like ai, saas, startup."
+              isCompact
+            />
+          ) : (
+            <OatmealEmptyState
+              title="No opportunities yet"
+              description="Enable the scanner or hit Scan now to surface reply-worthy threads."
+              isCompact
+            />
+          )
         ) : (
           <div className="space-y-3">
             {rows.map((opp) => (
@@ -420,9 +429,13 @@ export function FeedScanner() {
   );
 
   const emptyDetail = (
-    <div className="flex h-full items-center justify-center border-l border-border bg-canvas px-8 text-center text-sm text-muted-foreground">
-      Select an opportunity to see the full conversation, score, and suggested
-      angle.
+    <div className="flex h-full items-center justify-center border-l border-border bg-canvas px-8">
+      <OatmealEmptyState
+        title="Select an opportunity"
+        description="See the full conversation, score, and suggested angle."
+        isCompact
+        className="w-full max-w-sm border-0 bg-oatmeal-100/60"
+      />
     </div>
   );
 

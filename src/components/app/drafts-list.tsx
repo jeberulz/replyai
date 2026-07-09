@@ -6,6 +6,7 @@ import { api } from "../../../convex/_generated/api";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { MasterDetail } from "@/components/app/split/master-detail";
 import { FilterChips } from "@/components/app/split/pane-chrome";
+import { OatmealEmptyState } from "@/components/app/oatmeal-empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DraftRow, type Draft } from "@/components/app/drafts/draft-row";
 import { DraftDetail } from "@/components/app/drafts/draft-detail";
@@ -70,11 +71,17 @@ export function DraftsList() {
             <Skeleton className="h-20 w-full" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-xl border border-border py-10 text-center text-sm text-muted-foreground">
-            {rows.length === 0
-              ? "Nothing here yet. Save or publish an option from an analysis."
-              : "No drafts match this filter."}
-          </div>
+          <OatmealEmptyState
+            title={
+              rows.length === 0 ? "Nothing here yet" : "No drafts match this filter"
+            }
+            description={
+              rows.length === 0
+                ? "Save or publish an option from an analysis to fill this queue."
+                : "Try All, or another status chip."
+            }
+            isCompact
+          />
         ) : (
           <div className="space-y-3">
             {filtered.map((draft) => (
@@ -92,8 +99,13 @@ export function DraftsList() {
   );
 
   const emptyDetail = (
-    <div className="flex h-full items-center justify-center border-l border-border bg-canvas px-8 text-center text-sm text-muted-foreground">
-      Select a draft to see its content, status, and publishing options.
+    <div className="flex h-full items-center justify-center border-l border-border bg-canvas px-8">
+      <OatmealEmptyState
+        title="Select a draft"
+        description="See content, status, and publishing options."
+        isCompact
+        className="w-full max-w-sm border-0 bg-oatmeal-100/60"
+      />
     </div>
   );
 

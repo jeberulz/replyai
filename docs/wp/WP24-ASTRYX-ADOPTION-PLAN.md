@@ -306,6 +306,9 @@ when approving). Each follows playbook: branch `feat/wpNN-…`,
 - `src/components/app/split/pane-chrome.tsx` (**chrome only**: replace
   hand-rolled SegmentedToggle/FilterChips with ds/SegmentedControl —
   no breakpoint logic edits)
+- `src/components/app/reply-pacing/reply-pacing-warning.tsx` (Banner)
+- `src/components/app/oatmeal-empty-state.tsx` + call sites in
+  `feed-scanner.tsx` / `drafts-list.tsx` (EmptyState + oatmeal/liner)
 - `src/components/app/research/profile-row.tsx` / `profile-detail.tsx`
   **only after** research WIP + WP21 clear
 
@@ -316,6 +319,8 @@ when approving). Each follows playbook: branch `feat/wpNN-…`,
    **heuristic score with plain-language reason**, never fake ML %.
 3. OptionCard selection uses SelectableCard or ds equivalent; still
    **3 options + reason**; publish still requires explicit click.
+   *(Ruling: ds Card is the equivalent — SelectableCard is checkbox-select
+   and does not fit multi-action OptionCard.)*
 4. Restriction/pacing banners use Banner (warning/error) if those files
    are in scope and not frozen.
 5. Empty states use EmptyState + oatmeal/liner only where design.md allows.

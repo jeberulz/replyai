@@ -33,3 +33,9 @@ Ruling:
 5. **Brand lock:** Dark Chrome owns visuals. Stock Neutral/Butter/Gothic aesthetics must not ship. Landing (`src/app/page.tsx`) is out of scope for the entire program.
 6. **Theme provider scope:** `<Theme>` only on `(app)` and `(onboarding)` layouts — never root layout.
 7. **Mobile primary actions:** even if Astryx density uses 28–36px controls, primary mobile send/copy/dismiss targets must meet ≥44px (PRODUCT_STRATEGY §9) via theme/override.
+
+## 2026-07-09 - WP27 - OptionCard vs SelectableCard
+
+Question: Does WP27 DoD require OptionCard to use Astryx `SelectableCard` literally?
+
+Ruling: No. `SelectableCard` is a checkbox-selection pattern. OptionCard is multi-action publish chrome (edit/rewrite/schedule/publish). **`ds/Card` is the accepted equivalent.** Keep 3 options + reason + explicit publish click. Do not force SelectableCard onto OptionCard.
