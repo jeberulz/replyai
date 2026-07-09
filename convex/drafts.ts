@@ -64,9 +64,19 @@ export const save = mutation({
     threadPosts: v.optional(v.array(v.string())),
     title: v.optional(v.string()),
     composeRunId: v.optional(v.id("composeRuns")),
+    variantGroupId: v.optional(v.id("variantGroups")),
+    variantLabel: v.optional(
+      v.union(v.literal("A"), v.literal("B"), v.literal("C"))
+    ),
   },
   handler: async (ctx, { sessionToken, ...args }) => {
     const user = await requireUser(ctx, sessionToken);
+    if (args.variantGroupId) {
+      const group = await ctx.db.get(args.variantGroupId);
+      if (!group || group.userId !== user._id) {
+        throw new Error("Variant group not found");
+      }
+    }
     const observedEdit = await getObservedEditForDraft(
       ctx,
       user._id,
@@ -106,6 +116,10 @@ export const publish = mutation({
     threadPosts: v.optional(v.array(v.string())),
     title: v.optional(v.string()),
     composeRunId: v.optional(v.id("composeRuns")),
+    variantGroupId: v.optional(v.id("variantGroups")),
+    variantLabel: v.optional(
+      v.union(v.literal("A"), v.literal("B"), v.literal("C"))
+    ),
   },
   handler: async (ctx, { sessionToken, scheduledFor, publishMode, kind, ...args }) => {
     const user = await requireUser(ctx, sessionToken);
@@ -118,6 +132,12 @@ export const publish = mutation({
       throw new Error(
         "Thread drafts are saved for copy-out; publish each post with a human click as standalone when ready."
       );
+    }
+    if (args.variantGroupId) {
+      const group = await ctx.db.get(args.variantGroupId);
+      if (!group || group.userId !== user._id) {
+        throw new Error("Variant group not found");
+      }
     }
     const resolvedMode =
       publishMode ??

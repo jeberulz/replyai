@@ -44,23 +44,23 @@ voice profiles.
 
 ## Stories
 
-- [ ] **WP14-S1 — Schema + shared compare math**
+- [x] **WP14-S1 — Schema + shared compare math**
   - Additive draft fields / optional `variantGroups` table.
   - `shared/variantCompare.ts`: aggregate tracker + edit-bucket stats per group; vitest fixtures.
 
-- [ ] **WP14-S2 — Convex API**
+- [x] **WP14-S2 — Convex API**
   - Create/link variant group on publish or explicit “track as variant”.
   - Query: get comparison for group (observed counts only).
   - All public functions: `requireUser`; account cascade.
 
-- [ ] **WP14-S3 — Publish flow hooks**
+- [x] **WP14-S3 — Publish flow hooks**
   - After publishing variant A on an analysis, offer “Generate variant B for comparison”.
   - Reuse existing generate-more path; tag new draft with same `variantGroupId`.
   - Fair-use / 3-options rules unchanged.
 
-- [ ] **WP14-S4 — Comparison UI**
+- [x] **WP14-S4 — Comparison UI**
   - Draft detail or analysis sidebar: side-by-side observed stats per variant.
   - Dark Chrome; no fake scores or predicted winners.
 
-- [ ] **WP14-S5 — Verification**
+- [x] **WP14-S5 — Verification**
   - Demo mode end-to-end; unit tests; checks green; PR DoD checklist.

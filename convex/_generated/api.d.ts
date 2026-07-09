@@ -44,6 +44,7 @@ import type * as tokenSecurity from "../tokenSecurity.js";
 import type * as trends from "../trends.js";
 import type * as usage from "../usage.js";
 import type * as users from "../users.js";
+import type * as variants from "../variants.js";
 import type * as voiceProfiles from "../voiceProfiles.js";
 import type * as xTokens from "../xTokens.js";
 
@@ -90,6 +91,7 @@ declare const fullApi: ApiFromModules<{
   trends: typeof trends;
   usage: typeof usage;
   users: typeof users;
+  variants: typeof variants;
   voiceProfiles: typeof voiceProfiles;
   xTokens: typeof xTokens;
 }>;

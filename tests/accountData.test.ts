@@ -26,6 +26,7 @@ describe("account data inventory contract", () => {
       "usage",
       "opportunities",
       "savedDrafts",
+      "variantGroups",
       "composeRuns",
       "generatedReplies",
       "modelEvals",

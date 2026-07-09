@@ -87,8 +87,21 @@ export const ACCOUNT_USER_TABLES = [
     table: "savedDrafts",
     ownershipField: "userId",
     indexName: "by_user",
-    relationshipFields: ["userId", "analysisId", "replyId", "composeRunId"],
+    relationshipFields: [
+      "userId",
+      "analysisId",
+      "replyId",
+      "composeRunId",
+      "variantGroupId",
+    ],
     deletionOrder: 60,
+  },
+  {
+    table: "variantGroups",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "analysisId", "category"],
+    deletionOrder: 62,
   },
   {
     table: "composeRuns",
