@@ -140,6 +140,14 @@ export const ACCOUNT_USER_TABLES = [
     deletionOrder: 95,
   },
   {
+    // WP39 — onboarding concierge proposal runs.
+    table: "onboardingConciergeRuns",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId"],
+    deletionOrder: 96,
+  },
+  {
     table: "voiceProfiles",
     ownershipField: "userId",
     indexName: "by_user",

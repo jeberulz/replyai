@@ -1,31 +1,46 @@
 "use client";
 
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "convex/react";
 import { Check, MessageSquareQuote } from "lucide-react";
 import { toast } from "sonner";
 import {
+  acceptOnboardingConciergeWatchAction,
+  applyOnboardingConciergeProposalAction,
   buildWritingModelAction,
+  runOnboardingConciergeAction,
   saveOnboardingNicheAction,
   setGoalAction,
   skipOnboardingAction,
+  skipOnboardingConciergeAction,
   type BuildModelResult,
 } from "@/app/actions";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
+import { useSessionToken } from "@/components/app/convex-provider";
 import {
   suggestedKeywordsForGoal,
   type GoalId,
 } from "../../../../shared/onboarding";
 import { BuildingStep } from "./building-step";
+import { ConciergeReviewStep } from "./concierge-review-step";
 import { GoalStep } from "./goal-step";
 import { NicheStep } from "./niche-step";
 import { ReadyStep } from "./ready-step";
 import { VoiceStep, type VoiceSource } from "./voice-step";
 
-type Step = "goal" | "niche" | "voice" | "building" | "ready";
+type Step =
+  | "concierge"
+  | "goal"
+  | "niche"
+  | "voice"
+  | "building"
+  | "ready";
 
-// Rail stages: the wizard's 5 screens roll up to 3 stages, Ghostbase-style.
+// Rail stages: concierge + goal/niche roll up to "Goal".
 const STAGES: Array<{ id: string; label: string; steps: Step[] }> = [
-  { id: "goal", label: "Goal", steps: ["goal", "niche"] },
+  { id: "goal", label: "Goal", steps: ["concierge", "goal", "niche"] },
   { id: "voice", label: "Voice", steps: ["voice", "building"] },
   { id: "ready", label: "Ready", steps: ["ready"] },
 ];
@@ -81,16 +96,71 @@ export function OnboardingFlow({
   initialGoal?: GoalId;
 }) {
   const router = useRouter();
+  const sessionToken = useSessionToken();
   const firstName = displayName.split(" ")[0];
 
-  const [step, setStep] = useState<Step>("goal");
-  const [goal, setGoal] = useState<GoalId | null>(initialGoal ?? null);
-  const [keywords, setKeywords] = useState<string[]>([]);
+  const [step, setStep] = useState<Step>("concierge");
   const [source, setSource] = useState<VoiceSource>("import");
   const [pastedText, setPastedText] = useState("");
   const [result, setResult] = useState<BuildModelResult | null>(null);
   const [pending, startTransition] = useTransition();
   const buildStarted = useRef(false);
+
+  const [conciergeRunId, setConciergeRunId] =
+    useState<Id<"onboardingConciergeRuns"> | null>(null);
+  const [conciergeStarting, setConciergeStarting] = useState(true);
+  const [conciergeStartError, setConciergeStartError] = useState<string | null>(
+    null
+  );
+  /** Local edits on top of the proposal; null = use proposal defaults. */
+  const [goalOverride, setGoalOverride] = useState<GoalId | null>(null);
+  const [keywordsOverride, setKeywordsOverride] = useState<string[] | null>(
+    null
+  );
+  const [acceptedLocal, setAcceptedLocal] = useState<string[]>([]);
+  const [usedConciergePath, setUsedConciergePath] = useState(false);
+  const conciergeStarted = useRef(false);
+
+  const conciergeRun = useQuery(
+    api.onboardingConcierge.latest,
+    sessionToken && step === "concierge" ? { sessionToken } : "skip"
+  );
+
+  const proposal = conciergeRun?.proposal;
+  const effectiveRunId = conciergeRunId ?? conciergeRun?._id ?? null;
+  const goal =
+    goalOverride ??
+    proposal?.goalId ??
+    initialGoal ??
+    null;
+  const keywords =
+    keywordsOverride ??
+    proposal?.keywords.slice(0, 8) ??
+    [];
+  const acceptedHandles = [
+    ...new Set([
+      ...(conciergeRun?.acceptedHandles ?? []),
+      ...acceptedLocal,
+    ]),
+  ];
+
+  // Kick off concierge once on entry (demo-safe).
+  useEffect(() => {
+    if (conciergeStarted.current) return;
+    conciergeStarted.current = true;
+    void (async () => {
+      try {
+        const { runId } = await runOnboardingConciergeAction();
+        setConciergeRunId(runId);
+      } catch (err) {
+        setConciergeStartError(
+          err instanceof Error ? err.message : "Couldn't start concierge"
+        );
+      } finally {
+        setConciergeStarting(false);
+      }
+    })();
+  }, []);
 
   const suggested = goal ? suggestedKeywordsForGoal(goal) : [];
 
@@ -105,12 +175,60 @@ export function OnboardingFlow({
       router.refresh();
     });
 
+  const goManual = () =>
+    startTransition(async () => {
+      try {
+        await skipOnboardingConciergeAction();
+      } catch {
+        // Manual path must always work.
+      }
+      setStep("goal");
+    });
+
+  const confirmConcierge = () => {
+    if (!goal || !effectiveRunId || keywords.length === 0) return;
+    startTransition(async () => {
+      try {
+        await applyOnboardingConciergeProposalAction({
+          runId: effectiveRunId,
+          goalId: goal,
+          keywords,
+        });
+        setUsedConciergePath(true);
+        setStep("voice");
+      } catch {
+        toast.error("Couldn't save your picks — try again or use manual setup");
+      }
+    });
+  };
+
+  const acceptWatch = (handle: string) => {
+    if (!effectiveRunId) return;
+    startTransition(async () => {
+      try {
+        await acceptOnboardingConciergeWatchAction({
+          runId: effectiveRunId,
+          handle,
+        });
+        setAcceptedLocal((prev) =>
+          prev.some((h) => h.toLowerCase() === handle.toLowerCase())
+            ? prev
+            : [...prev, handle.replace(/^@/, "").toLowerCase()]
+        );
+      } catch {
+        toast.error("Couldn't add that watch — try again");
+      }
+    });
+  };
+
   const continueFromGoal = () => {
     if (!goal) return;
-    // Seed the niche chips: keep any custom picks, preselect top suggestions.
-    setKeywords((prev) =>
-      prev.length > 0 ? prev : suggestedKeywordsForGoal(goal).slice(0, 3)
-    );
+    setKeywordsOverride((prev) => {
+      const current = prev ?? keywords;
+      return current.length > 0
+        ? current
+        : suggestedKeywordsForGoal(goal).slice(0, 3);
+    });
     setStep("niche");
     startTransition(async () => {
       try {
@@ -162,6 +280,9 @@ export function OnboardingFlow({
       router.refresh();
     });
 
+  const voiceBack = () =>
+    setStep(usedConciergePath ? "concierge" : "niche");
+
   return (
     <div className="flex min-h-svh flex-col bg-chrome">
       <header className="flex h-16 items-center justify-between border-b border-border/50 px-5 sm:px-7">
@@ -182,11 +303,35 @@ export function OnboardingFlow({
 
       <main className="flex flex-1 items-center justify-center px-4 py-10">
         <div key={step} className="flex w-full justify-center animate-fade-rise">
+          {step === "concierge" && (
+            <ConciergeReviewStep
+              firstName={firstName}
+              runId={effectiveRunId}
+              starting={conciergeStarting}
+              startError={conciergeStartError}
+              goal={goal}
+              keywords={keywords}
+              acceptedHandles={acceptedHandles}
+              onSelectGoal={setGoalOverride}
+              onToggleKeyword={(k) =>
+                setKeywordsOverride((prev) => {
+                  const base = prev ?? keywords;
+                  return base.includes(k)
+                    ? base.filter((x) => x !== k)
+                    : [...base, k];
+                })
+              }
+              onAcceptWatch={acceptWatch}
+              onConfirm={confirmConcierge}
+              onManual={goManual}
+              pending={pending}
+            />
+          )}
           {step === "goal" && (
             <GoalStep
               firstName={firstName}
               goal={goal}
-              onSelect={setGoal}
+              onSelect={setGoalOverride}
               onContinue={continueFromGoal}
               onSkip={skip}
               pending={pending}
@@ -198,12 +343,18 @@ export function OnboardingFlow({
               suggested={suggested}
               selected={keywords}
               onToggle={(k) =>
-                setKeywords((prev) =>
-                  prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]
-                )
+                setKeywordsOverride((prev) => {
+                  const base = prev ?? keywords;
+                  return base.includes(k)
+                    ? base.filter((x) => x !== k)
+                    : [...base, k];
+                })
               }
               onAdd={(k) =>
-                setKeywords((prev) => (prev.includes(k) ? prev : [...prev, k]))
+                setKeywordsOverride((prev) => {
+                  const base = prev ?? keywords;
+                  return base.includes(k) ? base : [...base, k];
+                })
               }
               onBack={() => setStep("goal")}
               onContinue={continueFromNiche}
@@ -219,7 +370,7 @@ export function OnboardingFlow({
               pastedText={pastedText}
               onSelectSource={setSource}
               onPastedTextChange={setPastedText}
-              onBack={() => setStep("niche")}
+              onBack={voiceBack}
               onContinue={startBuild}
               onSkip={skip}
               pending={pending}

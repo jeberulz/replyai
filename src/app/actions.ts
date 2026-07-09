@@ -1305,6 +1305,56 @@ export async function skipOnboardingAction() {
   await convexServer().mutation(api.users.completeOnboarding, { sessionToken });
 }
 
+// ---------------------------------------------------------------------------
+// WP39 — Onboarding concierge (named action group; do not mix with WP15)
+// ---------------------------------------------------------------------------
+
+export async function runOnboardingConciergeAction(): Promise<{
+  runId: Id<"onboardingConciergeRuns">;
+}> {
+  const { sessionToken } = await requireSession();
+  const runId = await convexServer().mutation(
+    api.onboardingConcierge.startRun,
+    { sessionToken }
+  );
+  return { runId };
+}
+
+export async function skipOnboardingConciergeAction() {
+  const { sessionToken } = await requireSession();
+  await convexServer().mutation(api.onboardingConcierge.skipRun, {
+    sessionToken,
+  });
+}
+
+export async function applyOnboardingConciergeProposalAction(args: {
+  runId: Id<"onboardingConciergeRuns">;
+  goalId: GoalId;
+  keywords: string[];
+}) {
+  const { sessionToken } = await requireSession();
+  if (!isGoalId(args.goalId)) throw new Error("Unknown goal");
+  await convexServer().mutation(api.onboardingConcierge.acceptProposal, {
+    sessionToken,
+    runId: args.runId,
+    goalId: args.goalId,
+    keywords: args.keywords,
+  });
+}
+
+/** Explicit per-handle watch accept — never batch-auto-add. */
+export async function acceptOnboardingConciergeWatchAction(args: {
+  runId: Id<"onboardingConciergeRuns">;
+  handle: string;
+}) {
+  const { sessionToken } = await requireSession();
+  return await convexServer().mutation(api.onboardingConcierge.acceptWatch, {
+    sessionToken,
+    runId: args.runId,
+    handle: args.handle,
+  });
+}
+
 export async function dismissSetupChecklistAction() {
   const { sessionToken } = await requireSession();
   await convexServer().mutation(api.users.dismissSetupChecklist, {
