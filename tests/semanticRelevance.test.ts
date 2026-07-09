@@ -8,6 +8,7 @@ import {
   opportunityStillRelevant,
   passesCombinedFeedFilter,
   resolveManualTopicRelevance,
+  resolveSuggestedAngle,
   selectSemanticClassificationTargets,
 } from "../shared/semanticRelevance";
 
@@ -146,6 +147,43 @@ describe("selectSemanticClassificationTargets", () => {
     expect(targets.filter((t) => t.tweetId.startsWith("f")).length).toBe(8);
     expect(targets.some((t) => t.tweetId === "f0")).toBe(false);
     expect(targets.some((t) => t.tweetId === "f9")).toBe(true);
+  });
+});
+
+describe("resolveSuggestedAngle", () => {
+  it("prefers the triage angle when present", () => {
+    expect(
+      resolveSuggestedAngle(
+        {
+          relevance: 0.8,
+          reason: "fit",
+          brandSafety: "safe",
+          suggestedAngle: "Name the eval gap the thread skipped.",
+        },
+        "hot take with 40% growth?"
+      )
+    ).toBe("Name the eval gap the thread skipped.");
+  });
+
+  it("falls back to demoSuggestedAngle when cache omits angle", () => {
+    const text = "We're rolling out autonomous support bots for customer teams";
+    expect(
+      resolveSuggestedAngle(
+        {
+          relevance: 0.7,
+          reason: "Cached safe result",
+          brandSafety: "safe",
+        },
+        text,
+        { keywords: ["ai"], voiceTopics: [], recentTopics: [] }
+      )
+    ).toBe(
+      demoSuggestedAngle(text, {
+        keywords: ["ai"],
+        voiceTopics: [],
+        recentTopics: [],
+      })
+    );
   });
 });
 

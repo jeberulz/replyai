@@ -230,6 +230,17 @@ export function demoSuggestedAngle(
   return "Share a short, concrete story from experience that confirms or complicates the claim.";
 }
 
+/** Prefer triage angle; fall back when cache/legacy scores omit it. */
+export function resolveSuggestedAngle(
+  semantic: SemanticScore | undefined,
+  text: string,
+  niche?: NicheContext
+): string {
+  const fromTriage = semantic?.suggestedAngle?.trim();
+  if (fromTriage) return fromTriage;
+  return demoSuggestedAngle(text, niche);
+}
+
 /** Deterministic demo classifier — no API key required. */
 export function demoSemanticRelevance(
   text: string,

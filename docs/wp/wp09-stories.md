@@ -32,7 +32,7 @@ regressed; demo mode stays unbroken.
     text stays delimited untrusted data.
   - Focused tests cover demo angle determinism / presence.
 
-- [ ] **WP9-S3** — Scanner consumes triage angles; delete template `suggestAngle`
+- [x] **WP9-S3** — Scanner consumes triage angles; delete template `suggestAngle`
   - `scannerActions` maps `suggestedAngle` from classifier / demo semantic
     result instead of `suggestAngle(t)`.
   - Delete regex/template `suggestAngle()` from `scannerActions.ts`.
