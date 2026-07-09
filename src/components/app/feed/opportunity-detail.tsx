@@ -99,7 +99,7 @@ export function OpportunityDetail({
               </div>
               <XLogo className="size-4 shrink-0 text-muted-foreground" />
             </div>
-            <p className="whitespace-pre-wrap text-[15px] leading-normal">
+            <p className="whitespace-pre-wrap text-base leading-6">
               {opportunity.text}
             </p>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-muted-foreground">
@@ -123,7 +123,7 @@ export function OpportunityDetail({
               <h3 className="text-sm font-semibold">Worth replying?</h3>
               <ScoreBadge value={displayScore} reason={opportunity.reason} />
             </div>
-            <p className="text-sm leading-normal text-muted-foreground">
+            <p className="text-sm leading-5 text-muted-foreground">
               {opportunity.reason}
             </p>
           </div>
@@ -135,7 +135,7 @@ export function OpportunityDetail({
               <Lightbulb className="size-4 text-primary" />
               <h3 className="text-sm font-semibold">Suggested angle</h3>
             </div>
-            <p className="text-[15px] leading-normal text-muted-foreground">
+            <p className="text-base leading-6 text-muted-foreground">
               {opportunity.suggestedAngle}
             </p>
           </div>

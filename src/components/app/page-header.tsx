@@ -27,9 +27,8 @@ export function PageHeader({
         <Text
           type="code"
           color="accent"
-          size="sm"
           display="block"
-          className="uppercase tracking-[0.16em]"
+          className="text-xs uppercase tracking-[0.16em]"
         >
           {eyebrow}
         </Text>

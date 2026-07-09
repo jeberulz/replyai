@@ -65,7 +65,7 @@ export function ComposeLadder() {
     <div className="flex h-full min-h-0 flex-col bg-background">
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-4 sm:px-6">
         <div>
-          <h2 className="text-[15px] font-semibold">Compose ladder</h2>
+          <h2 className="text-base font-semibold">Compose ladder</h2>
           <p className="text-xs text-muted-foreground">
             Winning replies → original posts
           </p>
@@ -107,7 +107,7 @@ export function ComposeLadder() {
                 <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                   {cluster.reason}
                 </div>
-                <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
                   <span>{cluster.replies.length} replies</span>
                   <span>·</span>
                   <span>{cluster.unusedAngles.length} unused angles</span>
@@ -237,7 +237,7 @@ export function ComposeLadder() {
           <Card padding={4} className="border-dashed">
             <div className="flex items-start gap-3">
               <PenLine className="mt-0.5 size-4 text-muted-foreground" />
-              <Text size="sm" className="text-muted-foreground">
+              <Text className="text-muted-foreground">
                 Generate options from this cluster. Reasons only — no fake
                 engagement scores. Every send needs your click.
               </Text>
@@ -250,7 +250,7 @@ export function ComposeLadder() {
           {selected.replies.map((reply) => (
             <div
               key={reply.draftId}
-              className="rounded-md border border-border px-3 py-2 text-sm"
+              className="rounded-md border border-border px-3 py-2 text-base"
             >
               <p className="line-clamp-3">{reply.replyText}</p>
               {reply.targetAuthorHandle ? (
@@ -368,7 +368,7 @@ function ComposeOptions({
               category={opt.category}
               reason={opt.reason}
               body={
-                <ol className="list-decimal space-y-2 pl-4 text-sm">
+                  <ol className="list-decimal space-y-2 pl-4 text-base leading-6">
                   {opt.posts.map((post, j) => (
                     <li key={j}>{post}</li>
                   ))}
@@ -408,8 +408,8 @@ function ComposeOptions({
           reason={opt.reason}
           body={
             <div className="space-y-2">
-              <p className="text-sm font-semibold">{opt.title}</p>
-              <pre className="whitespace-pre-wrap font-sans text-sm text-muted-foreground">
+              <p className="text-base font-semibold">{opt.title}</p>
+              <pre className="whitespace-pre-wrap font-sans text-base leading-6 text-muted-foreground">
                 {opt.content}
               </pre>
             </div>
@@ -468,7 +468,7 @@ function OptionCard({
           {reason}
         </Text>
       </div>
-      <div className="text-sm leading-relaxed">{body}</div>
+      <div className="text-base leading-6">{body}</div>
       <div className="grid gap-2 sm:flex sm:flex-wrap">
         <Button
           variant="primary"

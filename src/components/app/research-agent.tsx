@@ -205,7 +205,7 @@ export function ResearchAgent() {
   const list = (
     <div className="flex h-full min-h-0 flex-col bg-background">
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-4 sm:px-6">
-        <Heading level={2} className="text-[15px] leading-none">
+        <Heading level={2} className="text-base leading-none">
           Research
         </Heading>
         <Text size="sm" className="tabular-nums text-muted-foreground">

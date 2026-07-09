@@ -39,7 +39,7 @@ export function ReplyPreview({
                 @{author.handle} · 40m
               </span>
             </div>
-            <p className="mt-0.5 whitespace-pre-wrap text-[15px] leading-normal">
+            <p className="mt-0.5 whitespace-pre-wrap text-base leading-6">
               {tweetText}
             </p>
           </div>
@@ -57,7 +57,7 @@ export function ReplyPreview({
               Replying to{" "}
               <span className="text-[#1d9bf0]">@{author.handle}</span>
             </p>
-            <p className="mt-0.5 whitespace-pre-wrap text-[15px] leading-normal">
+            <p className="mt-0.5 whitespace-pre-wrap text-base leading-6">
               {replyText}
             </p>
             <div className="mt-2 flex items-center gap-9 text-muted-foreground">

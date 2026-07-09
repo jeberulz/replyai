@@ -40,7 +40,7 @@ export function VariantComparePanel({
   return (
     <div className="space-y-2" data-testid="variant-compare-panel">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
           A/B comparison
         </p>
         <Badge
@@ -63,7 +63,7 @@ export function VariantComparePanel({
               <p className="text-xs font-semibold text-foreground">
                 Variant {v.label}
               </p>
-              <dl className="mt-1.5 space-y-0.5 text-[11px] text-muted-foreground">
+              <dl className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
                 <div className="flex justify-between gap-2">
                   <dt>Published</dt>
                   <dd className="tabular-nums text-foreground">
@@ -89,7 +89,7 @@ export function VariantComparePanel({
             </div>
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Observed counts only ({comparison.windowHours}h window). No predicted
           winners.
         </p>

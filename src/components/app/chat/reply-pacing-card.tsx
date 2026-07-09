@@ -68,7 +68,7 @@ export function ReplyPacingCard() {
             <p className="font-mono text-xs uppercase tracking-[0.16em] text-primary">
               Reply budget
             </p>
-            <CardTitle className="text-[15px] font-semibold">
+            <CardTitle className="text-base font-semibold">
               Pace the day, then stop pushing volume
             </CardTitle>
           </div>

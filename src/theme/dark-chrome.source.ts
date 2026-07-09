@@ -24,7 +24,9 @@ export const darkChromeTheme = defineTheme({
   },
 
   typography: {
-    scale: { base: 14, ratio: 1.2 },
+    // Generated scale is overridden below so Dark Chrome app surfaces land on
+    // exact product UI sizes: 12px meta, 14px controls/supporting, 16px body.
+    scale: { base: 16, ratio: 1.2 },
     body: {
       family: "Inter",
       fallbacks: "var(--font-inter), system-ui, sans-serif",
@@ -47,6 +49,70 @@ export const darkChromeTheme = defineTheme({
   motion: { fast: 150, medium: 300, ratio: 0.75 },
 
   tokens: {
+    // App typography scale. Keep exact values here; ratio-only generation made
+    // Astryx text-base 14px, text-sm 12px, and text-xs 10px.
+    "--font-size-4xs": ["0.5rem", "0.5rem"], // 8px
+    "--font-size-3xs": ["0.5625rem", "0.5625rem"], // 9px
+    "--font-size-2xs": ["0.6875rem", "0.6875rem"], // 11px
+    "--font-size-xs": ["0.75rem", "0.75rem"], // 12px
+    "--font-size-sm": ["0.875rem", "0.875rem"], // 14px
+    "--font-size-base": ["1rem", "1rem"], // 16px
+    "--font-size-lg": ["1.125rem", "1.125rem"], // 18px
+    "--font-size-xl": ["1.5rem", "1.5rem"], // 24px
+    "--font-size-2xl": ["2rem", "2rem"], // 32px
+    "--font-size-3xl": ["2.5rem", "2.5rem"],
+    "--font-size-4xl": ["3rem", "3rem"],
+    "--font-size-5xl": ["3.75rem", "3.75rem"],
+
+    "--text-heading-1-size": ["var(--font-size-2xl)", "var(--font-size-2xl)"],
+    "--text-heading-1-leading": ["1.15", "1.15"],
+    "--text-heading-2-size": ["var(--font-size-xl)", "var(--font-size-xl)"],
+    "--text-heading-2-leading": ["1.25", "1.25"],
+    "--text-heading-3-size": ["var(--font-size-lg)", "var(--font-size-lg)"],
+    "--text-heading-3-weight": [
+      "var(--font-weight-semibold)",
+      "var(--font-weight-semibold)",
+    ],
+    "--text-heading-3-leading": ["1.3333", "1.3333"],
+    "--text-heading-4-size": ["var(--font-size-base)", "var(--font-size-base)"],
+    "--text-heading-4-weight": [
+      "var(--font-weight-semibold)",
+      "var(--font-weight-semibold)",
+    ],
+    "--text-heading-4-leading": ["1.35", "1.35"],
+    "--text-heading-5-size": ["var(--font-size-sm)", "var(--font-size-sm)"],
+    "--text-heading-5-weight": [
+      "var(--font-weight-semibold)",
+      "var(--font-weight-semibold)",
+    ],
+    "--text-heading-5-leading": ["1.4286", "1.4286"],
+    "--text-heading-6-size": ["var(--font-size-xs)", "var(--font-size-xs)"],
+    "--text-heading-6-weight": [
+      "var(--font-weight-semibold)",
+      "var(--font-weight-semibold)",
+    ],
+    "--text-heading-6-leading": ["1.3333", "1.3333"],
+    "--text-body-size": ["var(--font-size-base)", "var(--font-size-base)"],
+    "--text-body-leading": ["1.5", "1.5"],
+    "--text-large-size": ["var(--font-size-lg)", "var(--font-size-lg)"],
+    "--text-large-leading": ["1.3333", "1.3333"],
+    "--text-label-size": ["var(--font-size-sm)", "var(--font-size-sm)"],
+    "--text-label-weight": [
+      "var(--font-weight-medium)",
+      "var(--font-weight-medium)",
+    ],
+    "--text-label-leading": ["1.4286", "1.4286"],
+    "--text-code-size": ["0.8125rem", "0.8125rem"],
+    "--text-code-leading": ["1.3846", "1.3846"],
+    "--text-supporting-size": ["var(--font-size-sm)", "var(--font-size-sm)"],
+    "--text-supporting-leading": ["1.5", "1.5"],
+    "--text-display-1-size": ["var(--font-size-5xl)", "var(--font-size-5xl)"],
+    "--text-display-1-leading": ["1.1", "1.1"],
+    "--text-display-2-size": ["var(--font-size-4xl)", "var(--font-size-4xl)"],
+    "--text-display-2-leading": ["1.1", "1.1"],
+    "--text-display-3-size": ["var(--font-size-3xl)", "var(--font-size-3xl)"],
+    "--text-display-3-leading": ["1.15", "1.15"],
+
     // Surfaces — Dark Chrome charcoal ladder (light tuple unused; app is dark-only).
     "--color-background-body": ["#181818", "#181818"],
     "--color-background-surface": ["#1a1a1a", "#1a1a1a"],

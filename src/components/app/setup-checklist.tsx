@@ -45,7 +45,7 @@ export function SetupChecklist() {
     <div className="shrink-0 border-t border-border/60 p-3">
       <div className="rounded-lg border border-border/60 bg-card/60 p-3">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-primary">
+          <p className="font-mono text-xs uppercase tracking-[0.08em] text-primary">
             Finish setup
           </p>
           <span className="font-mono text-xs tabular-nums text-foreground">
@@ -106,7 +106,7 @@ export function SetupChecklist() {
             type="button"
             disabled={pending}
             onClick={() => startTransition(() => dismissSetupChecklistAction())}
-            className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground/60 transition-colors hover:text-foreground disabled:opacity-60"
+            className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground/60 transition-colors hover:text-foreground disabled:opacity-60"
           >
             Dismiss
           </button>

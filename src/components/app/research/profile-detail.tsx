@@ -99,7 +99,7 @@ export function ProfileDetail({
                 <span className="font-semibold">{profile.displayName}</span>{" "}
                 <span className="text-muted-foreground">@{profile.handle}</span>
               </div>
-              <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
                 {formatCount(profile.followers)} followers · ~
                 {formatCount(profile.avgLikes)} avg likes
                 {profile.postFrequency ? ` · ${profile.postFrequency}` : ""}
@@ -116,7 +116,7 @@ export function ProfileDetail({
         <Card padding={3}>
           <div className="space-y-3">
             <PaneEyebrow>Why this account</PaneEyebrow>
-            <p className="text-[15px] leading-normal">{profile.reason}</p>
+            <p className="text-base leading-6">{profile.reason}</p>
             {profile.topicTags.length > 0 && (
               <div className="space-y-2">
                 <div className="flex flex-wrap gap-1.5">
@@ -125,7 +125,7 @@ export function ProfileDetail({
                       key={tag}
                       variant="neutral"
                       label={tag}
-                      className="font-mono text-[0.65rem]"
+                      className="font-mono text-xs"
                     />
                   ))}
                 </div>
@@ -144,10 +144,10 @@ export function ProfileDetail({
             <PaneEyebrow>Recent posts</PaneEyebrow>
             {profile.exampleTweets.map((tweet) => (
               <Card key={tweet.tweetId} padding={3}>
-                <p className="whitespace-pre-wrap text-sm leading-normal text-muted-foreground">
+                <p className="whitespace-pre-wrap text-base leading-6 text-muted-foreground">
                   {tweet.text}
                 </p>
-                <p className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+                <p className="mt-2 inline-flex items-center gap-1.5 font-mono text-xs tabular-nums text-muted-foreground">
                   <Heart className="size-3" />
                   {formatCount(tweet.likes)} likes
                 </p>

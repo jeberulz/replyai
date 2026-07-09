@@ -124,6 +124,17 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    font-kerning: normal;
+    text-rendering: optimizeLegibility;
+  }
+  [data-astryx-theme="dark-chrome"] :where(h3, h4, h5, h6) {
+    font-family: var(--font-sans);
+    font-weight: 600;
+  }
+  [data-astryx-theme="dark-chrome"] :where(input, textarea, select, button) {
+    font-family: var(--font-sans);
   }
   button {
     cursor: pointer;
