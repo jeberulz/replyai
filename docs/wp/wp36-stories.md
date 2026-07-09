@@ -39,23 +39,23 @@ view in Voice Studio.
 
 ## Stories
 
-- [ ] **WP36-S1 — Shared drift diff + demo**
+- [x] **WP36-S1 — Shared drift diff + demo**
   - Compare stored profile style vs newly measured style from example set.
   - Vitest: no drift, minor drift, major drift fixtures.
 
-- [ ] **WP36-S2 — Schema + run records**
+- [x] **WP36-S2 — Schema + run records**
   - Additive `voiceDriftRuns` (or reuse pattern on existing table).
   - Internal write on run complete/fail; account delete/export.
 
-- [ ] **WP36-S3 — Measure action**
+- [x] **WP36-S3 — Measure action**
   - Convex action: gather examples (DB + optional X read), compute suggestion object.
   - Demo path when `ANTHROPIC_API_KEY` / X missing — never throw to user.
   - Optional LLM one-paragraph summary of diff (zod-validated); skip if no key.
 
-- [ ] **WP36-S4 — Voice Studio UI**
+- [x] **WP36-S4 — Voice Studio UI**
   - “Check for voice drift” button; shows diff + Apply / Dismiss.
   - Apply patches profile style/examples per user selection only.
 
-- [ ] **WP36-S5 — Verification (+ optional cron)**
+- [x] **WP36-S5 — Verification (+ optional cron)**
   - Manual demo + trained profile path; checks green.
   - Optional: quarterly cron stub behind feature flag — skip if timeboxed.

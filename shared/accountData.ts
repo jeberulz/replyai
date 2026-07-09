@@ -132,6 +132,14 @@ export const ACCOUNT_USER_TABLES = [
     deletionOrder: 90,
   },
   {
+    // WP36 — runs reference voiceProfiles; delete runs first.
+    table: "voiceDriftRuns",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "profileId"],
+    deletionOrder: 95,
+  },
+  {
     table: "voiceProfiles",
     ownershipField: "userId",
     indexName: "by_user",

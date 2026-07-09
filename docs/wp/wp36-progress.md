@@ -3,3 +3,45 @@
 ## 2026-07-09 — Scaffold
 
 - Wave 2 worker W7. Parallel with WP14; owns voice drift only.
+
+## 2026-07-09 — WP36-S1
+
+- Added `shared/voiceDrift.ts`: `compareVoiceStyles`, `measureVoiceDrift`,
+  `demoVoiceDriftSuggestion`, `applyDriftSelection`, demo fixtures.
+- Severity: 0 = none, 1–2 = minor, 3+ = major (phrase list counts as one field).
+- Tests in `tests/voiceDrift.test.ts` (8 cases) green.
+
+## 2026-07-09 — WP36-S2
+
+- Additive `voiceDriftRuns` table + `voiceDriftSuggestion` validator in schema.
+- Account delete/export cascade: `voiceDriftRuns` before `voiceProfiles` (order 95).
+- Work continues exclusively in `replyai-wp36` worktree (WP14 owns primary checkout).
+
+## 2026-07-09 — WP36-S3
+
+- `convex/voiceDrift.ts`: startCheck / latestForProfile / applySuggestion / dismiss
+  + internal complete/fail + getRunContext (published drafts).
+- `convex/voiceDriftActions.ts`: gather published + optional X timeline; demo
+  fixtures when corpus thin / keys missing; optional zod-validated LLM summary.
+- Fair-use: one drift run increments `usage.analyses` (analysis bucket).
+- Cron quarterly skipped (MVP on-demand only).
+
+## 2026-07-09 — WP36-S4
+
+- `VoiceDriftPanel` on each Voice Studio profile card: Check / field checkboxes /
+  Apply selected / Dismiss. Never auto-applies.
+- Diff shows before→after for changed style fields + phrase deltas.
+
+## 2026-07-09 — WP36-S5
+
+- Verified: `tsc --noEmit`, `eslint .` (pre-existing `_generated` unused-disable
+  warnings only), `vitest run` (398 passed), `next build` green.
+- Quarterly cron stub skipped (MVP on-demand only; stretch deferred).
+- Worktree-only: `replyai-wp36` — primary checkout left to WP14.
+
+## 2026-07-09 — WP36-S5
+
+- Verified: `tsc --noEmit`, `eslint .` (0 errors; pre-existing generated warnings),
+  `vitest run` (398 pass / 1 skip), `next build` green.
+- Quarterly cron skipped (MVP on-demand only) — stretch left for later.
+- Worktree-only: `replyai-wp36`; primary checkout left for WP14.
