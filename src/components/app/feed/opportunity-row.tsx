@@ -31,6 +31,9 @@ export function OpportunityRow({
 }) {
   const [pending, startTransition] = useTransition();
   const note = sourceNote(opportunity);
+  const freshness = opportunity.freshnessLabel;
+  const windowClosed = freshness === "Window closed";
+  const displayScore = opportunity.effectiveScore ?? opportunity.score;
 
   return (
     <Card
@@ -40,7 +43,8 @@ export function OpportunityRow({
       className={cn(
         "cursor-pointer transition-colors hover:border-border",
         selected && "border-primary/60 ring-1 ring-primary/40",
-        pending && "opacity-50"
+        pending && "opacity-50",
+        windowClosed && "opacity-60"
       )}
     >
       <div className="space-y-2.5">
@@ -53,15 +57,26 @@ export function OpportunityRow({
               {timeAgo(opportunity.postedAt)}
             </span>
           </div>
-          <ScoreBadge value={opportunity.score} reason={opportunity.reason} />
+          <ScoreBadge value={displayScore} reason={opportunity.reason} />
         </div>
 
-        {note && (
-          <Badge
-            variant="neutral"
-            label={note}
-            className="font-normal text-muted-foreground"
-          />
+        {(note || freshness) && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {note && (
+              <Badge
+                variant="neutral"
+                label={note}
+                className="font-normal text-muted-foreground"
+              />
+            )}
+            {freshness && (
+              <Badge
+                variant={windowClosed ? "neutral" : "warning"}
+                label={freshness}
+                className="font-normal"
+              />
+            )}
+          </div>
         )}
 
         <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed">

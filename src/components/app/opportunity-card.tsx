@@ -25,6 +25,10 @@ export type Opportunity = {
   postedAt: number;
   source?: "following" | "list" | "watched" | "search";
   sourceLabel?: string;
+  /** Score decayed by how much of the reply window remains (shared/feedFreshness.ts). */
+  effectiveScore?: number;
+  /** Plain-language freshness copy, e.g. "Window closing" — null while fresh. */
+  freshnessLabel?: string | null;
 };
 
 function sourceNote(opportunity: Opportunity): string | null {
