@@ -179,3 +179,24 @@ Ruling:
   edit `scannerActions.ts`, ranking, or publish paths. No new npm deps unless
   escalated. Demo mode must return deterministic curator output.
 
+## 2026-07-09 - Phase 2 program — WP35–WP39
+
+Question: Phase 2 roadmap items (engagement-window prediction, trend radar,
+command palette v2, onboarding concierge) are not rows in §14; how should
+agents own them?
+
+Ruling:
+
+1. **Official program packages** documented in `docs/wp/PHASE2-PROGRAM.md`.
+   WP35–WP39 are valid assignments with the same branch/PR/story-loop rules as §14.
+2. **WP23 remains the Phase 2 flagship** (§14 row unchanged). Prioritize review
+   merge in Wave 1B.
+3. **WP38** extends the existing cmdk palette — not a full Astryx CommandPalette
+   migration unless a separate ruling says otherwise.
+4. **WP35** shows timing guidance only when sample size threshold met — never
+   fake ML percentages.
+5. **WP37 vs WP13:** WP37 = niche topic clusters; WP13 = per-author dossiers —
+   separate tables and UI surfaces; no shared schema without orchestrator ruling.
+6. Workers use **Grok 4.5 Fast** (`grok-4.5-fast-xhigh`) for the Phase 2 sprint
+   unless orchestrator escalates after repeated gate failure.
+
