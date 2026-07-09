@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "extension/dist/**",
     "extension/node_modules/**",
+    // Nested git worktrees (local agent checkouts) — never lint their builds
+    ".worktrees/**",
   ]),
 ]);
 
