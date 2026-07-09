@@ -60,3 +60,12 @@ export type { EmptyStateProps } from "./empty-state";
 
 export { Dialog, DialogHeader } from "./dialog";
 export type { DialogProps, DialogHeaderProps } from "./dialog";
+
+export { Kbd } from "./kbd";
+export type { KbdProps } from "./kbd";
+
+export { Heading } from "./heading";
+export type { HeadingProps } from "./heading";
+
+export { Text } from "./text";
+export type { TextProps } from "./text";
