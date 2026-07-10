@@ -476,26 +476,41 @@ Verify: `npx convex env list` shows all four present; a non-demo generation
 request now succeeds and each attempt writes one `aiSpendLedger` row until the
 hourly cap, after which the user sees "Hourly generation capacity is full."
 
-### Cost-ceiling reduction: analysis model override
+### Cost-ceiling reduction: analysis model override — WITHDRAWN
 
-To lower the worst-case AI spend ceiling, move the analysis path off Opus 4.8
-onto Sonnet 5 (generation already defaults to Sonnet 5 via `.env.example`).
-This is a model-override env change, not a cap change; caps stay 30/60.
+~~Move the analysis path off Opus 4.8 onto Sonnet 5 via
+`ANTHROPIC_ANALYZE_MODEL=claude-sonnet-5`.~~ Withdrawn by owner: analysis is
+the PRD wedge (discovery + timing), so cost is reduced by lowering per-user
+caps instead of downgrading the analysis model. `ANTHROPIC_ANALYZE_MODEL`
+stays **unset** — analysis remains on Opus 4.8. Do not set it.
 
-- `ANTHROPIC_ANALYZE_MODEL` — currently unset (falls back to `ANTHROPIC_MODEL`
-  = Opus 4.8) → set to `claude-sonnet-5`.
+### Revised approved caps: 5 / 10 (supersedes the 30/60 above)
+
+Owner chose to lower the worst-case ceiling by cutting per-user hourly caps
+rather than touching the analysis model, keeping the discovery wedge on Opus.
+
+- `AI_ANALYSIS_HOURLY_LIMIT` → `5` (was to be 30).
+- `AI_GENERATION_HOURLY_LIMIT` → `10` (was to be 60).
+- `AI_SPEND_LIMITS_REQUIRED` stays `true`; `AI_SPEND_KILL_SWITCH` stays
+  `false`; `ANTHROPIC_ANALYZE_MODEL` stays unset (Opus analysis).
 
 Effect: worst-case monthly ceiling (all 10 users maxing both caps 24/7) drops
-from ~$16–23k to ~$10–14k at Sonnet 5 intro pricing ($2/$10 per 1M, through
-2026-08-31; ~$15–21k after). No code, schema, or table change.
+from ~$16–23k to ~$2.7–3.8k (≈ $90–125/day) at Sonnet 5 intro generation
+pricing; ~$3.2–4.5k after intro pricing ends 2026-08-31 (Opus analysis line
+unaffected). No code, schema, or table change. Rollback/adjust: re-run
+`npx convex env set` with new values; unset both caps to return to fail-closed.
 
-Tradeoff to validate before locking in: analysis is the PRD wedge (discovery +
-timing). Confirm quality holds on Sonnet 5 via the eval gate (`npm run evals`,
-`shared/evals.ts`) before treating this as permanent. Rollback: unset
-`ANTHROPIC_ANALYZE_MODEL` to return analysis to Opus 4.8.
+Usability watch-item: 10 generations/hr per user (~1 reply / 6 min, and each
+"generate more" is another call) may hit "Hourly generation capacity is full"
+during an active session. Block is user-visible and resets hourly; monitor in
+the daily review and raise the cap if design partners hit the wall.
 
-Operator apply step (production Convex):
+Operator apply steps (production Convex) — final config:
 
 ```
-npx convex env set ANTHROPIC_ANALYZE_MODEL claude-sonnet-5
+npx convex env set AI_SPEND_KILL_SWITCH false
+npx convex env set AI_SPEND_LIMITS_REQUIRED true
+npx convex env set AI_ANALYSIS_HOURLY_LIMIT 5
+npx convex env set AI_GENERATION_HOURLY_LIMIT 10
+# ANTHROPIC_ANALYZE_MODEL intentionally NOT set — analysis stays on Opus 4.8
 ```
