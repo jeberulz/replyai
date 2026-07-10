@@ -2,6 +2,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -175,6 +176,16 @@ function negativeConstraintsForProfile(
     bannedPhrases: profile.bannedPhrases,
     antiPatterns: profile.antiPatterns,
   });
+}
+
+function voiceSourceFingerprint(source: string, examples: string[]): string {
+  const hash = createHash("sha256");
+  hash.update(source);
+  for (const example of examples) {
+    hash.update("\0");
+    hash.update(example);
+  }
+  return hash.digest("hex");
 }
 
 const ManualSemanticSchema = z.object({
@@ -981,6 +992,8 @@ export async function trainVoiceAction(name: string) {
     examples: tweets.slice(0, VOICE_PROMPT_EXAMPLES_MAX),
     ...constraints,
     source: "trained",
+    purpose: "manual",
+    sourceFingerprint: voiceSourceFingerprint("voice-page", tweets),
   });
   revalidatePath("/voice");
 }
@@ -1001,6 +1014,7 @@ export async function createVoiceProfileAction(args: {
     examples: args.examples,
     ...normalizeNegativeConstraints(constraints),
     source: "manual",
+    purpose: "manual",
   });
   revalidatePath("/voice");
 }
@@ -1277,17 +1291,13 @@ export async function buildWritingModelAction(args: {
   });
   const constraints = buildVoiceNegativeConstraints(tweets, style);
   const profileName = `${user.displayName.split(" ")[0]}'s voice`;
-  const profileId = await convex.mutation(api.voiceProfiles.create, {
+  await convex.mutation(api.voiceProfiles.upsertOnboardingProfile, {
     sessionToken,
     name: profileName,
     style,
     examples: tweets.slice(0, VOICE_PROMPT_EXAMPLES_MAX),
     ...constraints,
-    source: "trained",
-  });
-  await convex.mutation(api.voiceProfiles.setDefault, {
-    sessionToken,
-    profileId,
+    sourceFingerprint: voiceSourceFingerprint(`onboarding:${args.source}`, tweets),
   });
   if (hasProAccess(user)) {
     await convex.mutation(api.scanner.scanNow, { sessionToken });

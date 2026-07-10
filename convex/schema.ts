@@ -118,6 +118,17 @@ export default defineSchema({
     .index("by_x_user_id", ["xUserId"])
     .index("by_stripe_customer_id", ["stripeCustomerId"]),
 
+  accountIdentities: defineTable({
+    provider: v.literal("x"),
+    providerUserId: v.string(),
+    userId: v.id("users"),
+    createdAt: v.number(),
+    lastLoginAt: v.number(),
+  })
+    .index("by_provider", ["provider"])
+    .index("by_provider_and_provider_user_id", ["provider", "providerUserId"])
+    .index("by_user", ["userId"]),
+
   sessions: defineTable({
     userId: v.id("users"),
     // Deprecated plaintext bearer token. Kept optional for a zero-downtime
@@ -155,9 +166,20 @@ export default defineSchema({
     bannedPhrases: v.optional(v.array(v.string())),
     antiPatterns: v.optional(v.array(v.string())),
     source: v.union(v.literal("manual"), v.literal("trained")),
+    purpose: v.optional(
+      v.union(
+        v.literal("starter"),
+        v.literal("onboarding"),
+        v.literal("manual")
+      )
+    ),
+    sourceFingerprint: v.optional(v.string()),
     isDefault: v.boolean(),
     createdAt: v.number(),
-  }).index("by_user", ["userId"]),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_purpose", ["userId", "purpose"]),
 
   projects: defineTable({
     userId: v.id("users"),

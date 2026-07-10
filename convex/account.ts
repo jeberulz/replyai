@@ -37,6 +37,13 @@ async function countByUser(
         if (row._id) count += 1;
       }
       return count;
+    case "accountIdentities":
+      for await (const row of ctx.db
+        .query("accountIdentities")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
     case "scannerSettings":
       for await (const row of ctx.db
         .query("scannerSettings")
@@ -216,6 +223,13 @@ async function listByUser(
         rows.push(row as unknown as Record<string, unknown>);
       }
       return rows;
+    case "accountIdentities":
+      for await (const row of ctx.db
+        .query("accountIdentities")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
     case "scannerSettings":
       for await (const row of ctx.db
         .query("scannerSettings")
@@ -390,6 +404,13 @@ async function takeDeletionBatch(
       return (
         await ctx.db
           .query("xTokens")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "accountIdentities":
+      return (
+        await ctx.db
+          .query("accountIdentities")
           .withIndex("by_user", (q) => q.eq("userId", userId))
           .take(ACCOUNT_DELETION_BATCH_SIZE)
       ).map((row) => row._id);

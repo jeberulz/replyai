@@ -69,6 +69,14 @@ export const create = mutation({
     bannedPhrases: v.optional(v.array(v.string())),
     antiPatterns: v.optional(v.array(v.string())),
     source: v.union(v.literal("manual"), v.literal("trained")),
+    purpose: v.optional(
+      v.union(
+        v.literal("starter"),
+        v.literal("onboarding"),
+        v.literal("manual")
+      )
+    ),
+    sourceFingerprint: v.optional(v.string()),
   },
   handler: async (ctx, { sessionToken, ...args }) => {
     const user = await requireUser(ctx, sessionToken);
@@ -92,7 +100,83 @@ export const create = mutation({
       ...constraints,
       isDefault: existing.length === 0,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
+  },
+});
+
+export const upsertOnboardingProfile = mutation({
+  args: {
+    sessionToken: v.string(),
+    name: v.string(),
+    style: voiceStyle,
+    examples: v.array(v.string()),
+    bannedPhrases: v.optional(v.array(v.string())),
+    antiPatterns: v.optional(v.array(v.string())),
+    sourceFingerprint: v.string(),
+  },
+  handler: async (ctx, { sessionToken, ...args }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const now = Date.now();
+    const all = await ctx.db
+      .query("voiceProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const target =
+      all.find((profile) => profile.purpose === "onboarding") ??
+      all.find((profile) => profile.isDefault && profile.source === "trained") ??
+      all.find((profile) => profile.source === "trained");
+
+    let constraints = normalizeNegativeConstraints({
+      bannedPhrases: args.bannedPhrases,
+      antiPatterns: args.antiPatterns,
+    });
+    if (
+      constraints.bannedPhrases.length === 0 &&
+      constraints.antiPatterns.length === 0
+    ) {
+      constraints = buildVoiceNegativeConstraints(args.examples, args.style);
+    }
+
+    if (target) {
+      await ctx.db.patch(target._id, {
+        name: args.name,
+        style: args.style,
+        examples: args.examples,
+        ...constraints,
+        source: "trained",
+        purpose: "onboarding",
+        sourceFingerprint: args.sourceFingerprint,
+        isDefault: true,
+        updatedAt: now,
+      });
+      for (const profile of all) {
+        if (profile._id !== target._id && profile.isDefault) {
+          await ctx.db.patch(profile._id, { isDefault: false, updatedAt: now });
+        }
+      }
+      return target._id;
+    }
+
+    const profileId = await ctx.db.insert("voiceProfiles", {
+      userId: user._id,
+      name: args.name,
+      style: args.style,
+      examples: args.examples,
+      ...constraints,
+      source: "trained",
+      purpose: "onboarding",
+      sourceFingerprint: args.sourceFingerprint,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    for (const profile of all) {
+      if (profile.isDefault) {
+        await ctx.db.patch(profile._id, { isDefault: false, updatedAt: now });
+      }
+    }
+    return profileId;
   },
 });
 
@@ -124,6 +208,7 @@ export const update = mutation({
         antiPatterns: patch.antiPatterns,
       }).antiPatterns;
     }
+    updates.updatedAt = Date.now();
     await ctx.db.patch(profileId, updates);
   },
 });
@@ -140,7 +225,10 @@ export const setDefault = mutation({
       .collect();
     for (const p of all) {
       if (p.isDefault !== (p._id === profileId)) {
-        await ctx.db.patch(p._id, { isDefault: p._id === profileId });
+        await ctx.db.patch(p._id, {
+          isDefault: p._id === profileId,
+          updatedAt: Date.now(),
+        });
       }
     }
   },

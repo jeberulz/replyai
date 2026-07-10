@@ -14,6 +14,13 @@ export const ACCOUNT_USER_TABLES = [
     deletionOrder: 20,
   },
   {
+    table: "accountIdentities",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "provider", "providerUserId"],
+    deletionOrder: 25,
+  },
+  {
     table: "scannerSettings",
     ownershipField: "userId",
     indexName: "by_user",

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import {
   hashSessionToken,
   requireUser,
@@ -16,6 +17,7 @@ import {
 
 const SESSION_TTL_MS = SESSION_SLIDING_TTL_MS;
 const TOKEN_ACCESS_SECRET_ENV = "CONVEX_SERVER_TOKEN_ACCESS_SECRET";
+const X_PROVIDER = "x";
 
 function requireServerTokenAccess(secret: string) {
   const expected = process.env[TOKEN_ACCESS_SECRET_ENV]?.trim();
@@ -48,12 +50,21 @@ export const upsertAndCreateSession = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_x_user_id", (q) => q.eq("xUserId", args.xUserId))
-      .unique();
+    const identity = await ctx.db
+      .query("accountIdentities")
+      .withIndex("by_provider_and_provider_user_id", (q) =>
+        q.eq("provider", X_PROVIDER).eq("providerUserId", args.xUserId)
+      )
+      .first();
+    const identityUser = identity ? await ctx.db.get(identity.userId) : null;
+    const existing =
+      identityUser ??
+      (await ctx.db
+        .query("users")
+        .withIndex("by_x_user_id", (q) => q.eq("xUserId", args.xUserId))
+        .first());
 
-    let userId;
+    let userId: Id<"users">;
     if (existing) {
       userId = existing._id;
       await ctx.db.patch(userId, {
@@ -70,6 +81,21 @@ export const upsertAndCreateSession = mutation({
         plan: "free",
         isDemo: args.isDemo,
         createdAt: now,
+      });
+    }
+
+    if (identity) {
+      await ctx.db.patch(identity._id, {
+        userId,
+        lastLoginAt: now,
+      });
+    } else {
+      await ctx.db.insert("accountIdentities", {
+        provider: X_PROVIDER,
+        providerUserId: args.xUserId,
+        userId,
+        createdAt: now,
+        lastLoginAt: now,
       });
     }
 

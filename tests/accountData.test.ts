@@ -15,6 +15,7 @@ describe("account data inventory contract", () => {
     expect(ACCOUNT_USER_TABLES.map((entry) => entry.table)).toEqual([
       "sessions",
       "xTokens",
+      "accountIdentities",
       "scannerSettings",
       "pushSubscriptions",
       "notificationSettings",
