@@ -35,6 +35,9 @@ export const env = {
   get xClientSecret(): string {
     return process.env.X_CLIENT_SECRET ?? "";
   },
+  get authProvisionSecret(): string {
+    return process.env.CONVEX_AUTH_PROVISION_SECRET ?? "";
+  },
 };
 
 export function hasXCredentials(): boolean {

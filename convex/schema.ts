@@ -100,6 +100,7 @@ export default defineSchema({
     stripePriceId: v.optional(v.string()),
     stripeCurrentPeriodEnd: v.optional(v.number()),
     stripeTrialEndsAt: v.optional(v.number()),
+    betaAccessExpiresAt: v.optional(v.number()),
     // Preferred Claude model for generation; unset = app default (see shared/models.ts).
     defaultModel: v.optional(v.string()),
     // Primary goal chosen during onboarding — tunes scanner keywords and copy.

@@ -251,6 +251,12 @@ export default async function LandingPage({
                 terminal (keep it running), then try again.
               </p>
             )}
+            {error === "private_beta" && (
+              <p className="max-w-[44ch] rounded-md border border-destructive/50 px-4 py-3 text-sm text-destructive">
+                ReplyPilot is in private beta. This X account is not on the
+                invite list yet.
+              </p>
+            )}
             <div className="space-y-3 pt-1">
               <PillLink href="/api/auth/login">
                 <XLogo />

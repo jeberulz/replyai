@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "../../../../../convex/_generated/api";
 import { guardAuthRoute } from "@/lib/authSecurity";
 import { convexServer } from "@/lib/convex";
+import { env } from "@/lib/env";
 import { ensureDefaults, postLoginPath } from "@/lib/onboarding";
 import { newSessionToken, setSessionCookie } from "@/lib/session";
 
@@ -16,6 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     const sessionToken = newSessionToken();
     await convexServer().mutation(api.users.upsertAndCreateSession, {
+      provisioningSecret: env.authProvisionSecret,
       xUserId: "demo-user",
       username: "demo_builder",
       displayName: "Demo Builder",

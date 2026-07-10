@@ -148,3 +148,53 @@ The first implementation worker appends:
   because `/api/auth/demo` and server session lookup require Convex. S4 owns
   isolating or disabling production demo and making local/CI zero-key demo
   deterministic; S2 only wires the current real app flow into CI.
+
+## 2026-07-10 — WP40-S3 private beta access + provisioning boundary
+
+- Added `src/lib/betaAccess.ts` for X-handle normalization, access-mode parsing,
+  allowlist checks, and expiring beta-entitlement decisions. Production defaults
+  to `allowlist`; missing/empty allowlist in allowlist mode fails closed.
+- OAuth callback now fetches the X identity, evaluates the normalized handle,
+  and rejects denied identities with `?error=private_beta` before calling Convex
+  or persisting any user/session/token row. OAuth verifier/state cookies are
+  cleared on denial.
+- Added `CONVEX_AUTH_PROVISION_SECRET` to Next env access, `.env.example`, and
+  Convex typed env metadata. `users.upsertAndCreateSession` now accepts a
+  `provisioningSecret` and rejects non-demo provisioning when the mirrored
+  secret is missing, absent from the caller, or invalid.
+- Added optional `users.betaAccessExpiresAt`. Approved allowlisted users receive
+  this additive expiring entitlement while `plan` remains `free`; Stripe
+  subscription snapshot semantics are unchanged.
+- Shared billing gates now treat active beta entitlement as feature access for
+  scanner, notifications, and briefing without reporting a Stripe Pro plan.
+  Settings shows "Private beta", the expiry date, and "no card required" copy.
+- Auth/security review notes:
+  - Denied OAuth handles are blocked after X profile read and before Convex
+    mutation, so denied users persist no ReplyPilot account/session/token rows.
+  - Direct non-demo calls to the provisioning mutation fail closed without the
+    shared secret.
+  - Demo provisioning remains temporarily permissive when the Convex secret is
+    absent so the current S2 local/CI demo flow keeps working; S4 owns replacing
+    the shared demo with isolated deterministic zero-key demo and disabling
+    production public demo.
+- Convex generated bindings updated after schema/env changes. The dev Convex
+  deployment `shiny-crow-162` was pushed after the validator change so the S2
+  Playwright matrix could verify against the current function signature. No
+  production deployment or production data mutation performed.
+- Verification:
+  - `npm run typecheck` — passed.
+  - `npm run lint` — passed with the existing generated Convex
+    `eslint-disable` warnings and no errors.
+  - `npm test` — passed: 50 files passed, 1 skipped; 444 tests passed,
+    1 skipped.
+  - `npm run security:audit` — passed.
+  - `npm run build` — passed.
+  - `NEXT_PUBLIC_CONVEX_URL=... npm run test:mobile` — passed: 12 tests across
+    4 viewport projects after pushing the dev Convex function update.
+- Focused tests added:
+  - `tests/betaAccess.test.ts` covers allowed, denied, malformed handles,
+    missing allowlist fail-closed behavior, and local open-mode behavior.
+  - `tests/authProvisioning.test.ts` covers matching, missing, invalid, and
+    missing-expected provisioning-secret decisions.
+  - `tests/billing.test.ts` now covers active and expired beta entitlement
+    without Stripe Pro contamination.

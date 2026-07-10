@@ -139,7 +139,11 @@ export default async function SettingsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
           <div>
             <div className="text-sm font-medium">
-              {billing.hasProAccess ? "Pro" : "Free"}
+              {billing.hasBetaAccess
+                ? "Private beta"
+                : billing.hasProAccess
+                  ? "Pro"
+                  : "Free"}
               {billing.subscriptionStatus
                 ? ` · ${billing.subscriptionStatus.replace(/_/g, " ")}`
                 : ""}
@@ -147,6 +151,8 @@ export default async function SettingsPage() {
             <div className="text-xs text-muted-foreground">
               {user.isDemo
                 ? "Demo accounts keep Pro access without Stripe so the full product stays testable."
+                : billing.hasBetaAccess && billing.betaAccessExpiresAt
+                  ? `Private beta access through ${new Date(billing.betaAccessExpiresAt).toLocaleDateString()} — no card required.`
                 : billing.currentPeriodEnd
                   ? `Current access through ${new Date(billing.currentPeriodEnd).toLocaleDateString()}`
                   : billing.trialEndsAt
@@ -156,7 +162,13 @@ export default async function SettingsPage() {
           </div>
           <Badge
             variant={billing.hasProAccess ? "success" : "neutral"}
-            label={billing.hasProAccess ? "Pro unlocked" : "Free plan"}
+            label={
+              billing.hasBetaAccess
+                ? "Private beta"
+                : billing.hasProAccess
+                  ? "Pro unlocked"
+                  : "Free plan"
+            }
           />
         </div>
 
@@ -191,7 +203,13 @@ export default async function SettingsPage() {
           ) : (
             <Button
               type="button"
-              label={user.isDemo ? "Demo includes Pro" : "Stripe not configured"}
+              label={
+                billing.hasBetaAccess
+                  ? "Private beta active"
+                  : user.isDemo
+                    ? "Demo includes Pro"
+                    : "Stripe not configured"
+              }
               isDisabled
             />
           )}

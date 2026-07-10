@@ -39,7 +39,7 @@ dirty working tree.
     draft rows and primary mobile actions.
   - Existing 375px behavior remains green; no snapshot-only claim.
 
-- [ ] **WP40-S3 — Enforce private beta access and safe provisioning**
+- [x] **WP40-S3 — Enforce private beta access and safe provisioning**
   - Owner-approved normalized X handles are the only identities that can finish
     OAuth in `allowlist` mode; denied identities persist no user/session/token.
   - Server-only account/session provisioning requires a mirrored Vercel/Convex
