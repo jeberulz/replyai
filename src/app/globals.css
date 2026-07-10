@@ -1,3 +1,14 @@
+/*
+ * Cascade layer order — declared before any import so it wins.
+ * dark-chrome.css puts its :where(h1..h6/p/small/code) prose defaults in
+ * `reset` and its tokens/component styles in `astryx-theme`; both are meant
+ * to lose to Tailwind utilities (the generator docs say class-based styles
+ * "should beat" them). Without this declaration the first occurrence inside
+ * dark-chrome.css would register those layers AFTER `utilities`, silently
+ * overriding every text and font utility on p and h1-h6.
+ */
+@layer theme, base, reset, astryx-theme, components, utilities;
+
 @import "tailwindcss";
 
 /*
