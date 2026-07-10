@@ -112,6 +112,10 @@ export default defineSchema({
     // When the dashboard "finish setting up" card was dismissed.
     setupDismissedAt: v.optional(v.number()),
     isDemo: v.boolean(),
+    // Per-account fair-use bypass for a designated end-to-end test account.
+    // Lifts every analysis/generation cap while keeping real API behavior
+    // (unlike isDemo, this does NOT route to demo/offline data).
+    unlimitedAccess: v.optional(v.boolean()),
     // Optional override for notification digest emails (falls back to account email when unset).
     notificationEmail: v.optional(v.string()),
     createdAt: v.number(),

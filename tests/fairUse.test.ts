@@ -22,6 +22,26 @@ describe("fairUse", () => {
     expect(status.blocked).toBe(false);
   });
 
+  it("lifts every cap for unlimitedAccess without marking the account demo", () => {
+    const status = evaluateFairUse({
+      isDemo: false,
+      unlimitedAccess: true,
+      plan: "pro",
+      usage: {
+        analysesToday: 500,
+        analysesThisMonth: PRO_MONTHLY_ANALYSIS_LIMIT + 100,
+        generationsThisMonth: PRO_MONTHLY_GENERATION_LIMIT + 100,
+      },
+      action: "generate",
+    });
+    expect(status.unlimited).toBe(true);
+    expect(status.blocked).toBe(false);
+    // Real-behavior flag: must NOT flip the account into demo/offline mode.
+    expect(status.isDemo).toBe(false);
+    expect(status.limits.monthlyAnalyses).toBeNull();
+    expect(status.limits.monthlyGenerations).toBeNull();
+  });
+
   it("blocks free users after the daily analysis cap", () => {
     const status = evaluateFairUse({
       isDemo: false,

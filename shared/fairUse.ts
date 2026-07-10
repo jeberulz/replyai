@@ -47,7 +47,17 @@ export function utcDayStartMs(nowMs: number): number {
 export function fairUseLimitsForPlan(input: {
   plan?: string | null;
   isDemo?: boolean | null;
+  unlimitedAccess?: boolean | null;
 }): FairUseLimits {
+  // Per-account bypass (E2E test accounts): no caps, but real API behavior —
+  // this is distinct from isDemo, which routes to demo/offline data.
+  if (input.unlimitedAccess) {
+    return {
+      dailyAnalyses: null,
+      monthlyAnalyses: null,
+      monthlyGenerations: null,
+    };
+  }
   if (hasProAccess(input)) {
     return {
       dailyAnalyses: null,
@@ -65,6 +75,7 @@ export function fairUseLimitsForPlan(input: {
 export function evaluateFairUse(input: {
   plan?: string | null;
   isDemo?: boolean | null;
+  unlimitedAccess?: boolean | null;
   usage: FairUseMeter;
   action: FairUseAction;
 }): FairUseStatus {
@@ -87,6 +98,22 @@ export function evaluateFairUse(input: {
             limits.monthlyGenerations - input.usage.generationsThisMonth
           ),
   };
+
+  // Real-behavior unlimited: lifts every fair-use cap for a designated test
+  // account while leaving isDemo false, so real X / Anthropic paths still run.
+  if (input.unlimitedAccess) {
+    return {
+      plan,
+      isDemo: Boolean(input.isDemo),
+      unlimited: true,
+      blocked: false,
+      blockReason: null,
+      message: null,
+      limits,
+      usage: input.usage,
+      remaining,
+    };
+  }
 
   if (input.isDemo) {
     return {
