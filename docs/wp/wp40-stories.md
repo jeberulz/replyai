@@ -66,7 +66,7 @@ dirty working tree.
   - Block/warning events use the typed analytics catalog; tests cover boundary,
     reset, demo, and kill-switch behavior.
 
-- [ ] **WP40-S5 — Meter and bound X API reads**
+- [x] **WP40-S5 — Meter and bound X API reads**
   - All X read paths used by onboarding, manual URL analysis, scanner sources,
     research/voice refresh, and reply-back tracking record endpoint/source,
     request count, raw returned resources, and locally unique daily resources.

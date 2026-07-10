@@ -412,6 +412,40 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_hour_kind", ["userId", "hourKey", "kind"]),
 
+  xReadLedger: defineTable({
+    userId: v.id("users"),
+    dayKey: v.string(), // UTC "YYYY-MM-DD"
+    source: v.union(
+      v.literal("manual_analysis"),
+      v.literal("onboarding"),
+      v.literal("scanner_following"),
+      v.literal("scanner_list"),
+      v.literal("scanner_watched"),
+      v.literal("scanner_search"),
+      v.literal("research"),
+      v.literal("voice_refresh"),
+      v.literal("reply_back"),
+      v.literal("owned_lists")
+    ),
+    endpoint: v.string(),
+    priority: v.union(v.literal("high"), v.literal("low")),
+    requestCount: v.number(),
+    rawResourceCount: v.number(),
+    uniqueResourceCount: v.number(),
+    resourceHashes: v.array(v.string()),
+    status: v.union(
+      v.literal("attempted"),
+      v.literal("succeeded"),
+      v.literal("failed")
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_day", ["dayKey"])
+    .index("by_user_day", ["userId", "dayKey"])
+    .index("by_user_source_day", ["userId", "source", "dayKey"]),
+
   opportunities: defineTable({
     userId: v.id("users"),
     tweetId: v.string(),

@@ -26,6 +26,7 @@ describe("account data inventory contract", () => {
       "authors",
       "usage",
       "aiSpendLedger",
+      "xReadLedger",
       "opportunities",
       "savedDrafts",
       "variantGroups",

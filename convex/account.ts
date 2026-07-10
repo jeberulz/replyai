@@ -121,6 +121,13 @@ async function countByUser(
         if (row._id) count += 1;
       }
       return count;
+    case "xReadLedger":
+      for await (const row of ctx.db
+        .query("xReadLedger")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
     case "opportunities":
       for await (const row of ctx.db
         .query("opportunities")
@@ -314,6 +321,13 @@ async function listByUser(
         rows.push(row as unknown as Record<string, unknown>);
       }
       return rows;
+    case "xReadLedger":
+      for await (const row of ctx.db
+        .query("xReadLedger")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
     case "opportunities":
       for await (const row of ctx.db
         .query("opportunities")
@@ -502,6 +516,13 @@ async function takeDeletionBatch(
       return (
         await ctx.db
           .query("aiSpendLedger")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "xReadLedger":
+      return (
+        await ctx.db
+          .query("xReadLedger")
           .withIndex("by_user", (q) => q.eq("userId", userId))
           .take(ACCOUNT_DELETION_BATCH_SIZE)
       ).map((row) => row._id);

@@ -91,6 +91,13 @@ export const ACCOUNT_USER_TABLES = [
     deletionOrder: 41,
   },
   {
+    table: "xReadLedger",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "source", "dayKey"],
+    deletionOrder: 42,
+  },
+  {
     table: "opportunities",
     ownershipField: "userId",
     indexName: "by_user",

@@ -11,5 +11,9 @@ export default defineApp({
     AI_SPEND_LIMITS_REQUIRED: v.optional(v.string()),
     AI_ANALYSIS_HOURLY_LIMIT: v.optional(v.string()),
     AI_GENERATION_HOURLY_LIMIT: v.optional(v.string()),
+    X_READ_KILL_SWITCH: v.optional(v.string()),
+    X_READ_LIMITS_REQUIRED: v.optional(v.string()),
+    X_READ_USER_DAILY_LIMIT: v.optional(v.string()),
+    X_READ_GLOBAL_DAILY_LIMIT: v.optional(v.string()),
   },
 });

@@ -268,3 +268,63 @@ The first implementation worker appends:
     44px target at tablet/desktop breakpoints; row and detail actions now have
     explicit 44px minimum heights, and the Playwright locator scopes to the
     detail-pane handoff action.
+
+## 2026-07-10 — WP40-S5 X read metering + budget bounds
+
+- Added shared X read budget logic in `shared/xReadLimits.ts` with UTC-day
+  reset, per-user cap, global cap, missing-cap fail-closed behavior, and an
+  operator kill switch. Low-priority reads respect numeric caps; high-priority
+  reads only bypass numeric caps, never the kill switch or missing-cap guard.
+- Added `xReadLedger` with indexes by user, day, user/day, and
+  user/source/day. Rows store only metadata: user id, source, endpoint,
+  priority, request count, raw resource count, locally unique resource count,
+  hashed resource keys, status, and timestamps. No tweet text, prompts, OAuth
+  tokens, or secrets are stored.
+- Added `X_READ_KILL_SWITCH`, `X_READ_LIMITS_REQUIRED`,
+  `X_READ_USER_DAILY_LIMIT`, and `X_READ_GLOBAL_DAILY_LIMIT` to
+  `.env.example` and Convex typed env metadata.
+- Included `xReadLedger` in account export/delete inventory and the explicit
+  account-data contract test.
+- Metered Next-side X reads:
+  - manual URL analysis tweet lookup and reply-settings lookup;
+  - voice refresh import;
+  - owned-list picker;
+  - onboarding voice import.
+- Metered Convex-side X reads:
+  - scanner following timeline, list tweets, watched-handle search, and keyword
+    search;
+  - research search and seed-handle reads;
+  - voice drift X timeline refresh;
+  - onboarding concierge bio/tweets read;
+  - reply-back polling metrics and recent-reply search.
+- Demo users bypass X-read ledger attempts and keep deterministic local/CI
+  behavior. Budget blocks return user-facing pause copy for interactive Next
+  paths; scanner/poller paths degrade without touching stored drafts.
+- Convex generated bindings and the dev deployment `shiny-crow-162` were
+  updated after the schema/API changes. No production deployment or production
+  data mutation performed.
+- Verification:
+  - `npm run typecheck` — passed.
+  - `npm run lint` — passed with the existing generated Convex
+    `eslint-disable` warnings and no errors.
+  - `npm test` — passed: 54 files passed, 1 skipped; 457 tests passed,
+    1 skipped.
+  - `npm run security:audit` — passed: 107 public Convex functions checked,
+    3 allow-listed.
+  - `npm run build` — passed with Next.js 16.2.10 / Turbopack.
+  - `NEXT_PUBLIC_CONVEX_URL=... npm run test:mobile` — passed: 12 tests across
+    4 viewport projects after `npx convex dev --once` pushed the new functions.
+- Focused tests added/updated:
+  - `tests/xReadLimits.test.ts` covers missing-cap fail-closed behavior,
+    per-user cap, global cap, high-priority numeric-cap behavior, kill switch,
+    cap parsing, and UTC day-key resets.
+  - `tests/accountData.test.ts` now includes `xReadLedger` in the explicit
+    user-owned table order.
+- Dead ends / findings:
+  - `npx convex codegen` updated generated bindings, but the Playwright matrix
+    still hit a stale dev deployment missing `spend.recordAiSpendAttempt`.
+    Running `npx convex dev --once` pushed functions and added the new ledger
+    indexes; the matrix passed afterward.
+  - `convex/outcomes.ts` runs in Convex's default runtime, so it cannot import
+    `node:crypto`; reply-back resource keys use a small stable local hash
+    instead of Node crypto.

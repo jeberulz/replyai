@@ -33,6 +33,10 @@ type Env = {
   readonly STRIPE_PRO_PRICE_ID: string | undefined;
   readonly STRIPE_SECRET_KEY: string | undefined;
   readonly STRIPE_WEBHOOK_SECRET: string | undefined;
+  readonly X_READ_GLOBAL_DAILY_LIMIT: string | undefined;
+  readonly X_READ_KILL_SWITCH: string | undefined;
+  readonly X_READ_LIMITS_REQUIRED: string | undefined;
+  readonly X_READ_USER_DAILY_LIMIT: string | undefined;
 };
 
 /**

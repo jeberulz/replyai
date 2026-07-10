@@ -151,8 +151,9 @@ export async function refineVoiceStyleLabels(args: {
   style: VoiceStyle;
   examples: string[];
   model?: string;
+  forceDemo?: boolean;
 }): Promise<{ style: VoiceStyle; usage: Usage }> {
-  if (!hasAnthropicKey() || args.examples.length === 0) {
+  if (args.forceDemo || !hasAnthropicKey() || args.examples.length === 0) {
     return {
       style: applyVoiceLabelRefinement(args.style, null),
       usage: { tokensIn: 0, tokensOut: 0 },
