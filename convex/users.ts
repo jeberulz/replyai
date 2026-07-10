@@ -14,6 +14,8 @@ import {
   encryptedXTokenPatch,
   readStoredXTokens,
 } from "./tokenSecurity";
+import { verifyProvisioningSecret } from "../shared/authProvisioning";
+import { buildXDisconnectCascade } from "../shared/xDisconnect";
 
 const SESSION_TTL_MS = SESSION_SLIDING_TTL_MS;
 const TOKEN_ACCESS_SECRET_ENV = "CONVEX_SERVER_TOKEN_ACCESS_SECRET";
@@ -27,13 +29,13 @@ function requireServerTokenAccess(secret: string) {
   }
 }
 
-/** When configured, blocks direct public Convex calls that spoof OAuth signup. */
-function requireAuthProvisioningSecret(secret: string | undefined) {
-  const expected = process.env[AUTH_PROVISION_SECRET_ENV]?.trim();
-  if (!expected) return;
-  if (!secret?.trim() || secret !== expected) {
-    throw new Error("Unauthorized");
-  }
+function requireAuthProvisioningSecret(secret: string | undefined, isDemo: boolean) {
+  const decision = verifyProvisioningSecret({
+    expected: process.env[AUTH_PROVISION_SECRET_ENV],
+    provided: secret,
+    requireWhenMissing: !isDemo,
+  });
+  if (!decision.ok) throw new Error("Unauthorized");
 }
 
 /**
@@ -43,11 +45,13 @@ function requireAuthProvisioningSecret(secret: string | undefined) {
  */
 export const upsertAndCreateSession = mutation({
   args: {
+    provisioningSecret: v.optional(v.string()),
     xUserId: v.string(),
     username: v.string(),
     displayName: v.string(),
     avatar: v.optional(v.string()),
     isDemo: v.boolean(),
+    betaAccessExpiresAt: v.optional(v.number()),
     sessionToken: v.string(),
     xAuth: v.optional(
       v.object({
@@ -57,10 +61,9 @@ export const upsertAndCreateSession = mutation({
         scope: v.string(),
       })
     ),
-    provisioningSecret: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    requireAuthProvisioningSecret(args.provisioningSecret);
+    requireAuthProvisioningSecret(args.provisioningSecret, args.isDemo);
     const now = Date.now();
     const identity = await ctx.db
       .query("accountIdentities")
@@ -83,6 +86,7 @@ export const upsertAndCreateSession = mutation({
         username: args.username,
         displayName: args.displayName,
         avatar: args.avatar,
+        betaAccessExpiresAt: args.betaAccessExpiresAt,
       });
     } else {
       userId = await ctx.db.insert("users", {
@@ -92,6 +96,7 @@ export const upsertAndCreateSession = mutation({
         avatar: args.avatar,
         plan: "free",
         isDemo: args.isDemo,
+        betaAccessExpiresAt: args.betaAccessExpiresAt,
         createdAt: now,
       });
     }
@@ -168,6 +173,7 @@ export const me = query({
       displayName: user.displayName,
       avatar: user.avatar,
       plan: user.plan,
+      betaAccessExpiresAt: user.betaAccessExpiresAt,
       defaultModel: user.defaultModel,
       goal: user.goal,
       onboardingCompletedAt: user.onboardingCompletedAt,
@@ -299,6 +305,56 @@ export const persistXTokensFromSession = mutation({
       expiresAt: args.expiresAt,
       scope: args.scope || tokenRow.scope,
     });
+  },
+});
+
+export const disconnectX = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const now = Date.now();
+    const cascade = buildXDisconnectCascade(now);
+
+    const tokenRows = await ctx.db
+      .query("xTokens")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .take(10);
+    for (const tokenRow of tokenRows) {
+      await ctx.db.delete(tokenRow._id);
+    }
+
+    const scannerSettings = await ctx.db
+      .query("scannerSettings")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (scannerSettings) {
+      await ctx.db.patch(scannerSettings._id, cascade.scannerPatch);
+    }
+
+    const notificationSettings = await ctx.db
+      .query("notificationSettings")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (notificationSettings) {
+      await ctx.db.patch(notificationSettings._id, cascade.notificationPatch);
+    }
+
+    const scheduledDrafts = await ctx.db
+      .query("savedDrafts")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", user._id).eq("status", "scheduled")
+      )
+      .take(100);
+    for (const draft of scheduledDrafts) {
+      await ctx.db.patch(draft._id, cascade.scheduledDraftPatch);
+    }
+
+    return {
+      deletedTokenCount: tokenRows.length,
+      disabledScanner: Boolean(scannerSettings),
+      disabledNotifications: Boolean(notificationSettings),
+      failedScheduledDrafts: scheduledDrafts.length,
+    };
   },
 });
 

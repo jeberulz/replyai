@@ -14,6 +14,7 @@ import {
   ONBOARDING_CONCIERGE_KEYWORD_MAX,
   parseOnboardingConciergeProposal,
 } from "../shared/onboardingConcierge";
+import { sanitizeKeywordList } from "../shared/contentTokens";
 
 const runStatus = v.union(
   v.literal("running"),
@@ -39,16 +40,7 @@ function normalizeHandle(handle: string): string {
 }
 
 function uniqueKeywords(list: string[]): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  for (const raw of list) {
-    const k = raw.trim().toLowerCase();
-    if (!k || seen.has(k)) continue;
-    seen.add(k);
-    out.push(k);
-    if (out.length >= ONBOARDING_CONCIERGE_KEYWORD_MAX) break;
-  }
-  return out;
+  return sanitizeKeywordList(list, ONBOARDING_CONCIERGE_KEYWORD_MAX);
 }
 
 /**

@@ -2,6 +2,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { createHash } from "node:crypto";
 import { v } from "convex/values";
 import { z } from "zod";
 import { internal } from "./_generated/api";
@@ -20,9 +21,57 @@ import {
   replacementReason,
 } from "../shared/researchCurator";
 import { refreshAccessToken } from "../shared/xOAuth";
+import type { XReadSource } from "../shared/xReadLimits";
 
 const MAX_SEED_HANDLES = 5;
 const RESEARCH_MODEL = process.env.ANTHROPIC_RESEARCH_MODEL ?? "claude-sonnet-5";
+
+type XReadAttempt =
+  | { allowed: true; ledgerId?: Id<"xReadLedger"> }
+  | { allowed: false; message?: string };
+
+function hashXReadResource(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+async function beginXRead(
+  ctx: ActionCtx,
+  args: {
+    userId: Id<"users">;
+    isDemo: boolean;
+    source: XReadSource;
+    endpoint: string;
+  }
+): Promise<XReadAttempt> {
+  return await ctx.runMutation(internal.xReads.recordAttemptForUserInternal, {
+    userId: args.userId,
+    isDemo: args.isDemo,
+    source: args.source,
+    endpoint: args.endpoint,
+    priority: "low",
+  });
+}
+
+async function finishXRead(
+  ctx: ActionCtx,
+  args: {
+    userId: Id<"users">;
+    attempt: XReadAttempt;
+    tweets: ResearchTweetSample[];
+    status?: "succeeded" | "failed";
+  }
+) {
+  if (!args.attempt.allowed) return;
+  await ctx.runMutation(internal.xReads.completeAttemptInternal, {
+    userId: args.userId,
+    ledgerId: args.attempt.ledgerId,
+    rawResourceCount: args.tweets.length,
+    resourceHashes: args.tweets.map((tweet) =>
+      hashXReadResource(`tweet:${tweet.tweetId}`)
+    ),
+    status: args.status ?? "succeeded",
+  });
+}
 
 type XTimelineResponse = {
   data?: Array<{
@@ -116,9 +165,19 @@ async function resolveAccessToken(
 }
 
 async function fetchSearchTweets(
+  ctx: ActionCtx,
+  userId: Id<"users">,
+  isDemo: boolean,
   query: string,
   accessToken: string
 ): Promise<ResearchTweetSample[]> {
+  const attempt = await beginXRead(ctx, {
+    userId,
+    isDemo,
+    source: "research",
+    endpoint: "tweets/search/recent",
+  });
+  if (!attempt.allowed) return [];
   const url = new URL("https://api.x.com/2/tweets/search/recent");
   url.searchParams.set("query", `${query} -is:retweet -is:reply lang:en`);
   url.searchParams.set("max_results", "50");
@@ -135,15 +194,30 @@ async function fetchSearchTweets(
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    await finishXRead(ctx, { userId, attempt, tweets: [], status: "failed" });
+    return [];
+  }
   const json = (await res.json()) as XTimelineResponse;
-  return mapSearchResponse(json);
+  const tweets = mapSearchResponse(json);
+  await finishXRead(ctx, { userId, attempt, tweets });
+  return tweets;
 }
 
 async function fetchHandleTweets(
+  ctx: ActionCtx,
+  userId: Id<"users">,
+  isDemo: boolean,
   handle: string,
   accessToken: string
 ): Promise<ResearchTweetSample[]> {
+  const attempt = await beginXRead(ctx, {
+    userId,
+    isDemo,
+    source: "research",
+    endpoint: "tweets/search/recent",
+  });
+  if (!attempt.allowed) return [];
   const url = new URL("https://api.x.com/2/tweets/search/recent");
   url.searchParams.set("query", `from:${handle} -is:retweet -is:reply`);
   url.searchParams.set("max_results", "10");
@@ -160,9 +234,14 @@ async function fetchHandleTweets(
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    await finishXRead(ctx, { userId, attempt, tweets: [], status: "failed" });
+    return [];
+  }
   const json = (await res.json()) as XTimelineResponse;
-  return mapSearchResponse(json);
+  const tweets = mapSearchResponse(json);
+  await finishXRead(ctx, { userId, attempt, tweets });
+  return tweets;
 }
 
 async function synthesizeReasons(
@@ -344,13 +423,32 @@ export const runMonthlyCurator = internalAction({
       const query = curatorQueryFromNiche(niche.keywords, niche.recentTopics);
 
       const tweets: ResearchTweetSample[] = [];
-      if (query) tweets.push(...(await fetchSearchTweets(query, accessToken)));
+      const isDemo = scanCtx?.isDemo ?? false;
+      if (query) {
+        tweets.push(
+          ...(await fetchSearchTweets(
+            ctx,
+            userId,
+            isDemo,
+            query,
+            accessToken
+          ))
+        );
+      }
       const seeds = (scanCtx?.watchedHandles ?? [])
         .map((h) => h.replace(/^@/, "").toLowerCase())
         .filter(Boolean)
         .slice(0, MAX_SEED_HANDLES);
       for (const handle of seeds) {
-        tweets.push(...(await fetchHandleTweets(handle, accessToken)));
+        tweets.push(
+          ...(await fetchHandleTweets(
+            ctx,
+            userId,
+            isDemo,
+            handle,
+            accessToken
+          ))
+        );
       }
 
       const ranked = rankResearchProfiles(tweets, niche.keywords, 30).slice(
@@ -446,9 +544,26 @@ export const runResearch = internalAction({
       const uniqueSeeds = [...new Set(seedHandles)].slice(0, MAX_SEED_HANDLES);
 
       const tweets: ResearchTweetSample[] = [];
-      tweets.push(...(await fetchSearchTweets(query, accessToken)));
+      const isDemo = scanCtx?.isDemo ?? false;
+      tweets.push(
+        ...(await fetchSearchTweets(
+          ctx,
+          userId,
+          isDemo,
+          query,
+          accessToken
+        ))
+      );
       for (const handle of uniqueSeeds) {
-        tweets.push(...(await fetchHandleTweets(handle, accessToken)));
+        tweets.push(
+          ...(await fetchHandleTweets(
+            ctx,
+            userId,
+            isDemo,
+            handle,
+            accessToken
+          ))
+        );
       }
 
       if (tweets.length === 0) {

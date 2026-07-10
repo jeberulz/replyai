@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "../../../../../convex/_generated/api";
 import { authProvisioningSecret } from "@/lib/authProvisioning";
 import { guardAuthRoute } from "@/lib/authSecurity";
+import { betaAccessDecisionFromEnv } from "@/lib/betaAccess";
 import { env } from "@/lib/env";
 import { convexServer } from "@/lib/convex";
 import { ensureDefaults, postLoginPath } from "@/lib/onboarding";
@@ -37,6 +38,13 @@ export async function GET(request: NextRequest) {
     const redirectUri = oauthCallbackUrl(request);
     const token = await exchangeCodeForToken({ code, verifier, redirectUri });
     const xUser = await fetchAuthenticatedUser(token.accessToken);
+    const betaAccess = betaAccessDecisionFromEnv(xUser.username);
+    if (!betaAccess.allowed) {
+      const response = redirectHome(request, "private_beta");
+      response.cookies.delete("rp_oauth_state");
+      response.cookies.delete("rp_oauth_verifier");
+      return response;
+    }
 
     const sessionToken = newSessionToken();
     await convexServer().mutation(api.users.upsertAndCreateSession, {
@@ -45,6 +53,7 @@ export async function GET(request: NextRequest) {
       displayName: xUser.name,
       avatar: optionalString(xUser.avatar),
       isDemo: false,
+      betaAccessExpiresAt: betaAccess.betaAccessExpiresAt,
       sessionToken,
       provisioningSecret: authProvisioningSecret(),
       xAuth: {

@@ -18,7 +18,7 @@ dirty working tree.
 
 ## Stories
 
-- [ ] **WP40-S1 — Restore the security and dependency gate**
+- [x] **WP40-S1 — Restore the security and dependency gate**
   - Remove, replace, or safely upgrade the `@vercel/config` dependency path that
     currently causes a high-severity `path-to-regexp` audit finding; preserve
     Vercel → Convex production build wiring.
@@ -30,7 +30,7 @@ dirty working tree.
     upstream status, and owner ruling; no forced breaking downgrade.
   - Verification: typecheck, lint, test, security audit, build.
 
-- [ ] **WP40-S2 — Put the responsive critical-flow suite in CI**
+- [x] **WP40-S2 — Put the responsive critical-flow suite in CI**
   - Critical feed, analysis, and draft/schedule flows run at 375, 768, 1280, and
     1728 widths with no horizontal overflow.
   - CI installs the required browser and runs the suite in the required checks
@@ -39,7 +39,7 @@ dirty working tree.
     draft rows and primary mobile actions.
   - Existing 375px behavior remains green; no snapshot-only claim.
 
-- [ ] **WP40-S3 — Enforce private beta access and safe provisioning**
+- [x] **WP40-S3 — Enforce private beta access and safe provisioning**
   - Owner-approved normalized X handles are the only identities that can finish
     OAuth in `allowlist` mode; denied identities persist no user/session/token.
   - Server-only account/session provisioning requires a mirrored Vercel/Convex
@@ -53,7 +53,7 @@ dirty working tree.
     rejection, and Stripe-state separation.
   - Auth/security review required before checking the story.
 
-- [ ] **WP40-S4 — Isolate or disable production demo and cap AI spend**
+- [x] **WP40-S4 — Isolate or disable production demo and cap AI spend**
   - Public production demo is disabled by default and hidden from public CTA
     paths; a production request cannot fall into the shared `demo-user` row.
   - Local/CI zero-key demo still completes onboarding → analyze → generate →
@@ -66,7 +66,7 @@ dirty working tree.
   - Block/warning events use the typed analytics catalog; tests cover boundary,
     reset, demo, and kill-switch behavior.
 
-- [ ] **WP40-S5 — Meter and bound X API reads**
+- [x] **WP40-S5 — Meter and bound X API reads**
   - All X read paths used by onboarding, manual URL analysis, scanner sources,
     research/voice refresh, and reply-back tracking record endpoint/source,
     request count, raw returned resources, and locally unique daily resources.
@@ -80,7 +80,7 @@ dirty working tree.
   - Tests cover dedupe, source attribution, cap boundary, global cap, reset,
     failed requests, demo, and kill switch. Convex/security review required.
 
-- [ ] **WP40-S6 — Fix the audited wedge-quality regressions**
+- [x] **WP40-S6 — Fix the audited wedge-quality regressions**
   - Shared content-token/stopword logic prevents onboarding or trend labels such
     as `not`, `all`, `because`, `get`, `Deleted`, and `Everyone`.
   - Suggested-angle fallbacks never interpolate stopwords into “missing X
@@ -95,7 +95,7 @@ dirty working tree.
     permanent 3-option/reason/weighted-length/no-fake-score guardrails remain
     green.
 
-- [ ] **WP40-S7 — Correct trust, legal, settings, disconnect, and draft access**
+- [x] **WP40-S7 — Correct trust, legal, settings, disconnect, and draft access**
   - Replace the unrelated `hello@switchtoux.com` value with the owner-approved
     ReplyPilot support address; no invented placeholder can pass production
     readiness.

@@ -5,6 +5,7 @@ import {
   internalAction,
   internalMutation,
   internalQuery,
+  type ActionCtx,
 } from "./_generated/server";
 import { captureConvexException } from "./lib/sentry";
 import { readStoredXTokens } from "./tokenSecurity";
@@ -19,6 +20,19 @@ const RESPONSE_WINDOW_MS = 48 * 60 * 60 * 1000;
 const FIRST_POLL_DELAY_MS = 5 * 60 * 1000;
 const X_API_BASE = "https://api.x.com/2";
 const DEFAULT_BATCH_SIZE = 20;
+
+type XReadAttempt =
+  | { allowed: true; ledgerId?: Id<"xReadLedger"> }
+  | { allowed: false; message?: string };
+
+function hashXReadResource(value: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `fnv1a:${(hash >>> 0).toString(16)}`;
+}
 
 const publishModeValidator = v.optional(
   v.union(
@@ -222,7 +236,9 @@ export const pollDue = internalAction({
           });
         }
 
-        const signals = await fetchOutcomeSignals({
+        const signals = await fetchOutcomeSignals(ctx, {
+          userId: tracker.userId,
+          isDemo: tracker.isDemo,
           accessToken,
           publishedTweetId: tracker.publishedTweetId,
           searchConversationId: tracker.targetTweetId ?? tracker.publishedTweetId,
@@ -374,7 +390,9 @@ export const expireTracker = internalMutation({
   },
 });
 
-async function fetchOutcomeSignals(args: {
+async function fetchOutcomeSignals(ctx: ActionCtx, args: {
+  userId: Id<"users">;
+  isDemo: boolean;
   accessToken: string;
   publishedTweetId: string;
   searchConversationId: string;
@@ -382,10 +400,34 @@ async function fetchOutcomeSignals(args: {
   metrics: PublishedTweetMetrics | null;
   candidates: ReplyOutcomeCandidate[];
 }> {
+  const attempt = (await ctx.runMutation(
+    internal.xReads.recordAttemptForUserInternal,
+    {
+      userId: args.userId,
+      isDemo: args.isDemo,
+      source: "reply_back",
+      endpoint: "tweets/:id + tweets/search/recent",
+      priority: "low",
+    }
+  )) as XReadAttempt;
+  if (!attempt.allowed) return { metrics: null, candidates: [] };
+
   const [metrics, candidates] = await Promise.all([
     fetchPublishedTweetMetrics(args.publishedTweetId, args.accessToken),
     fetchRepliesToPublishedTweet(args),
   ]);
+  await ctx.runMutation(internal.xReads.completeAttemptInternal, {
+    userId: args.userId,
+    ledgerId: attempt.ledgerId,
+    rawResourceCount: (metrics ? 1 : 0) + candidates.length,
+    resourceHashes: [
+      ...(metrics ? [hashXReadResource(`tweet:${args.publishedTweetId}`)] : []),
+      ...candidates.map((candidate) =>
+        hashXReadResource(`tweet:${candidate.tweetId}`)
+      ),
+    ],
+    status: metrics || candidates.length > 0 ? "succeeded" : "failed",
+  });
   return { metrics, candidates };
 }
 

@@ -25,9 +25,18 @@ import type { DataModel } from "./dataModel.js";
  * Typesafe environment variables declared in `convex.config.ts`.
  */
 type Env = {
+  readonly AI_ANALYSIS_HOURLY_LIMIT: string | undefined;
+  readonly AI_GENERATION_HOURLY_LIMIT: string | undefined;
+  readonly AI_SPEND_KILL_SWITCH: string | undefined;
+  readonly AI_SPEND_LIMITS_REQUIRED: string | undefined;
+  readonly CONVEX_AUTH_PROVISION_SECRET: string | undefined;
   readonly STRIPE_PRO_PRICE_ID: string | undefined;
   readonly STRIPE_SECRET_KEY: string | undefined;
   readonly STRIPE_WEBHOOK_SECRET: string | undefined;
+  readonly X_READ_GLOBAL_DAILY_LIMIT: string | undefined;
+  readonly X_READ_KILL_SWITCH: string | undefined;
+  readonly X_READ_LIMITS_REQUIRED: string | undefined;
+  readonly X_READ_USER_DAILY_LIMIT: string | undefined;
 };
 
 /**

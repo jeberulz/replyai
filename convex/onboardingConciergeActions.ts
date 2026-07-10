@@ -8,6 +8,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { createHash } from "node:crypto";
 import { v } from "convex/values";
 import { z } from "zod";
 import { internal } from "./_generated/api";
@@ -28,6 +29,14 @@ const CONCIERGE_MODEL =
   process.env.ANTHROPIC_ONBOARDING_MODEL ??
   process.env.ANTHROPIC_GENERATE_MODEL ??
   "claude-sonnet-5";
+
+type XReadAttempt =
+  | { allowed: true; ledgerId?: Id<"xReadLedger"> }
+  | { allowed: false; message?: string };
+
+function hashXReadResource(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
 
 const LlmProposalSchema = z.object({
   goalId: z.enum(["audience", "leads", "authority"]),
@@ -92,9 +101,24 @@ async function resolveAccessToken(
 }
 
 async function fetchUserBioAndTweets(
+  ctx: ActionCtx,
+  userId: Id<"users">,
+  isDemo: boolean,
   xUserId: string,
   accessToken: string
 ): Promise<{ bio: string; tweets: string[] }> {
+  const attempt = (await ctx.runMutation(
+    internal.xReads.recordAttemptForUserInternal,
+    {
+      userId,
+      isDemo,
+      source: "onboarding",
+      endpoint: "users/:id + users/:id/tweets",
+      priority: "low",
+    }
+  )) as XReadAttempt;
+  if (!attempt.allowed) return { bio: "", tweets: [] };
+
   const userUrl = new URL(`https://api.x.com/2/users/${xUserId}`);
   userUrl.searchParams.set("user.fields", "description,name,username");
   const userRes = await fetch(userUrl, {
@@ -122,6 +146,16 @@ async function fetchUserBioAndTweets(
       .filter((t) => t.length > 0)
       .slice(0, 20);
   }
+  await ctx.runMutation(internal.xReads.completeAttemptInternal, {
+    userId,
+    ledgerId: attempt.ledgerId,
+    rawResourceCount: (bio ? 1 : 0) + tweets.length,
+    resourceHashes: [
+      ...(bio ? [hashXReadResource(`user:${xUserId}`)] : []),
+      ...tweets.map((text) => hashXReadResource(`onboarding:${text.slice(0, 64)}`)),
+    ],
+    status: bio || tweets.length > 0 ? "succeeded" : "failed",
+  });
   return { bio, tweets };
 }
 
@@ -241,6 +275,9 @@ export const runConcierge = internalAction({
         } else {
           try {
             const fetched = await fetchUserBioAndTweets(
+              ctx,
+              userId,
+              user.isDemo,
               user.xUserId,
               accessToken
             );

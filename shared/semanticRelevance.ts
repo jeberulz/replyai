@@ -9,6 +9,7 @@ import {
   type OpportunitySource,
   topicRelevanceForKeywords,
 } from "./scoring";
+import { isStrongContentToken, normalizeContentToken } from "./contentTokens";
 
 export const SEMANTIC_CACHE_MS = 24 * 60 * 60 * 1000;
 /** Max following-timeline tweets with zero keyword hit to send for semantic rescue per scan. */
@@ -207,8 +208,11 @@ export function demoSuggestedAngle(
 ): string {
   const haystack = text.toLowerCase();
   const nicheHint =
-    niche?.keywords.find((k) => k.trim().length > 1)?.trim() ??
-    niche?.voiceTopics.find((k) => k.trim().length > 1)?.trim();
+    niche?.keywords.find((k) => isStrongContentToken(k))?.trim() ??
+    niche?.voiceTopics.find((k) => isStrongContentToken(k))?.trim();
+  const cleanNicheHint = nicheHint
+    ? normalizeContentToken(nicheHint)
+    : undefined;
 
   if (
     (haystack.includes("autonomous") || haystack.includes("agent")) &&
@@ -220,12 +224,12 @@ export function demoSuggestedAngle(
     return "Add a concrete eval or latency tradeoff from shipping an LLM feature that the thread hasn't named.";
   }
   if (haystack.includes("?")) {
-    return nicheHint
-      ? `Answer with one specific ${nicheHint} example from your own work — skip the generic advice.`
+    return cleanNicheHint
+      ? `Answer with one specific ${cleanNicheHint} example from your own work — skip the generic advice.`
       : "Answer with one specific example from your own work — skip the generic advice.";
   }
-  if (nicheHint && haystack.includes(nicheHint.toLowerCase())) {
-    return `Point out the missing ${nicheHint} angle — the second-order consequence practitioners feel but the thread skipped.`;
+  if (cleanNicheHint && haystack.includes(cleanNicheHint.toLowerCase())) {
+    return `Point out the specific ${cleanNicheHint} consequence practitioners feel but the thread skipped.`;
   }
   return "Share a short, concrete story from experience that confirms or complicates the claim.";
 }

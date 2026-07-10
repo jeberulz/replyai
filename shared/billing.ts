@@ -15,11 +15,25 @@ export function normalizePlan(plan: string | null | undefined): BillingPlan {
   return plan === PRO_PLAN ? PRO_PLAN : FREE_PLAN;
 }
 
+export function hasActiveBetaAccess(input: {
+  betaAccessExpiresAt?: number | null;
+  now?: number;
+}): boolean {
+  return typeof input.betaAccessExpiresAt === "number"
+    ? input.betaAccessExpiresAt > (input.now ?? Date.now())
+    : false;
+}
+
 export function hasProAccess(input: {
   plan?: string | null;
   isDemo?: boolean | null;
+  betaAccessExpiresAt?: number | null;
 }): boolean {
-  return Boolean(input.isDemo) || normalizePlan(input.plan) === PRO_PLAN;
+  return (
+    Boolean(input.isDemo) ||
+    normalizePlan(input.plan) === PRO_PLAN ||
+    hasActiveBetaAccess(input)
+  );
 }
 
 export function planFromStripeStatus(

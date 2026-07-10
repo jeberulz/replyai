@@ -70,6 +70,32 @@ describe("enforceGeneratedOptionGuardrails", () => {
     ).toThrow(/invalid category/);
   });
 
+  it("rejects target-author identity confusion", () => {
+    const opts = goodOptions();
+    opts[0].content = "This is exactly what I meant in my own tweet.";
+
+    expect(() =>
+      enforceGeneratedOptionGuardrails({
+        kind: "reply",
+        count: 3,
+        options: opts,
+      })
+    ).toThrow(/ownership/);
+  });
+
+  it("rejects reasons that confuse user voice with target-author voice", () => {
+    const opts = goodOptions();
+    opts[1].reason = "Matches the target author's voice perfectly.";
+
+    expect(() =>
+      enforceGeneratedOptionGuardrails({
+        kind: "reply",
+        count: 3,
+        options: opts,
+      })
+    ).toThrow(/target author's voice/);
+  });
+
   it("rejects content over X's weighted character budget", () => {
     const opts = goodOptions();
     opts[1].content = "x".repeat(MAX_WEIGHTED_LENGTH + 1);

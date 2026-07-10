@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { MessageSquareQuote } from "lucide-react";
-import { hasXCredentials } from "@/lib/env";
+import { env, hasXCredentials } from "@/lib/env";
 import { getSessionUser } from "@/lib/session";
 
 const XLogo = () => (
@@ -184,6 +184,10 @@ export default async function LandingPage({
   if (session) redirect("/dashboard");
   const { error } = await searchParams;
   const xConfigured = hasXCredentials();
+  const demoEnabled = env.publicDemoEnabled;
+  const visibleFooterLinks = footerLinks.filter(
+    (item) => demoEnabled || item.href !== "/api/auth/demo"
+  );
 
   return (
     <main className="min-h-svh bg-chrome px-4 text-foreground">
@@ -205,7 +209,7 @@ export default async function LandingPage({
             </Link>
           </nav>
           <PillLink href="/api/auth/login">
-            {xConfigured ? "get started" : "try demo"}
+            {xConfigured ? "get started" : demoEnabled ? "try demo" : "request invite"}
           </PillLink>
         </header>
 
@@ -251,14 +255,26 @@ export default async function LandingPage({
                 terminal (keep it running), then try again.
               </p>
             )}
+            {error === "private_beta" && (
+              <p className="max-w-[44ch] rounded-md border border-destructive/50 px-4 py-3 text-sm text-destructive">
+                ReplyPilot is in private beta. This X account is not on the
+                invite list yet.
+              </p>
+            )}
             <div className="space-y-3 pt-1">
               <PillLink href="/api/auth/login">
                 <XLogo />
-                {xConfigured ? "sign in with x" : "try it free"}
+                {xConfigured ? "sign in with x" : demoEnabled ? "try it free" : "request invite"}
               </PillLink>
-              <p className="font-mono text-[11px] text-muted-foreground">
-                Works in demo mode — no X account or API keys required.
-              </p>
+              {demoEnabled ? (
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  Works in demo mode — no X account or API keys required.
+                </p>
+              ) : (
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  Private beta is invite-only while the first cohort is onboarded.
+                </p>
+              )}
             </div>
           </div>
           <HeroPanel />
@@ -407,13 +423,14 @@ export default async function LandingPage({
             Your next reply is already in the queue.
           </h2>
           <p className="mx-auto mt-5 max-w-[54ch] text-base leading-7 text-muted-foreground">
-            Try it in demo mode — no X account or API keys needed. Connect X
-            when you&apos;re ready to scan your real feed and publish.
+            {demoEnabled
+              ? "Try it in demo mode — no X account or API keys needed. Connect X when you're ready to scan your real feed and publish."
+              : "Private beta is invite-only while the first cohort proves the real X workflow safely."}
           </p>
           <div className="mt-8 flex justify-center">
             <PillLink href="/api/auth/login">
               <XLogo />
-              {xConfigured ? "sign in with x" : "try demo mode"}
+              {xConfigured ? "sign in with x" : demoEnabled ? "try demo mode" : "request invite"}
             </PillLink>
           </div>
         </section>
@@ -428,7 +445,7 @@ export default async function LandingPage({
               </p>
             </div>
             <nav className="flex flex-wrap gap-x-6 gap-y-3 sm:justify-end">
-              {footerLinks.map((item) => (
+              {visibleFooterLinks.map((item) => (
                 <Link
                   key={item.label}
                   href={item.href}

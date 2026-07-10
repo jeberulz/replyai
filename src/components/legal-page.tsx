@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { MessageSquareQuote } from "lucide-react";
+import { env } from "@/lib/env";
 
-export const LEGAL_CONTACT_EMAIL = "hello@switchtoux.com";
-export const LEGAL_LAST_UPDATED = "July 4, 2026";
+export const LEGAL_LAST_UPDATED = "July 10, 2026";
 
 export function LegalPage({
   title,
@@ -97,12 +97,25 @@ export function LegalList({ items }: { items: React.ReactNode[] }) {
 }
 
 export function LegalMail() {
+  const email = env.supportEmail;
+  if (!email) {
+    return (
+      <span className="text-foreground">
+        ReplyPilot support contact not configured
+      </span>
+    );
+  }
+
   return (
     <a
-      href={`mailto:${LEGAL_CONTACT_EMAIL}`}
+      href={`mailto:${email}`}
       className="text-foreground underline underline-offset-4 hover:text-primary"
     >
-      {LEGAL_CONTACT_EMAIL}
+      {email}
     </a>
   );
+}
+
+export function LegalOperator() {
+  return <>{env.operatorName || "ReplyPilot AI"}</>;
 }

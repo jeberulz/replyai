@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
-import { hasXCredentials } from "@/lib/env";
+import { env, hasXCredentials } from "@/lib/env";
 import { guardAuthRoute } from "@/lib/authSecurity";
 import { oauthCallbackUrl } from "@/lib/oauth";
 import { buildAuthorizeUrl, generatePkcePair } from "@/lib/x";
@@ -11,6 +11,9 @@ export async function GET(request: NextRequest) {
 
   if (!hasXCredentials()) {
     // No X app configured — use the demo login path.
+    if (!env.publicDemoEnabled) {
+      return NextResponse.redirect(new URL("/?error=private_beta", request.url));
+    }
     return NextResponse.redirect(new URL("/api/auth/demo", request.url));
   }
 

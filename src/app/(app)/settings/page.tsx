@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, Mail, XCircle } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import {
   openBillingPortalAction,
@@ -15,9 +15,10 @@ import { AccountDataControls } from "@/components/app/account-data-controls";
 import { NotificationSettingsCard } from "@/components/app/notification-settings-card";
 import { BriefingSettingsCard } from "@/components/app/briefing-settings-card";
 import { InstallAppCard } from "@/components/app/install-app-card";
+import { XDisconnectControl } from "@/components/app/settings/x-disconnect-control";
 import { PageHeader } from "@/components/app/page-header";
 import { convexServer } from "@/lib/convex";
-import { hasAnthropicKey, hasXCredentials } from "@/lib/env";
+import { env } from "@/lib/env";
 import { getSessionUser } from "@/lib/session";
 import { formatCount } from "@/lib/utils";
 
@@ -25,10 +26,14 @@ function ConnectionRow({
   name,
   connected,
   detail,
+  connectedLabel = "Connected",
+  disconnectedLabel = "Not connected",
 }: {
   name: string;
   connected: boolean;
   detail: string;
+  connectedLabel?: string;
+  disconnectedLabel?: string;
 }) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-border p-3">
@@ -39,13 +44,13 @@ function ConnectionRow({
       {connected ? (
         <Badge
           variant="success"
-          label="Connected"
+          label={connectedLabel}
           icon={<CheckCircle2 className="size-3" />}
         />
       ) : (
         <Badge
           variant="neutral"
-          label="Not configured"
+          label={disconnectedLabel}
           icon={<XCircle className="size-3" />}
         />
       )}
@@ -86,11 +91,13 @@ export default async function SettingsPage() {
   if (!session) redirect("/");
   const { user, sessionToken } = session;
 
-  const [stats, billing, accountInventory] = await Promise.all([
+  const [stats, billing, accountInventory, scheduledDrafts] = await Promise.all([
     convexServer().query(api.usage.stats, { sessionToken }),
     convexServer().query(api.billing.status, { sessionToken }),
     convexServer().query(api.account.inventory, { sessionToken }),
+    convexServer().query(api.drafts.scheduledCount, { sessionToken }),
   ]);
+  const supportEmail = env.supportEmail;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -139,7 +146,11 @@ export default async function SettingsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
           <div>
             <div className="text-sm font-medium">
-              {billing.hasProAccess ? "Pro" : "Free"}
+              {billing.hasBetaAccess
+                ? "Private beta"
+                : billing.hasProAccess
+                  ? "Pro"
+                  : "Free"}
               {billing.subscriptionStatus
                 ? ` · ${billing.subscriptionStatus.replace(/_/g, " ")}`
                 : ""}
@@ -147,6 +158,8 @@ export default async function SettingsPage() {
             <div className="text-xs text-muted-foreground">
               {user.isDemo
                 ? "Demo accounts keep Pro access without Stripe so the full product stays testable."
+                : billing.hasBetaAccess && billing.betaAccessExpiresAt
+                  ? `Private beta access through ${new Date(billing.betaAccessExpiresAt).toLocaleDateString()} — no card required.`
                 : billing.currentPeriodEnd
                   ? `Current access through ${new Date(billing.currentPeriodEnd).toLocaleDateString()}`
                   : billing.trialEndsAt
@@ -156,7 +169,13 @@ export default async function SettingsPage() {
           </div>
           <Badge
             variant={billing.hasProAccess ? "success" : "neutral"}
-            label={billing.hasProAccess ? "Pro unlocked" : "Free plan"}
+            label={
+              billing.hasBetaAccess
+                ? "Private beta"
+                : billing.hasProAccess
+                  ? "Pro unlocked"
+                  : "Free plan"
+            }
           />
         </div>
 
@@ -191,7 +210,13 @@ export default async function SettingsPage() {
           ) : (
             <Button
               type="button"
-              label={user.isDemo ? "Demo includes Pro" : "Stripe not configured"}
+              label={
+                billing.hasBetaAccess
+                  ? "Private beta active"
+                  : user.isDemo
+                    ? "Demo includes Pro"
+                    : "Stripe not configured"
+              }
               isDisabled
             />
           )}
@@ -230,7 +255,7 @@ export default async function SettingsPage() {
 
       <SettingsSection
         title="Connections"
-        description="Configured via environment variables — see .env.example in the repo."
+        description="Manage your connected X account. Reconnect remains available after disconnect."
       >
         <div className="space-y-3">
           <ConnectionRow
@@ -238,35 +263,26 @@ export default async function SettingsPage() {
             connected={user.xConnected}
             detail={
               user.xConnected
-                ? "Publishing and feed scanning use your X authorization"
+                ? "Publishing, scanner reads, and X-dependent alerts use your authorization only after explicit actions."
                 : user.isDemo
                   ? "Demo mode — publishing is simulated"
-                  : "Sign in with X to enable publishing"
+                  : "Reconnect X to publish, scan feeds, and refresh voice from X."
             }
+            disconnectedLabel={user.isDemo ? "Demo" : "Disconnected"}
           />
-          <ConnectionRow
-            name="X API app"
-            connected={hasXCredentials()}
-            detail="X_CLIENT_ID / X_CLIENT_SECRET for OAuth sign-in"
-          />
-          <ConnectionRow
-            name="Anthropic API"
-            connected={hasAnthropicKey()}
-            detail={
-              hasAnthropicKey()
-                ? "AI analysis and generation are live"
-                : "ANTHROPIC_API_KEY missing — using deterministic demo generation"
-            }
-          />
-          <ConnectionRow
-            name="Stripe billing"
-            connected={billing.stripeConfigured}
-            detail={
-              billing.stripeConfigured
-                ? "Stripe checkout, portal, and webhook are live in test mode"
-                : "STRIPE_SECRET_KEY / STRIPE_PRO_PRICE_ID / STRIPE_WEBHOOK_SECRET missing — billing stays hidden"
-            }
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <XDisconnectControl
+              connected={user.xConnected}
+              canReconnect={!user.isDemo}
+              scheduledDraftCount={scheduledDrafts.count}
+            />
+          </div>
+          <Text type="supporting" color="secondary" size="sm" display="block">
+            Disconnect removes stored X authorization, turns off scanner and
+            notification settings that depend on X, and stops scheduled X
+            publishes that have not run yet. Saved drafts, exports, and account
+            deletion remain available.
+          </Text>
         </div>
       </SettingsSection>
 
@@ -274,7 +290,7 @@ export default async function SettingsPage() {
 
       <SettingsSection
         title={`Usage — ${stats.month}`}
-        description="Tracked per month; pricing tiers are decided before public launch."
+        description="Tracked per month. AI and X-read spend are capped server-side for the private beta."
       >
         <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           {(
@@ -295,6 +311,31 @@ export default async function SettingsPage() {
             </div>
           ))}
         </dl>
+      </SettingsSection>
+
+      <SettingsSection title="Support">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div>
+              <div className="text-sm font-medium">Private beta support</div>
+              <div className="text-xs text-muted-foreground">
+                {supportEmail
+                  ? "Use this address for account, deletion, or beta feedback."
+                  : "Support contact is not configured for this deployment."}
+              </div>
+            </div>
+            {supportEmail ? (
+              <Button
+                href={`mailto:${supportEmail}`}
+                variant="secondary"
+                label="Email support"
+                icon={<Mail className="size-4" />}
+              />
+            ) : (
+              <Badge variant="warning" label="Needs owner input" />
+            )}
+          </div>
+        </div>
       </SettingsSection>
 
       <SettingsSection

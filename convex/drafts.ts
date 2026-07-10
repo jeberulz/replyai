@@ -41,6 +41,23 @@ export const list = query({
   },
 });
 
+export const scheduledCount = query({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const rows = await ctx.db
+      .query("savedDrafts")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", user._id).eq("status", "scheduled")
+      )
+      .take(101);
+    return {
+      count: rows.length,
+      truncated: rows.length > 100,
+    };
+  },
+});
+
 export const get = query({
   args: { sessionToken: v.string(), draftId: v.id("savedDrafts") },
   handler: async (ctx, { sessionToken, draftId }) => {

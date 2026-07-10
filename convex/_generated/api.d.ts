@@ -52,6 +52,7 @@ import type * as variants from "../variants.js";
 import type * as voiceDrift from "../voiceDrift.js";
 import type * as voiceDriftActions from "../voiceDriftActions.js";
 import type * as voiceProfiles from "../voiceProfiles.js";
+import type * as xReads from "../xReads.js";
 import type * as xTokens from "../xTokens.js";
 
 import type {
@@ -105,6 +106,7 @@ declare const fullApi: ApiFromModules<{
   voiceDrift: typeof voiceDrift;
   voiceDriftActions: typeof voiceDriftActions;
   voiceProfiles: typeof voiceProfiles;
+  xReads: typeof xReads;
   xTokens: typeof xTokens;
 }>;
 

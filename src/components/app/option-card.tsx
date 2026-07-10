@@ -469,7 +469,7 @@ export function OptionCard({
                 )
               }
               onClick={copy}
-              className="flex-1 sm:flex-none"
+              className="min-h-11 flex-1 sm:flex-none"
             />
             <Button
               size="sm"
@@ -478,11 +478,11 @@ export function OptionCard({
               icon={<Pencil className="size-3.5" />}
               onClick={() => setEditing(true)}
               isDisabled={editing}
-              className="flex-1 sm:flex-none"
+              className="min-h-11 flex-1 sm:flex-none"
             />
 
             <Select onValueChange={rewrite} value="">
-              <SelectTrigger className="h-8 w-full gap-1 rounded-md px-3 text-xs font-medium sm:w-auto">
+              <SelectTrigger className="min-h-11 w-full gap-1 rounded-md px-3 text-xs font-medium sm:w-auto">
                 {pending ? (
                   <Loader2 className="size-3.5 animate-spin" />
                 ) : (
@@ -507,7 +507,7 @@ export function OptionCard({
               label="Save draft"
               onClick={saveAsDraft}
               isDisabled={pending}
-              className="w-full sm:w-auto"
+              className="min-h-11 w-full sm:w-auto"
             />
             <Button
               size="sm"
@@ -516,7 +516,7 @@ export function OptionCard({
               icon={<CalendarClock className="size-3.5" />}
               onClick={() => setScheduleOpen(true)}
               isDisabled={pending}
-              className="w-full sm:w-auto"
+              className="min-h-11 w-full sm:w-auto"
             />
             {canThread && (
               <Button
@@ -526,7 +526,7 @@ export function OptionCard({
                 icon={<Send className="size-3.5" />}
                 onClick={() => publish("standalone")}
                 isDisabled={pending || overLimit}
-                className="w-full sm:w-auto"
+                className="min-h-11 w-full sm:w-auto"
               />
             )}
             {canThread && option.kind === "reply" && (
@@ -537,7 +537,7 @@ export function OptionCard({
                 icon={<ExternalLink className="size-3.5" />}
                 onClick={() => openReplyOnX(content)}
                 isDisabled={pending || overLimit}
-                className="w-full sm:w-auto"
+                className="min-h-11 w-full sm:w-auto"
               />
             )}
             <Button
@@ -552,7 +552,7 @@ export function OptionCard({
                   ? "Posts your text with the tweet linked — shows as a quote card"
                   : undefined
               }
-              className="w-full sm:w-auto"
+              className="min-h-11 w-full sm:w-auto"
             />
           </div>
         </div>
@@ -581,11 +581,13 @@ export function OptionCard({
               variant="ghost"
               label="Cancel"
               onClick={() => setScheduleOpen(false)}
+              className="min-h-11"
             />
             <Button
               label="Schedule"
               icon={<CalendarClock className="size-3.5" />}
               isDisabled={!scheduleAt || pending}
+              className="min-h-11"
               onClick={() => {
                 const timestamp = new Date(scheduleAt).getTime();
                 if (Number.isNaN(timestamp) || timestamp <= Date.now()) {
