@@ -37,6 +37,7 @@ import { OpportunityRow } from "@/components/app/feed/opportunity-row";
 import { OpportunityDetail } from "@/components/app/feed/opportunity-detail";
 import { TrendRadarStrip } from "@/components/app/feed/trend-radar-strip";
 import { MasterDetail } from "@/components/app/split/master-detail";
+import { SplitPageShell } from "@/components/app/split/split-page-shell";
 import {
   FilterChips,
   PaneEyebrow,
@@ -362,46 +363,6 @@ export function FeedScanner() {
 
   const list = (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      {/* Top bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
-        <div className="flex items-center gap-3">
-          <h2 className="text-base font-semibold">Feed scanner</h2>
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground">
-            <span
-              className={
-                scannerOn ? "size-1.5 rounded-full bg-success" : "size-1.5 rounded-full bg-muted-foreground"
-              }
-            />
-            {scanning ? "Scanning…" : scannerOn ? "Live" : "Paused"}
-          </span>
-        </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={scanNow}
-            disabled={busy}
-            className="w-full sm:w-auto"
-          >
-            {scanning ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <RefreshCw />
-            )}
-            Scan now
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSettingsOpen(true)}
-            className="w-full sm:w-auto"
-          >
-            <SlidersHorizontal />
-            Sources
-          </Button>
-        </div>
-      </div>
-
       {showRankingChangelog && (
         <div className="mx-4 mt-4 flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm sm:mx-6">
           <p className="flex-1 text-muted-foreground">
@@ -517,23 +478,66 @@ export function FeedScanner() {
   );
 
   return (
-    <div className="-mx-4 h-[calc(100dvh-3rem)] overflow-hidden md:-mx-10 md:h-[calc(100dvh-4rem)]">
-      <MasterDetail
-        list={list}
-        detail={
-          selected ? (
-            <OpportunityDetail
-              opportunity={selected}
-              onDismissed={() => setSelectedId(null)}
-            />
-          ) : null
+    <>
+      <SplitPageShell
+        eyebrow="Discovery"
+        title="Feed scanner"
+        description="Live conversation discovery across your sources. Nothing auto-posts — every reply still needs your click."
+        headerActions={
+          <>
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground">
+              <span
+                className={
+                  scannerOn
+                    ? "size-1.5 rounded-full bg-success"
+                    : "size-1.5 rounded-full bg-muted-foreground"
+                }
+              />
+              {scanning ? "Scanning…" : scannerOn ? "Live" : "Paused"}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={scanNow}
+              disabled={busy}
+              className="w-full sm:w-auto"
+            >
+              {scanning ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <RefreshCw />
+              )}
+              Scan now
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSettingsOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              <SlidersHorizontal />
+              Sources
+            </Button>
+          </>
         }
-        emptyDetail={emptyDetail}
-        hasSelection={!!selected}
-        onBack={() => setSelectedId(null)}
-        autoSaveId="feed-scanner"
-        backLabel="Opportunities"
-      />
+      >
+        <MasterDetail
+          list={list}
+          detail={
+            selected ? (
+              <OpportunityDetail
+                opportunity={selected}
+                onDismissed={() => setSelectedId(null)}
+              />
+            ) : null
+          }
+          emptyDetail={emptyDetail}
+          hasSelection={!!selected}
+          onBack={() => setSelectedId(null)}
+          autoSaveId="feed-scanner"
+          backLabel="Opportunities"
+        />
+      </SplitPageShell>
 
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
@@ -797,6 +801,6 @@ export function FeedScanner() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

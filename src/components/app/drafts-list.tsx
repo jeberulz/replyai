@@ -5,6 +5,10 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useSessionToken } from "@/components/app/convex-provider";
 import { MasterDetail } from "@/components/app/split/master-detail";
+import { SplitPageShell } from "@/components/app/split/split-page-shell";
+import { Text } from "@/components/ds/text";
+import { rpType } from "@/theme/typography";
+import { cn } from "@/lib/utils";
 import { FilterChips } from "@/components/app/split/pane-chrome";
 import { OatmealEmptyState } from "@/components/app/oatmeal-empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -49,13 +53,6 @@ export function DraftsList() {
 
   const list = (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-4 sm:px-6">
-        <h2 className="text-base font-semibold">Drafts &amp; published</h2>
-        <span className="text-xs tabular-nums text-muted-foreground">
-          {drafts === undefined ? "" : `${drafts.length} items`}
-        </span>
-      </div>
-
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
         <OfflinePendingBanner />
         <FilterChips
@@ -63,10 +60,6 @@ export function DraftsList() {
           onValueChange={setFilter}
           options={STATUS_FILTERS}
         />
-        <p className="text-xs text-muted-foreground">
-          Scheduled posts publish automatically; statuses update live. Offline
-          draft edits sync when you reconnect — never auto-publish.
-        </p>
 
         {drafts === undefined ? (
           <div className="space-y-3">
@@ -113,7 +106,23 @@ export function DraftsList() {
   );
 
   return (
-    <div className="-mx-4 h-[calc(100dvh-3rem)] overflow-hidden md:-mx-10 md:h-[calc(100dvh-4rem)]">
+    <SplitPageShell
+      eyebrow="Publishing queue"
+      title="Drafts & published"
+      description="Scheduled posts publish automatically; statuses update live. Offline edits sync when you reconnect — never auto-publish."
+      headerActions={
+        drafts === undefined ? null : (
+          <Text
+            type="supporting"
+            color="secondary"
+            display="block"
+            className={cn(rpType.xs, "tabular-nums text-muted-foreground")}
+          >
+            {drafts.length} items
+          </Text>
+        )
+      }
+    >
       <MasterDetail
         list={list}
         detail={
@@ -131,6 +140,6 @@ export function DraftsList() {
         autoSaveId="drafts-queue"
         backLabel="Drafts"
       />
-    </div>
+    </SplitPageShell>
   );
 }
