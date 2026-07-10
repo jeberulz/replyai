@@ -27,6 +27,7 @@ import {
   passesCombinedFeedFilter,
   resolveSuggestedAngle,
   selectSemanticClassificationTargets,
+  SEMANTIC_BATCH_LIMIT,
   SEMANTIC_CACHE_MS,
   type SemanticScore,
 } from "../shared/semanticRelevance";
@@ -46,6 +47,22 @@ const MAX_WATCHED_HANDLES_PER_SCAN = 15;
 /** Cap on merged/deduped candidates before scoring, to bound per-scan cost. */
 const MAX_CANDIDATES = 150;
 const CURATED_SOURCE_RANKING_BONUS = 10;
+
+/**
+ * Operator cost dials for the beta (set in Convex env; unset = default
+ * behavior). SCANNER_MIN_CADENCE_MINUTES raises the floor on how often any user
+ * is scanned; SCANNER_SEMANTIC_BATCH_LIMIT caps tweets sent to the classifier
+ * per scan. Both let the operator throttle scanner spend without a redeploy.
+ */
+function scannerMinCadenceMinutes(): number {
+  const raw = Number(process.env.SCANNER_MIN_CADENCE_MINUTES);
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
+}
+
+function scannerSemanticBatchLimit(): number {
+  const raw = Number(process.env.SCANNER_SEMANTIC_BATCH_LIMIT);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : SEMANTIC_BATCH_LIMIT;
+}
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
 
@@ -163,24 +180,34 @@ export function normalizeScannerPlan(plan: string | null | undefined): "free" | 
   return "free";
 }
 
-export function cadenceMinutesForScan(context: ScanDispatchContext): number {
+export function cadenceMinutesForScan(
+  context: ScanDispatchContext,
+  minCadenceMinutes = 0
+): number {
   const plan = normalizeScannerPlan(context.plan);
   const lastScanCount = context.lastScanCount ?? 0;
   const highYield = lastScanCount >= 6;
   const anyYield = lastScanCount > 0;
 
+  let cadence: number;
   if (plan === "priority") {
-    return highYield || anyYield ? 15 : 30;
+    cadence = highYield || anyYield ? 15 : 30;
+  } else if (plan === "pro") {
+    cadence = highYield ? 15 : anyYield ? 30 : 60;
+  } else {
+    cadence = highYield ? 30 : anyYield ? 60 : 120;
   }
-  if (plan === "pro") {
-    return highYield ? 15 : anyYield ? 30 : 60;
-  }
-  return highYield ? 30 : anyYield ? 60 : 120;
+  // Operator floor lets the beta throttle scan frequency globally.
+  return Math.max(cadence, minCadenceMinutes > 0 ? minCadenceMinutes : 0);
 }
 
-export function shouldEnqueueScan(now: number, context: ScanDispatchContext): boolean {
+export function shouldEnqueueScan(
+  now: number,
+  context: ScanDispatchContext,
+  minCadenceMinutes = 0
+): boolean {
   if (!context.lastScanAt) return true;
-  const cadenceMs = cadenceMinutesForScan(context) * 60_000;
+  const cadenceMs = cadenceMinutesForScan(context, minCadenceMinutes) * 60_000;
   return now - context.lastScanAt >= cadenceMs;
 }
 
@@ -258,9 +285,10 @@ export const scanAll = internalAction({
   handler: async (ctx) => {
     const users = await ctx.runQuery(internal.scanner.enabledSettings, {});
     const now = Date.now();
+    const minCadence = scannerMinCadenceMinutes();
     let fanOutIndex = 0;
     for (const user of users) {
-      if (!shouldEnqueueScan(now, user)) continue;
+      if (!shouldEnqueueScan(now, user, minCadence)) continue;
       await ctx.scheduler.runAfter(
         fanOutIndex * SCAN_FAN_OUT_STAGGER_MS,
         internal.scannerActions.scanUser,
@@ -370,7 +398,9 @@ export const scanUser = internalAction({
           source: m.tweet.source,
           keywordScore: m.keywordScore,
           velocity: m.velocity,
-        }))
+        })),
+        undefined,
+        scannerSemanticBatchLimit()
       );
 
       const needFreshClassify = classifyTargets.filter((t) => {

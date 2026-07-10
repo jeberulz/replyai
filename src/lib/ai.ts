@@ -139,6 +139,27 @@ export function buildVoiceInstructions(args: {
 ${args.voice.commonPhrases.length > 0 ? `- Phrases they naturally use: ${args.voice.commonPhrases.join("; ")}` : ""}${exampleBlock}${negativeBlock}`;
 }
 
+/**
+ * Voice profile as a cache-marked system block. The profile is stable across
+ * the whole generation chain on one tweet (generate replies → quotes → generate
+ * more → rewrite all share the same voice and target text), so caching it here
+ * — after the equally-cached tweet-context block — lets every call after the
+ * first reuse the voice prefix instead of re-sending it. Kept out of the
+ * per-call user message, which now carries only what actually varies.
+ */
+function voiceContextBlock(args: {
+  voice: VoiceStyle | null;
+  examples: string[];
+  targetText: string;
+  negativeConstraints?: VoiceNegativeConstraints | null;
+}): Anthropic.TextBlockParam {
+  return {
+    type: "text",
+    text: buildVoiceInstructions(args),
+    cache_control: { type: "ephemeral" },
+  };
+}
+
 const VoiceRefinementSchema = z.object({
   tone: z
     .string()
@@ -481,6 +502,12 @@ export async function generateOptions(args: {
     system: [
       { type: "text", text: ANALYST_SYSTEM },
       tweetContextBlock(args.bundle),
+      voiceContextBlock({
+        voice: args.voice,
+        examples: args.voiceExamples,
+        targetText: args.bundle.text,
+        negativeConstraints: args.voiceNegativeConstraints,
+      }),
     ],
     messages: [
       {
@@ -492,12 +519,7 @@ export async function generateOptions(args: {
 - Author stance: ${args.analysis.stance}
 - Missing angles: ${args.analysis.missingAngles.join(" | ")}
 
-${buildVoiceInstructions({
-  voice: args.voice,
-  examples: args.voiceExamples,
-  targetText: args.bundle.text,
-  negativeConstraints: args.voiceNegativeConstraints,
-})}
+Write in the voice described in the system voice-profile block above.
 ${goalBlock}
 Generate exactly ${count} ${args.kind === "quote" ? "quote tweets" : "replies"}, each from a different category (choose the ${count} best-fitting from: ${categories.join(", ")}). Each must take one of the missing angles or add something genuinely new — never restate what the top replies already said. Keep each under 280 characters. Reasons must address why this is worth sending for you/the user; never say it is in the target author's voice or imply the target author wrote it. No hashtags unless this person's voice uses them.${avoid}`,
       },
@@ -595,11 +617,22 @@ export async function rewriteText(args: {
     system: [
       { type: "text", text: ANALYST_SYSTEM },
       tweetContextBlock(args.bundle),
+      voiceContextBlock({
+        voice: args.voice,
+        examples: args.voiceExamples,
+        targetText: args.bundle.text,
+        negativeConstraints: args.voiceNegativeConstraints,
+      }),
     ],
     messages: [
       {
         role: "user",
-        content: buildRewritePrompt(args),
+        content: `Write in the voice described in the system voice-profile block above.
+
+Rewrite this draft reply to be ${args.direction}, keeping the core point and that voice. Under 280 characters.
+
+Draft:
+"""${args.text}"""`,
       },
     ],
     output_config: { format: zodOutputFormat(RewriteSchema) },

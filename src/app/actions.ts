@@ -12,6 +12,7 @@ import type { AccountExportPayload } from "../../shared/accountData";
 import type { XReadPriority, XReadSource } from "../../shared/xReadLimits";
 import {
   analyzeTweet,
+  type Analysis,
   generateComposeOptions,
   generateOptions,
   judgeModelEval,
@@ -66,6 +67,29 @@ async function requireSession() {
   const session = await getSessionUser();
   if (!session) redirect("/");
   return session;
+}
+
+// Cross-user cache TTL for the tweet-analysis stage (public tweet content).
+// The re-analysis dedup window itself is enforced in api.analyses.findReusableByTweet.
+const ANALYSIS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Content-addressed cache key for the analysis stage. Keyed by the stable tweet
+ * id plus a hash of the salient inputs (text, thread, top replies, media text)
+ * so an edited tweet or different content misses. Returns null for synthetic
+ * "manual-" ids that can never recur, so those are always analyzed fresh.
+ */
+function analysisCacheKey(bundle: TweetBundle): string | null {
+  if (!bundle.tweetId || bundle.tweetId.startsWith("manual-")) return null;
+  const salient = JSON.stringify({
+    text: bundle.text,
+    author: bundle.authorHandle,
+    ancestors: bundle.threadAncestors.map((a) => a.text),
+    replies: bundle.topReplies.map((r) => r.text),
+    media: bundle.mediaText ?? "",
+  });
+  const hash = createHash("sha256").update(salient).digest("hex").slice(0, 24);
+  return `analysis:v1:${bundle.tweetId}:${hash}`;
 }
 
 function actionErrorMessage(error: unknown, fallback: string): string {
@@ -409,6 +433,28 @@ export async function startAnalysisAction(input: {
   const fairUseBlock = await assertFairUseInAction(sessionToken, "start_analysis");
   if (fairUseBlock) return fairUseBlock;
 
+  // Idempotent re-analysis: a stable tweet id (URL provided) lets us reuse a
+  // recent completed analysis for this exact tweet before spending anything on
+  // an X read, semantic classify, analysis, or generation. Pure paste-text
+  // without a URL has no recurring id and is always analyzed fresh.
+  if (urlTweetId) {
+    try {
+      const reusableId = await convexServer().query(
+        api.analyses.findReusableByTweet,
+        {
+          sessionToken,
+          tweetId: urlTweetId,
+          ...(input.projectId
+            ? { projectId: input.projectId as Id<"projects"> }
+            : {}),
+        }
+      );
+      if (reusableId) return { analysisId: reusableId as string };
+    } catch {
+      // Non-fatal: fall through and analyze fresh.
+    }
+  }
+
   try {
     let bundle: TweetBundle;
     let replySettings: string | undefined;
@@ -605,17 +651,48 @@ export async function continueAnalysisAction(
       missingAngles: doc.missingAngles,
     };
     if (!doc.summary) {
-      const result = await analyzeTweet(bundle, { forceDemo: user.isDemo });
-      analysis = result.analysis;
+      // Cross-user cache of the analysis stage. The analysis describes the
+      // public tweet (not user data), so identical tweet content analyzed by
+      // any user within the TTL reuses the result at zero token cost. Demo
+      // users keep their isolated deterministic path and never touch the cache.
+      const cacheKey = user.isDemo ? null : analysisCacheKey(bundle);
+      let analysis_: Analysis | null = null;
+      let usage = { tokensIn: 0, tokensOut: 0 };
+
+      if (cacheKey) {
+        const cached = await convex.query(api.cache.get, { key: cacheKey });
+        if (cached) {
+          try {
+            analysis_ = JSON.parse(cached) as Analysis;
+          } catch {
+            analysis_ = null;
+          }
+        }
+      }
+
+      if (!analysis_) {
+        const result = await analyzeTweet(bundle, { forceDemo: user.isDemo });
+        analysis_ = result.analysis;
+        usage = result.usage;
+        if (cacheKey) {
+          await convex.mutation(api.cache.put, {
+            key: cacheKey,
+            value: JSON.stringify(result.analysis),
+            ttlMs: ANALYSIS_CACHE_TTL_MS,
+          });
+        }
+      }
+
+      analysis = analysis_;
       await convex.mutation(api.analyses.setAnalysis, {
         sessionToken,
         analysisId: id,
-        ...result.analysis,
+        ...analysis_,
       });
       await convex.mutation(api.usage.record, {
         sessionToken,
-        tokensIn: result.usage.tokensIn,
-        tokensOut: result.usage.tokensOut,
+        tokensIn: usage.tokensIn,
+        tokensOut: usage.tokensOut,
         analyses: 1,
         generations: 0,
       });

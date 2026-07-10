@@ -15,5 +15,7 @@ export default defineApp({
     X_READ_LIMITS_REQUIRED: v.optional(v.string()),
     X_READ_USER_DAILY_LIMIT: v.optional(v.string()),
     X_READ_GLOBAL_DAILY_LIMIT: v.optional(v.string()),
+    SCANNER_MIN_CADENCE_MINUTES: v.optional(v.string()),
+    SCANNER_SEMANTIC_BATCH_LIMIT: v.optional(v.string()),
   },
 });
