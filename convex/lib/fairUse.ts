@@ -48,6 +48,7 @@ export async function getFairUseStatus(
   return evaluateFairUse({
     plan: user.plan,
     isDemo: user.isDemo,
+    unlimitedAccess: user.unlimitedAccess,
     usage,
     action,
   });
