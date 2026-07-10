@@ -4,6 +4,7 @@ import { buildVoiceStyleFromTweets } from "../../shared/voice";
 import { hasProAccess } from "../../shared/billing";
 import { DEMO_TWEETS } from "../../shared/demoData";
 import { DEFAULT_KEYWORDS } from "../../shared/onboarding";
+import { hasUsableOnboardingProfile } from "../../shared/onboardingIdentity";
 
 /**
  * First-login setup: make sure the user has a starter voice profile and the
@@ -23,6 +24,7 @@ export async function ensureDefaults(sessionToken: string) {
       style: buildVoiceStyleFromTweets(DEMO_TWEETS.map((t) => t.text)),
       examples: [],
       source: "manual",
+      purpose: "starter",
     });
   }
 
@@ -45,10 +47,16 @@ export async function ensureDefaults(sessionToken: string) {
  */
 export async function postLoginPath(sessionToken: string): Promise<string> {
   try {
-    const me = await convexServer().query(api.users.me, { sessionToken });
-    return me && me.onboardingCompletedAt === undefined
-      ? "/onboarding"
-      : "/dashboard";
+    const convex = convexServer();
+    const [me, profiles] = await Promise.all([
+      convex.query(api.users.me, { sessionToken }),
+      convex.query(api.voiceProfiles.list, { sessionToken }),
+    ]);
+    const needsOnboarding =
+      me &&
+      me.onboardingCompletedAt === undefined &&
+      !hasUsableOnboardingProfile(profiles);
+    return needsOnboarding ? "/onboarding" : "/dashboard";
   } catch {
     return "/dashboard";
   }
