@@ -367,3 +367,63 @@ The first implementation worker appends:
     labels.
   - `tests/aiGuardrails.test.ts` covers target-author ownership and voice
     confusion guardrails.
+
+## 2026-07-10 — WP40-S7 trust, legal, settings, disconnect, and draft access
+
+- Removed the unrelated legacy legal contact and replaced legal/support surfaces
+  with configured ReplyPilot support/operator fields:
+  `REPLYPILOT_SUPPORT_EMAIL` and `REPLYPILOT_OPERATOR_NAME`.
+  No invented fallback email is rendered; missing owner contact shows an
+  explicit not-configured state and remains a Gate 10 owner-input blocker.
+- Expanded Privacy/Terms to describe private beta operation, X, Anthropic,
+  Convex, Vercel, PostHog, Sentry, Resend/web push, local offline draft
+  storage, reply outcomes, retention, export, deletion, contact path, and X
+  disconnect consequences.
+- Reworked Settings to remove developer-facing env/key copy. The page now shows
+  X connection/reconnect/disconnect, beta/no-card status, notification and
+  briefing controls, usage/spend status, support, account export/delete, reply
+  quality, and no-auto-publish safety copy.
+- Added authenticated `users.disconnectX`:
+  - deletes only the current user's stored X token rows;
+  - disables that user's scanner settings and X-dependent notification
+    settings;
+  - marks that user's scheduled X publishes as failed with reconnect copy;
+  - returns a bounded summary for the confirmation toast.
+- Added authenticated `drafts.scheduledCount` so the disconnect confirmation can
+  warn about queued scheduled publishes before the final click.
+- Tightened scheduled publishing so queued jobs skip drafts no longer in
+  `scheduled` status; this prevents a disconnect-marked draft from being
+  revived by an old scheduled job.
+- Strengthened the critical Playwright draft-row checks for semantic button
+  role, visible keyboard focus, Enter activation, Space activation, and >=44px
+  target size across the required viewport matrix.
+- Convex generated bindings and the dev deployment `shiny-crow-162` were
+  updated after adding the two public authenticated functions. No production
+  deployment or production data mutation performed.
+- Verification:
+  - `npm run typecheck` — passed.
+  - `npm run lint` — passed with the existing generated Convex
+    `eslint-disable` warnings and no errors.
+  - `npm test` — passed: 56 files passed, 1 skipped; 464 tests passed,
+    1 skipped.
+  - `npm run security:audit` — passed: 109 public Convex functions checked,
+    3 allow-listed.
+  - `npm run build` — passed with Next.js 16.2.10 / Turbopack.
+  - `NEXT_PUBLIC_CONVEX_URL=... npm run test:mobile` — passed: 12 tests across
+    4 viewport projects.
+- Focused tests added/updated:
+  - `tests/xDisconnect.test.ts` covers the disconnect cascade patches and
+    confirmation consequence copy.
+  - `playwright/mobile-375.e2e.ts` now covers draft-row role, target size,
+    Enter activation, and Space activation.
+- Security review:
+  - New public Convex query/mutation both call `requireUser`.
+  - Disconnect operates only through `sessionToken` ownership and never accepts
+    a user id, token id, or draft id from the client.
+  - Disconnect deletes token rows and disables X-dependent settings without
+    deleting saved draft text, account export data, or unrelated user records.
+- Remaining owner input:
+  - Provide the owner-approved ReplyPilot support email and operator identity
+    for production env before S8/S9 readiness evidence. The source no longer
+    contains `hello@switchtoux.com`, but production readiness cannot be claimed
+    until those real values are configured and verified.

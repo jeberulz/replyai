@@ -125,7 +125,7 @@ export const run = internalAction({
       editBucket,
       editDistanceNormalized,
     } = bundle;
-    if (draft.status === "published") return;
+    if (draft.status !== "scheduled") return;
 
     const resolvedMode = draft.publishMode ?? (draft.kind === "quote" ? "url_quote" : "threaded");
 

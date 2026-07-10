@@ -95,7 +95,7 @@ dirty working tree.
     permanent 3-option/reason/weighted-length/no-fake-score guardrails remain
     green.
 
-- [ ] **WP40-S7 — Correct trust, legal, settings, disconnect, and draft access**
+- [x] **WP40-S7 — Correct trust, legal, settings, disconnect, and draft access**
   - Replace the unrelated `hello@switchtoux.com` value with the owner-approved
     ReplyPilot support address; no invented placeholder can pass production
     readiness.

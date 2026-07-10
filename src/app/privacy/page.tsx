@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {
   LegalList,
   LegalMail,
+  LegalOperator,
   LegalPage,
   LegalSection,
 } from "@/components/legal-page";
@@ -16,7 +17,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      intro="ReplyPilot AI (“ReplyPilot”, “we”, “us”) helps you find conversations worth replying to on X and draft replies in your own voice. This policy explains what we collect, why, and the choices you have. We keep data collection to what the product actually needs."
+      intro="ReplyPilot AI (“ReplyPilot”, “we”, “us”) is operated by the ReplyPilot private beta operator and helps you find conversations worth replying to on X and draft replies in your own voice. This policy explains what we collect, why, and the choices you have. We keep data collection to what the product actually needs."
     >
       <LegalSection heading="Information we collect">
         <p>We collect the following when you use ReplyPilot:</p>
@@ -47,6 +48,18 @@ export default function PrivacyPage() {
               product and measure quality (for example, how often a drafted
               reply is sent without edits).
             </>,
+            <>
+              <strong className="text-foreground">Outcome data.</strong> When a
+              reply or quote is published through ReplyPilot, we may check
+              public X outcomes such as whether a reply was detected so the app
+              can improve timing and draft quality.
+            </>,
+            <>
+              <strong className="text-foreground">Local offline drafts.</strong>{" "}
+              If you save while offline, draft text and sync metadata may be
+              stored in your browser&apos;s local IndexedDB until it syncs or you
+              clear it. Offline drafts never publish automatically.
+            </>,
           ]}
         />
         <p>
@@ -61,6 +74,7 @@ export default function PrivacyPage() {
             "Provide the service: analyze conversations, score them, and draft replies and quote tweets in your voice.",
             "Publish to X only when you explicitly click to send or schedule a specific piece of text. There is no automatic posting.",
             "Send tweet content and your voice examples to our AI provider to generate analyses and drafts.",
+            "Send opted-in hot-window alerts and daily briefing emails when you enable those notification channels.",
             "Measure and improve product quality using aggregate usage metrics.",
             "Keep your account secure and prevent abuse.",
           ]}
@@ -95,14 +109,24 @@ export default function PrivacyPage() {
               profiles are stored.
             </>,
             <>
-              <strong className="text-foreground">
-                Our hosting provider
-              </strong>{" "}
-              — serves the application. We may also disclose data if required by
-              law.
+              <strong className="text-foreground">Vercel</strong> — hosts the
+              web application and server-side routes.
+            </>,
+            <>
+              <strong className="text-foreground">PostHog</strong> — product
+              analytics for usage funnels, quality metrics, and beta readiness.
+            </>,
+            <>
+              <strong className="text-foreground">Sentry</strong> — error
+              monitoring for browser, server, and backend failures.
+            </>,
+            <>
+              <strong className="text-foreground">Resend and web push</strong>{" "}
+              — optional digest email and browser push delivery when you opt in.
             </>,
           ]}
         />
+        <p>We may also disclose data if required by law.</p>
       </LegalSection>
 
       <LegalSection heading="Storage and security">
@@ -118,11 +142,13 @@ export default function PrivacyPage() {
 
       <LegalSection heading="Data retention and deletion">
         <p>
-          We keep your data while your account is active. You can disconnect X
-          at any time in Settings, which revokes our stored tokens. To delete
-          your account and associated data, email us at <LegalMail /> and we
-          will remove it. You can also revoke ReplyPilot&apos;s access from your
-          X account settings under connected apps.
+          We keep account, analysis, draft, voice, notification, usage, spend,
+          and outcome records while your account is active so the product can
+          work and provide export/delete controls. You can export or delete your
+          account in Settings. You can disconnect X at any time in Settings,
+          which deletes stored X tokens and disables X-dependent scanner and
+          notification settings. You can also revoke ReplyPilot&apos;s access from
+          your X account settings under connected apps.
         </p>
       </LegalSection>
 
@@ -152,6 +178,7 @@ export default function PrivacyPage() {
 
       <LegalSection heading="Contact">
         <p>
+          ReplyPilot is operated by <LegalOperator /> during the private beta.
           Questions about this policy or your data? Email <LegalMail />.
         </p>
       </LegalSection>

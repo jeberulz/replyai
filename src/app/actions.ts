@@ -1586,6 +1586,18 @@ export async function dismissSetupChecklistAction() {
   revalidatePath("/dashboard");
 }
 
+export async function disconnectXAction() {
+  const { sessionToken } = await requireSession();
+  const result = await convexServer().mutation(api.users.disconnectX, {
+    sessionToken,
+  });
+  revalidatePath("/settings");
+  revalidatePath("/feed");
+  revalidatePath("/drafts");
+  revalidatePath("/dashboard");
+  return result;
+}
+
 export async function exportAccountDataAction(): Promise<
   | { ok: true; filename: string; payload: AccountExportPayload }
   | { ok: false; error: string }

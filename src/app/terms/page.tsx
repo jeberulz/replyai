@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {
   LegalList,
   LegalMail,
+  LegalOperator,
   LegalPage,
   LegalSection,
 } from "@/components/legal-page";
@@ -16,7 +17,7 @@ export default function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service"
-      intro="These terms are an agreement between you and ReplyPilot AI (“ReplyPilot”, “we”, “us”) governing your use of the app. By using ReplyPilot, you agree to them. If you use ReplyPilot on behalf of an organization, you agree on its behalf."
+      intro="These terms are an agreement between you and ReplyPilot AI (“ReplyPilot”, “we”, “us”), operated by the ReplyPilot private beta operator, governing your use of the app. By using ReplyPilot, you agree to them. If you use ReplyPilot on behalf of an organization, you agree on its behalf."
     >
       <LegalSection heading="What ReplyPilot is">
         <p>
@@ -41,6 +42,11 @@ export default function TermsPage() {
           your credentials secure. When you connect X, you authorize ReplyPilot
           to publish posts on your behalf — but only the specific text you
           explicitly click to send or schedule. There is no auto-posting.
+        </p>
+        <p>
+          Disconnecting X in Settings removes stored X authorization, turns off
+          X-dependent scanner and notification settings, and stops scheduled X
+          publishes that have not run yet. Your saved drafts remain available.
         </p>
       </LegalSection>
 
@@ -78,14 +84,21 @@ export default function TermsPage() {
           not ReplyPilot, are responsible for what you post. Scores and reasons
           are heuristics to aid your judgment, not guarantees of performance.
         </p>
+        <p>
+          ReplyPilot may send X content, voice examples, and draft context to
+          Anthropic to generate those outputs. Product analytics and error data
+          may be processed by PostHog and Sentry so the beta can be operated
+          safely.
+        </p>
       </LegalSection>
 
       <LegalSection heading="Beta and availability">
         <p>
-          ReplyPilot is offered on an “as is” and “as available” basis,
-          including during beta. We may change, suspend, or discontinue features
-          at any time, and we do not warrant that the service will be
-          uninterrupted or error-free.
+          ReplyPilot is in private beta and is offered on an “as is” and “as
+          available” basis. Beta access may be time-limited, revoked, or changed
+          as we prepare the first design-partner rollout. We may change,
+          suspend, or discontinue features at any time, and we do not warrant
+          that the service will be uninterrupted or error-free.
         </p>
       </LegalSection>
 
@@ -121,6 +134,7 @@ export default function TermsPage() {
 
       <LegalSection heading="Contact">
         <p>
+          ReplyPilot is operated by <LegalOperator /> during the private beta.
           Questions about these terms? Email <LegalMail />.
         </p>
       </LegalSection>

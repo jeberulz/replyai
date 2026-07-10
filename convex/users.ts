@@ -15,6 +15,7 @@ import {
   readStoredXTokens,
 } from "./tokenSecurity";
 import { verifyProvisioningSecret } from "../shared/authProvisioning";
+import { buildXDisconnectCascade } from "../shared/xDisconnect";
 
 const SESSION_TTL_MS = SESSION_SLIDING_TTL_MS;
 const TOKEN_ACCESS_SECRET_ENV = "CONVEX_SERVER_TOKEN_ACCESS_SECRET";
@@ -304,6 +305,56 @@ export const persistXTokensFromSession = mutation({
       expiresAt: args.expiresAt,
       scope: args.scope || tokenRow.scope,
     });
+  },
+});
+
+export const disconnectX = mutation({
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const now = Date.now();
+    const cascade = buildXDisconnectCascade(now);
+
+    const tokenRows = await ctx.db
+      .query("xTokens")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .take(10);
+    for (const tokenRow of tokenRows) {
+      await ctx.db.delete(tokenRow._id);
+    }
+
+    const scannerSettings = await ctx.db
+      .query("scannerSettings")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (scannerSettings) {
+      await ctx.db.patch(scannerSettings._id, cascade.scannerPatch);
+    }
+
+    const notificationSettings = await ctx.db
+      .query("notificationSettings")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+    if (notificationSettings) {
+      await ctx.db.patch(notificationSettings._id, cascade.notificationPatch);
+    }
+
+    const scheduledDrafts = await ctx.db
+      .query("savedDrafts")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", user._id).eq("status", "scheduled")
+      )
+      .take(100);
+    for (const draft of scheduledDrafts) {
+      await ctx.db.patch(draft._id, cascade.scheduledDraftPatch);
+    }
+
+    return {
+      deletedTokenCount: tokenRows.length,
+      disabledScanner: Boolean(scannerSettings),
+      disabledNotifications: Boolean(notificationSettings),
+      failedScheduledDrafts: scheduledDrafts.length,
+    };
   },
 });
 

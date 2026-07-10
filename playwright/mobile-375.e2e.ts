@@ -210,6 +210,8 @@ test("draft detail stays readable across critical widths", async ({ page }) => {
     .locator('[data-testid^="draft-row-"]')
     .filter({ hasText: "Scheduled" })
     .first();
+  await expect(scheduledDraft).toHaveAttribute("role", "button");
+  await expectTargetSize(scheduledDraft, "scheduled draft row");
   await scheduledDraft.focus();
   await expect(scheduledDraft).toBeFocused();
   await page.keyboard.press("Enter");
@@ -220,4 +222,14 @@ test("draft detail stays readable across critical widths", async ({ page }) => {
   }
   await expect(page.getByRole("heading", { name: "Draft detail" })).toBeVisible();
   await expectNoHorizontalScroll(page, "draft detail");
+
+  await page.goto("/drafts");
+  const scheduledDraftForSpace = page
+    .locator('[data-testid^="draft-row-"]')
+    .filter({ hasText: "Scheduled" })
+    .first();
+  await scheduledDraftForSpace.focus();
+  await expect(scheduledDraftForSpace).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(page.getByRole("heading", { name: "Draft detail" })).toBeVisible();
 });
