@@ -80,7 +80,7 @@ dirty working tree.
   - Tests cover dedupe, source attribution, cap boundary, global cap, reset,
     failed requests, demo, and kill switch. Convex/security review required.
 
-- [ ] **WP40-S6 — Fix the audited wedge-quality regressions**
+- [x] **WP40-S6 — Fix the audited wedge-quality regressions**
   - Shared content-token/stopword logic prevents onboarding or trend labels such
     as `not`, `all`, `because`, `get`, `Deleted`, and `Everyone`.
   - Suggested-angle fallbacks never interpolate stopwords into “missing X

@@ -19,6 +19,21 @@ describe("combineTopicRelevance", () => {
   });
 });
 
+describe("suggested-angle hygiene", () => {
+  it("does not interpolate weak niche tokens into missing-angle copy", () => {
+    const angle = demoSuggestedAngle("Everyone asks what to build?", {
+      keywords: ["not", "all", "Deleted", "Everyone"],
+      voiceTopics: ["get"],
+      recentTopics: [],
+    });
+
+    expect(angle).toBe(
+      "Answer with one specific example from your own work — skip the generic advice."
+    );
+    expect(angle).not.toMatch(/missing (not|all|deleted|everyone|get) angle/i);
+  });
+});
+
 describe("passesCombinedFeedFilter", () => {
   const keywords = ["ai", "startup"];
 

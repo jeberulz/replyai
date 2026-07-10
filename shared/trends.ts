@@ -10,6 +10,7 @@
 
 import { DEMO_TWEETS } from "./demoData";
 import { DEFAULT_KEYWORDS } from "./onboarding";
+import { strongContentTokens, WEAK_CONTENT_TOKENS } from "./contentTokens";
 
 export const TREND_DEFAULTS = {
   /** Rolling window of scanned opportunities. */
@@ -179,6 +180,7 @@ const STOPWORDS = new Set([
   "d",
   "m",
 ]);
+for (const token of WEAK_CONTENT_TOKENS) STOPWORDS.add(token);
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -246,21 +248,7 @@ function normalizeKeywords(keywords: string[] | undefined): string[] {
 }
 
 function extractContentTokens(text: string): string[] {
-  const tokens = text
-    .toLowerCase()
-    .replace(/https?:\/\/\S+/g, " ")
-    .replace(/[^a-z0-9\s-]/g, " ")
-    .split(/\s+/)
-    .map((t) => t.replace(/^-+|-+$/g, ""))
-    .filter((t) => t.length >= 4 && !STOPWORDS.has(t) && !/^\d+$/.test(t));
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const t of tokens) {
-    if (seen.has(t)) continue;
-    seen.add(t);
-    out.push(t);
-  }
-  return out;
+  return strongContentTokens(text).filter((t) => !STOPWORDS.has(t));
 }
 
 /**

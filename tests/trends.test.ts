@@ -54,6 +54,14 @@ describe("primaryClusterKey", () => {
     expect(result?.kind).toBe("token");
     expect(result?.key).toBeTruthy();
   });
+
+  it("does not cluster on audited weak tokens", () => {
+    const result = primaryClusterKey(
+      "Deleted everything because everyone said get building",
+      ["quantum"]
+    );
+    expect(result?.key).not.toMatch(/^(deleted|everyone|because|get|building)$/);
+  });
 });
 
 describe("clusterTrends", () => {

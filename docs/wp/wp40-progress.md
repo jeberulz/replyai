@@ -328,3 +328,42 @@ The first implementation worker appends:
   - `convex/outcomes.ts` runs in Convex's default runtime, so it cannot import
     `node:crypto`; reply-back resource keys use a small stable local hash
     instead of Node crypto.
+
+## 2026-07-10 — WP40-S6 wedge-quality regression fixes
+
+- Added shared content-token hygiene in `shared/contentTokens.ts` and applied
+  it to trend clustering and onboarding concierge keyword acceptance. Weak
+  labels such as `not`, `all`, `because`, `get`, `Deleted`, `Everyone`, and
+  `building` no longer survive as onboarding keywords or trend fallback topics.
+- Updated suggested-angle fallback copy so it no longer interpolates weak
+  tokens into "missing X angle" phrasing. The fallback now uses either a strong
+  niche token or an honest concrete-story/example prompt.
+- Tightened generation instructions to explicitly separate the authenticated
+  ReplyPilot user from the target tweet author. Generated text is told not to
+  claim "my/our tweet" unless the replying user is explicitly the target author.
+- Added post-parse generation guardrails that reject generated options claiming
+  ownership of the target author's tweet and reject reasons that say the option
+  is in the target author's voice.
+- Repair-generation prompt now repeats the user/target-author boundary and
+  requires reasons to explain why the option is worth sending for the user, not
+  as the target author's voice.
+- Verification:
+  - `npm run typecheck` — passed.
+  - `npm run lint` — passed with the existing generated Convex
+    `eslint-disable` warnings and no errors.
+  - `npm test` — passed: 55 files passed, 1 skipped; 462 tests passed,
+    1 skipped.
+  - `npm run security:audit` — passed: 107 public Convex functions checked,
+    3 allow-listed.
+  - `npm run build` — passed with Next.js 16.2.10 / Turbopack.
+  - `NEXT_PUBLIC_CONVEX_URL=... npm run test:mobile` — passed: 12 tests across
+    4 viewport projects.
+- Focused tests added/updated:
+  - `tests/contentTokens.test.ts` covers weak-token filtering and onboarding
+    keyword sanitization.
+  - `tests/semanticRelevance.test.ts` covers weak-token suggested-angle
+    fallback behavior.
+  - `tests/trends.test.ts` covers trend fallback not clustering on audited weak
+    labels.
+  - `tests/aiGuardrails.test.ts` covers target-author ownership and voice
+    confusion guardrails.

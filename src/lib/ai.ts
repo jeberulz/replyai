@@ -329,6 +329,7 @@ export function enforceGeneratedOptionGuardrails(args: {
     seen.add(categoryKey);
 
     const content = option.content.trim();
+    const reason = option.reason.trim();
     const length = weightedLength(content);
     if (length > MAX_WEIGHTED_LENGTH) {
       violations.push(
@@ -336,11 +337,26 @@ export function enforceGeneratedOptionGuardrails(args: {
       );
       continue;
     }
+    if (/\b(my|our)\s+(own\s+)?tweet\b/i.test(content)) {
+      violations.push(
+        `option ${index + 1} claims ownership of the target author's tweet`
+      );
+      continue;
+    }
+    if (
+      /\b(target|tweet)\s+author'?s voice\b/i.test(reason) ||
+      /\btheir own voice\b/i.test(reason)
+    ) {
+      violations.push(
+        `option ${index + 1} reason confuses the target author's voice with the user's voice`
+      );
+      continue;
+    }
 
     normalized.push({
       category,
       content,
-      reason: option.reason.trim(),
+      reason,
     });
   }
 
@@ -388,6 +404,8 @@ Invalid options:
 ${JSON.stringify(args.invalidOptions, null, 2)}
 
 Conversation analysis:
+- Replying user: write as the authenticated ReplyPilot user, never as the target tweet's author.
+- Target author: @${args.bundle.authorHandle}; do not claim this is "my tweet" or "our tweet" unless the replying user is explicitly the target author.
 - Topic: ${args.analysis.topic}
 - Author stance: ${args.analysis.stance}
 - Missing angles: ${args.analysis.missingAngles.join(" | ")}
@@ -405,7 +423,7 @@ Requirements:
 - Category values must be written exactly as listed above.
 - Each content must be within X's ${MAX_WEIGHTED_LENGTH} weighted-character limit. URLs count as 23 characters and emoji count as 2.
 - Preserve the strongest ideas from the invalid options when they fit, but rewrite shorter where needed.
-- Include a short grounded reason for each option. Do not include scores or engagement predictions.`,
+- Include a short grounded reason for each option. The reason must explain why it is worth sending for you/the user, not say it is in the target author's voice. Do not include scores or engagement predictions.`,
       },
     ],
     output_config: { format: zodOutputFormat(OptionsSchema) },
@@ -468,6 +486,8 @@ export async function generateOptions(args: {
       {
         role: "user",
         content: `Conversation analysis:
+- Replying user: write as the authenticated ReplyPilot user, never as the target tweet's author.
+- Target author: @${args.bundle.authorHandle}; do not claim this is "my tweet" or "our tweet" unless the replying user is explicitly the target author.
 - Topic: ${args.analysis.topic}
 - Author stance: ${args.analysis.stance}
 - Missing angles: ${args.analysis.missingAngles.join(" | ")}
@@ -479,7 +499,7 @@ ${buildVoiceInstructions({
   negativeConstraints: args.voiceNegativeConstraints,
 })}
 ${goalBlock}
-Generate exactly ${count} ${args.kind === "quote" ? "quote tweets" : "replies"}, each from a different category (choose the ${count} best-fitting from: ${categories.join(", ")}). Each must take one of the missing angles or add something genuinely new — never restate what the top replies already said. Keep each under 280 characters. No hashtags unless this person's voice uses them.${avoid}`,
+Generate exactly ${count} ${args.kind === "quote" ? "quote tweets" : "replies"}, each from a different category (choose the ${count} best-fitting from: ${categories.join(", ")}). Each must take one of the missing angles or add something genuinely new — never restate what the top replies already said. Keep each under 280 characters. Reasons must address why this is worth sending for you/the user; never say it is in the target author's voice or imply the target author wrote it. No hashtags unless this person's voice uses them.${avoid}`,
       },
     ],
     output_config: { format: zodOutputFormat(OptionsSchema) },
