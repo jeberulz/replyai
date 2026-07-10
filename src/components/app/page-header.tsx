@@ -9,6 +9,8 @@
 
 import { Heading } from "@/components/ds/heading";
 import { Text } from "@/components/ds/text";
+import { cn } from "@/lib/utils";
+import { rpType } from "@/theme/typography";
 
 export function PageHeader({
   eyebrow,
@@ -28,14 +30,11 @@ export function PageHeader({
           type="code"
           color="accent"
           display="block"
-          className="text-xs uppercase tracking-[0.16em]"
+          className={cn(rpType.xsUpper, "text-primary")}
         >
           {eyebrow}
         </Text>
-        <Heading
-          level={1}
-          className="text-[2rem] leading-[1.05] tracking-[-0.02em]"
-        >
+        <Heading level={1} className={cn(rpType.pageTitle, "text-foreground")}>
           {title}
         </Heading>
         {description ? (
@@ -43,7 +42,7 @@ export function PageHeader({
             type="supporting"
             color="secondary"
             display="block"
-            className="max-w-[60ch] leading-6"
+            className={cn(rpType.body, "max-w-[60ch] text-muted-foreground")}
           >
             {description}
           </Text>

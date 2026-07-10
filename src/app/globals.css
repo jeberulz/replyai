@@ -1,3 +1,14 @@
+/*
+ * Cascade layer order — declared before any import so it wins.
+ * dark-chrome.css puts its :where(h1..h6/p/small/code) prose defaults in
+ * `reset` and its tokens/component styles in `astryx-theme`; both are meant
+ * to lose to Tailwind utilities (the generator docs say class-based styles
+ * "should beat" them). Without this declaration the first occurrence inside
+ * dark-chrome.css would register those layers AFTER `utilities`, silently
+ * overriding every text and font utility on p and h1-h6.
+ */
+@layer theme, base, reset, astryx-theme, components, utilities;
+
 @import "tailwindcss";
 
 /*
@@ -98,6 +109,14 @@
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --font-serif: var(--font-instrument-serif), Georgia, serif;
+
+  /* Figma 379:3874 + design.md — fixed leading pairs (see src/theme/typography.ts) */
+  --leading-rp-xs: 1rem;
+  --leading-rp-sm: 1.25rem;
+  --leading-rp-meta: 1.125rem;
+  --leading-rp-base: 1.5rem;
+  --leading-rp-title: 2rem;
+  --leading-rp-metric: 2.5rem;
 
   --animate-fade-rise: fade-rise 0.5s cubic-bezier(0.25, 1, 0.5, 1) both;
 

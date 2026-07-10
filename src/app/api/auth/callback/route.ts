@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "../../../../../convex/_generated/api";
+import { authProvisioningSecret } from "@/lib/authProvisioning";
 import { guardAuthRoute } from "@/lib/authSecurity";
 import { betaAccessDecisionFromEnv } from "@/lib/betaAccess";
 import { env } from "@/lib/env";
@@ -47,7 +48,6 @@ export async function GET(request: NextRequest) {
 
     const sessionToken = newSessionToken();
     await convexServer().mutation(api.users.upsertAndCreateSession, {
-      provisioningSecret: env.authProvisionSecret,
       xUserId: xUser.id,
       username: xUser.username,
       displayName: xUser.name,
@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
       isDemo: false,
       betaAccessExpiresAt: betaAccess.betaAccessExpiresAt,
       sessionToken,
+      provisioningSecret: authProvisioningSecret(),
       xAuth: {
         accessToken: token.accessToken,
         refreshToken: optionalString(token.refreshToken),

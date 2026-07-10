@@ -2,7 +2,9 @@
 
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import { cn } from "@/lib/utils";
 import { useSessionToken } from "@/components/app/convex-provider";
+import { rpType } from "@/theme/typography";
 
 function formatDuration(seconds: number): string {
   if (seconds < 90) return `${seconds}s`;
@@ -47,7 +49,12 @@ export function StatStrip() {
   ];
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-mono text-xs text-muted-foreground">
+    <div
+      className={cn(
+        rpType.monoXs,
+        "flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-muted-foreground"
+      )}
+    >
       {items.map(([label, value]) => (
         <span key={label} className="inline-flex items-baseline gap-1.5">
           <span className="uppercase tracking-[0.1em]">{label}</span>

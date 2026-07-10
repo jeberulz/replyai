@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  collectPacingPublishPoints,
   DAILY_REPLY_LIMIT_THRESHOLD,
   DAILY_REPLY_WARNING_THRESHOLD,
   DAILY_REPLY_WATCH_THRESHOLD,
@@ -36,6 +37,50 @@ describe("summarizeReplyPacing", () => {
     expect(summary.sentRepliesToday).toBe(2);
     expect(summary.remainingToTarget).toBe(13);
     expect(summary.warningLevel).toBe("none");
+  });
+});
+
+describe("collectPacingPublishPoints", () => {
+  const nowMs = Date.parse("2026-07-08T15:00:00.000Z");
+
+  it("counts published replies, quotes, and due scheduled sends", () => {
+    const points = collectPacingPublishPoints(
+      [
+        {
+          id: "reply-1",
+          kind: "reply",
+          status: "published",
+          publishedAt: Date.parse("2026-07-08T10:00:00.000Z"),
+        },
+        {
+          id: "quote-1",
+          kind: "quote",
+          status: "published",
+          publishedAt: Date.parse("2026-07-08T11:00:00.000Z"),
+        },
+        {
+          id: "in-flight",
+          kind: "reply",
+          status: "scheduled",
+          scheduledFor: Date.parse("2026-07-08T14:30:00.000Z"),
+        },
+        {
+          id: "future",
+          kind: "reply",
+          status: "scheduled",
+          scheduledFor: Date.parse("2026-07-08T18:00:00.000Z"),
+        },
+        {
+          id: "thread",
+          kind: "thread",
+          status: "published",
+          publishedAt: Date.parse("2026-07-08T09:00:00.000Z"),
+        },
+      ],
+      nowMs
+    );
+
+    expect(points).toHaveLength(3);
   });
 });
 

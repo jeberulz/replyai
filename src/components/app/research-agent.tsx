@@ -15,14 +15,15 @@ import {
   type ResearchProfile,
 } from "@/components/app/research/profile-row";
 import { MasterDetail } from "@/components/app/split/master-detail";
+import { SplitPageShell } from "@/components/app/split/split-page-shell";
 import { FilterChips, PaneEyebrow } from "@/components/app/split/pane-chrome";
 import { Button } from "@/components/ds/button";
-import { Heading } from "@/components/ds/heading";
 import { Skeleton } from "@/components/ds/skeleton";
 import { Spinner } from "@/components/ds/spinner";
 import { TextInput } from "@/components/ds/text-input";
 import { Text } from "@/components/ds/text";
-import { timeAgo } from "@/lib/utils";
+import { cn, timeAgo } from "@/lib/utils";
+import { rpType } from "@/theme/typography";
 
 const RUN_TIMEOUT_MS = 90_000;
 
@@ -204,17 +205,6 @@ export function ResearchAgent() {
 
   const list = (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-4 sm:px-6">
-        <Heading level={2} className="text-base leading-none">
-          Research
-        </Heading>
-        <Text size="sm" className="tabular-nums text-muted-foreground">
-          {remaining === undefined
-            ? ""
-            : `${remaining} run${remaining === 1 ? "" : "s"} left today`}
-        </Text>
-      </div>
-
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-6">
         <CuratorStrip curator={curator} />
 
@@ -347,7 +337,23 @@ export function ResearchAgent() {
   );
 
   return (
-    <div className="-mx-4 h-[calc(100dvh-3rem)] overflow-hidden md:-mx-10 md:h-[calc(100dvh-4rem)]">
+    <SplitPageShell
+      eyebrow="Account discovery"
+      title="Research"
+      description="Find accounts worth engaging with in your niche — suggest only, never auto-follow."
+      headerActions={
+        remaining === undefined ? null : (
+          <Text
+            type="supporting"
+            color="secondary"
+            display="block"
+            className={cn(rpType.sm, "tabular-nums text-muted-foreground")}
+          >
+            {remaining} run{remaining === 1 ? "" : "s"} left today
+          </Text>
+        )
+      }
+    >
       <MasterDetail
         list={list}
         detail={
@@ -365,6 +371,6 @@ export function ResearchAgent() {
         autoSaveId="research-agent"
         backLabel="Research"
       />
-    </div>
+    </SplitPageShell>
   );
 }

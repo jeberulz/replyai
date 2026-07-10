@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "../../../../../convex/_generated/api";
+import { authProvisioningSecret } from "@/lib/authProvisioning";
 import { guardAuthRoute } from "@/lib/authSecurity";
 import { convexServer } from "@/lib/convex";
 import { env } from "@/lib/env";
@@ -21,12 +22,12 @@ export async function GET(request: NextRequest) {
     const sessionToken = newSessionToken();
     const demoId = `demo-${sessionToken.slice(0, 12).toLowerCase()}`;
     await convexServer().mutation(api.users.upsertAndCreateSession, {
-      provisioningSecret: env.authProvisionSecret,
       xUserId: demoId,
       username: demoId.replace(/-/g, "_").slice(0, 15),
       displayName: "Demo Builder",
       isDemo: true,
       sessionToken,
+      provisioningSecret: authProvisioningSecret(),
     });
     await setSessionCookie(sessionToken);
     await ensureDefaults(sessionToken);

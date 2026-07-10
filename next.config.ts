@@ -1,5 +1,11 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+
+// ESM next.config.ts has no __dirname — explicit root stops Turbopack from
+// inferring src/app (especially with nested .worktrees/ checkouts in-repo).
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -47,7 +53,7 @@ export const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   turbopack: {
-    root: __dirname,
+    root: projectRoot,
   },
   async headers() {
     return [

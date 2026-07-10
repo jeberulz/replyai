@@ -8,6 +8,7 @@ import {
   SegmentedControlItem,
 } from "@/components/ds/segmented-control";
 import { cn } from "@/lib/utils";
+import { rpType } from "@/theme/typography";
 
 /**
  * Shared chrome for the right-hand workbench/detail panes across the split-view
@@ -63,7 +64,12 @@ export function PaneTabPill({
   children: React.ReactNode;
 }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px] font-medium">
+    <span
+      className={cn(
+        rpType.meta,
+        "inline-flex max-w-full items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 font-medium"
+      )}
+    >
       {icon}
       <span className="truncate">{children}</span>
     </span>
@@ -79,7 +85,7 @@ export function PaneTitleRow({
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-1.5 pt-4 sm:px-5">
-      <Heading level={2} className="text-[22px] leading-none">
+      <Heading level={2} className={cn(rpType.paneTitle, "text-foreground")}>
         {title}
       </Heading>
       {children}

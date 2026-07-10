@@ -24,6 +24,10 @@ export const recordAiSpendAttempt = mutation({
     kind: v.union(v.literal("analysis"), v.literal("generation")),
     source: v.string(),
   },
+  returns: v.union(
+    v.object({ allowed: v.literal(true) }),
+    v.object({ allowed: v.literal(false), message: v.string() })
+  ),
   handler: async (ctx, { sessionToken, kind, source }) => {
     const user = await requireUser(ctx, sessionToken);
     if (user.isDemo) {
@@ -47,7 +51,10 @@ export const recordAiSpendAttempt = mutation({
     });
 
     if (!decision.allowed) {
-      return { allowed: false as const, message: decision.message };
+      return {
+        allowed: false as const,
+        message: decision.message ?? "AI generation is temporarily unavailable.",
+      };
     }
 
     await ctx.db.insert("aiSpendLedger", {

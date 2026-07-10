@@ -15,6 +15,7 @@ import {
 import { useSessionToken } from "@/components/app/convex-provider";
 import { OatmealEmptyState } from "@/components/app/oatmeal-empty-state";
 import { MasterDetail } from "@/components/app/split/master-detail";
+import { SplitPageShell } from "@/components/app/split/split-page-shell";
 import { FilterChips, PaneEyebrow } from "@/components/app/split/pane-chrome";
 import { Badge } from "@/components/ds/badge";
 import { Button } from "@/components/ds/button";
@@ -63,18 +64,6 @@ export function ComposeLadder() {
 
   const list = (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-4 sm:px-6">
-        <div>
-          <h2 className="text-base font-semibold">Compose ladder</h2>
-          <p className="text-xs text-muted-foreground">
-            Winning replies → original posts
-          </p>
-        </div>
-        {clustersQuery?.demo ? (
-          <Badge variant="neutral" label="Demo clusters" />
-        ) : null}
-      </div>
-
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-5 sm:px-6">
         {clustersQuery === undefined ? (
           <div className="space-y-3">
@@ -266,7 +255,16 @@ export function ComposeLadder() {
   ) : null;
 
   return (
-    <div className="-mx-4 h-[calc(100dvh-3rem)] overflow-hidden md:-mx-10 md:h-[calc(100dvh-4rem)]">
+    <SplitPageShell
+      eyebrow="Compound posts"
+      title="Compose ladder"
+      description="Winning replies → original posts"
+      headerActions={
+        clustersQuery?.demo ? (
+          <Badge variant="neutral" label="Demo clusters" />
+        ) : undefined
+      }
+    >
       <MasterDetail
         list={list}
         detail={detail}
@@ -288,7 +286,7 @@ export function ComposeLadder() {
         autoSaveId="compose-ladder"
         backLabel="Compose"
       />
-    </div>
+    </SplitPageShell>
   );
 }
 

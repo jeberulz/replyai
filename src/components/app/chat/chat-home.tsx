@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useSidebar } from "@/components/app/sidebar/sidebar-provider";
+import { cn } from "@/lib/utils";
 import { parseTweetUrl } from "../../../../shared/scoring";
 import { AnalysisThread } from "./analysis-thread";
 import { ChatComposer } from "./chat-composer";
@@ -9,6 +10,7 @@ import { EngagementWindowCard } from "./engagement-window-card";
 import { PersonalAnalyticsCard } from "./personal-analytics-card";
 import { ReplyPacingCard } from "./reply-pacing-card";
 import { FairUseBanner } from "@/components/app/fair-use/fair-use-banner";
+import { rpType } from "@/theme/typography";
 import { StatStrip } from "./stat-strip";
 import { SuggestionChips } from "./suggestion-chips";
 import { type AnalyzeInput, useAnalysisPipeline } from "./use-analysis-pipeline";
@@ -67,31 +69,37 @@ export function ChatHome({
 
   if (!activeAnalysisId) {
     return (
-      <div className="mx-auto flex min-h-[calc(100dvh-8rem)] max-w-3xl flex-col">
+      <div className="mx-auto flex min-h-[calc(100dvh-8rem)] max-w-[1200px] flex-col">
         <div className="flex flex-1 flex-col items-center justify-center gap-8">
-          <div className="space-y-2 text-center">
-            <p className="font-mono text-xs uppercase tracking-[0.16em] text-primary">
-              Your reply desk
-            </p>
-            <h1 className="font-serif text-[2rem] leading-[1.05] tracking-[-0.02em] text-foreground">
-              What conversation are you joining, {displayName.split(" ")[0]}?
-            </h1>
-            <p className="mx-auto max-w-[48ch] text-sm leading-6 text-muted-foreground">
-              Paste a tweet to get a worth-replying score, the conversation&apos;s
-              missing angles, and 3 replies + 3 quote tweets in your voice.
-            </p>
+          <div className="flex w-full max-w-3xl flex-col items-center gap-8">
+            <div className="space-y-2 text-center">
+              <p className={cn(rpType.xsUpper, "text-foreground")}>
+                Your reply desk
+              </p>
+              <h1 className={cn(rpType.pageTitle, "text-foreground")}>
+                What conversation are you joining, {displayName.split(" ")[0]}?
+              </h1>
+              <p className={cn(rpType.body, "mx-auto max-w-[485px] text-muted-foreground")}>
+                Paste a tweet to get a worth-replying score, the conversation&apos;s
+                missing angles, and 3 replies + 3 quote tweets in your voice.
+              </p>
+            </div>
+            <ChatComposer
+              onSubmit={submit}
+              pending={starting}
+              error={startError}
+              initialValue={initialUrl}
+            />
+            <FairUseBanner className="w-full max-w-xl" />
+            <SuggestionChips onPick={submit} disabled={starting} />
           </div>
-          <ChatComposer
-            onSubmit={submit}
-            pending={starting}
-            error={startError}
-            initialValue={initialUrl}
-          />
-          <FairUseBanner className="w-full max-w-xl" />
-          <SuggestionChips onPick={submit} disabled={starting} />
-          <ReplyPacingCard />
-          <EngagementWindowCard />
-          <PersonalAnalyticsCard />
+          <div className="grid w-full items-start gap-6 lg:grid-cols-2">
+            <ReplyPacingCard />
+            <div className="grid gap-6">
+              <EngagementWindowCard />
+              <PersonalAnalyticsCard />
+            </div>
+          </div>
         </div>
         <div className="py-6">
           <StatStrip />

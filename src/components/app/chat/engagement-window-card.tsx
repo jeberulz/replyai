@@ -3,11 +3,20 @@
 import { Clock3 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { useEngagementWindow } from "@/components/app/engagement-window/use-engagement-window";
+import { formatEngagementMinutes } from "../../../../shared/engagementWindow";
+import { insightCardTypography as t } from "./insight-card-typography";
+import { rpType } from "@/theme/typography";
 import {
-  formatEngagementMinutes,
-  formatEngagementWindowGuidance,
-} from "../../../../shared/engagementWindow";
+  engagementWindowBucketFooter,
+  engagementWindowBucketSampleMeta,
+  engagementWindowEmptyBody,
+  engagementWindowEmptyStatus,
+  engagementWindowFilledCopy,
+  engagementWindowTitle,
+  engagementWindowTitleSubtitle,
+} from "@/lib/dashboard-insight-copy";
 
 function bandLabel(curve: {
   authorBandLabel: string;
@@ -23,8 +32,8 @@ export function EngagementWindowCard() {
 
   if (!snapshot) {
     return (
-      <Card className="w-full max-w-3xl">
-        <CardContent className="space-y-4 p-5">
+      <Card className="w-full">
+        <CardContent className="space-y-4 p-6">
           <Skeleton className="h-4 w-40" />
           <Skeleton className="h-14 w-48" />
           <Skeleton className="h-4 w-full" />
@@ -35,64 +44,65 @@ export function EngagementWindowCard() {
   }
 
   const primary = snapshot.primary;
-  const guidance = primary
-    ? formatEngagementWindowGuidance({ curve: primary })
-    : null;
-
   const empty =
     !primary ||
     (snapshot.totalResponded === 0 && !snapshot.isDemo);
 
+  const filledCopy = primary
+    ? engagementWindowFilledCopy({
+        curve: primary,
+        minSampleSize: snapshot.minSampleSize,
+      })
+    : null;
+
   return (
-    <Card className="w-full max-w-3xl">
-      <CardHeader className="space-y-3 pb-4">
+    <Card className="w-full">
+      <CardHeader className="space-y-3 p-6 pb-4">
         <div className="space-y-1">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-primary">
+          <p className={t.eyebrow}>
             Engagement window
             {snapshot.isDemo ? " · demo" : ""}
           </p>
-          <CardTitle className="text-base font-semibold">
-            When reply-backs actually land in your niches
-          </CardTitle>
+          <CardTitle className={t.title}>{engagementWindowTitle()}</CardTitle>
+          <p className={cn(rpType.sm, "text-muted-foreground")}>
+            {engagementWindowTitleSubtitle()}
+          </p>
         </div>
 
-        {empty || !guidance ? (
+        {empty || !filledCopy ? (
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
+            <div className={cn("inline-flex items-center gap-2", t.statusLine)}>
               <Clock3 className="size-4 text-primary" />
-              Not enough data yet
+              {engagementWindowEmptyStatus()}
             </div>
-            <p className="text-sm leading-6 text-muted-foreground">
-              Need at least {snapshot.minSampleSize} reply-backs in an author
-              band before showing a timing window. Observed counts only — never
-              a fake engagement score.
+            <p className={t.body}>
+              {engagementWindowEmptyBody({
+                publishedToday: snapshot.publishedToday,
+                minSampleSize: snapshot.minSampleSize,
+              })}
             </p>
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="font-mono text-[2rem] leading-none tabular-nums text-foreground">
+            <div className={t.heroMetric}>
               {primary.hasEnoughData && primary.medianPeakMinutes != null
                 ? formatEngagementMinutes(primary.medianPeakMinutes)
                 : "—"}
             </div>
-            <p className="text-sm font-medium text-foreground">
-              {guidance.headline}
+            <p className={cn(rpType.smMedium, "text-foreground")}>
+              {filledCopy.headline}
             </p>
-            <p className="text-sm leading-6 text-muted-foreground">
-              {guidance.detail}
-            </p>
+            <p className={t.body}>{filledCopy.detail}</p>
           </div>
         )}
       </CardHeader>
 
       {!empty && snapshot.buckets.length > 0 ? (
-        <CardContent className="space-y-3 border-t border-border pt-4">
-          <p className="text-xs text-muted-foreground">
-            Per author-size band
-            {snapshot.buckets.some((b) => b.topicTag)
-              ? " × topic"
-              : ""}{" "}
-            — medians from closed reply-backs only.
+        <CardContent className="space-y-3 border-t border-border px-6 pb-6 pt-4">
+          <p className={t.sectionSubtitle}>
+            {engagementWindowBucketFooter(
+              snapshot.buckets.some((b) => b.topicTag)
+            )}
           </p>
           <ul className="space-y-2">
             {snapshot.buckets.map((curve) => {
@@ -103,17 +113,16 @@ export function EngagementWindowCard() {
                   className="flex items-start justify-between gap-3 border-b border-border pb-2 last:border-b-0 last:pb-0"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm text-foreground">
-                      {bandLabel(curve)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      n={curve.sampleSize}
-                      {curve.hasEnoughData
-                        ? ""
-                        : ` · need ${snapshot.minSampleSize}`}
+                    <p className={t.listLabel}>{bandLabel(curve)}</p>
+                    <p className={t.listMeta}>
+                      {engagementWindowBucketSampleMeta({
+                        sampleSize: curve.sampleSize,
+                        minSampleSize: snapshot.minSampleSize,
+                        hasEnoughData: curve.hasEnoughData,
+                      })}
                     </p>
                   </div>
-                  <div className="font-mono text-sm tabular-nums text-foreground">
+                  <div className={t.listValue}>
                     {curve.hasEnoughData && curve.medianPeakMinutes != null
                       ? formatEngagementMinutes(curve.medianPeakMinutes)
                       : "—"}
