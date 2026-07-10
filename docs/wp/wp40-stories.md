@@ -30,7 +30,7 @@ dirty working tree.
     upstream status, and owner ruling; no forced breaking downgrade.
   - Verification: typecheck, lint, test, security audit, build.
 
-- [ ] **WP40-S2 — Put the responsive critical-flow suite in CI**
+- [x] **WP40-S2 — Put the responsive critical-flow suite in CI**
   - Critical feed, analysis, and draft/schedule flows run at 375, 768, 1280, and
     1728 widths with no horizontal overflow.
   - CI installs the required browser and runs the suite in the required checks

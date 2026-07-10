@@ -34,14 +34,24 @@ export function OpportunityRow({
   const freshness = opportunity.freshnessLabel;
   const windowClosed = opportunity.windowClosed ?? false;
   const displayScore = opportunity.effectiveScore ?? opportunity.score;
+  const rowLabel = `Open opportunity from ${opportunity.authorName} @${opportunity.authorHandle}`;
 
   return (
     <Card
+      role="button"
+      tabIndex={0}
+      aria-label={rowLabel}
       onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
       data-testid={`opportunity-row-${opportunity._id}`}
       padding={3}
       className={cn(
-        "cursor-pointer transition-colors hover:border-border",
+        "cursor-pointer transition-colors hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70",
         selected && "border-primary/60 ring-1 ring-primary/40",
         pending && "opacity-50",
         windowClosed && "opacity-60"

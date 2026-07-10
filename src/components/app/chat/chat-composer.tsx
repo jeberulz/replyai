@@ -126,7 +126,7 @@ export function ChatComposer({
             }
             onClick={() => submitFromValue(value)}
             isDisabled={pending || !value.trim()}
-            className="rounded-full"
+            className="min-h-11 min-w-11 rounded-full"
           />
         }
         drawer={

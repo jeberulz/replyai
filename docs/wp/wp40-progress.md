@@ -111,3 +111,40 @@ The first implementation worker appends:
   notification sender, and owner-controlled smoke-test accounts/posts.
 - Dead end: `npx vitest --showConfig` is not supported by Vitest 4.1.9 in this
   repo, so config verification used the temporary failing-test proof above.
+
+## 2026-07-10 — WP40-S2 responsive critical-flow suite
+
+- Converted Playwright from a single hard-coded 375px mobile run to a required
+  Chromium matrix at 375, 768, 1280, and 1728 widths. The same feed,
+  analysis, and draft/schedule flow runs in each project and checks for
+  horizontal overflow at list, detail, and handoff surfaces.
+- CI now installs Chromium with Playwright, runs `npm run test:mobile` in the
+  required `checks` job, and uploads `output/playwright` / `playwright-report`
+  artifacts on failure.
+- CI Playwright environment uses the public Convex dev deployment URL only:
+  `NEXT_PUBLIC_CONVEX_URL` name/value is present in workflow config, with no
+  X, Anthropic, PostHog, Sentry, VAPID, Resend, token, or DSN secrets. This
+  keeps the suite zero external-key while S4 still owns demo isolation from
+  shared state.
+- Added keyboard activation coverage for opportunity and draft rows. Rows now
+  expose `role="button"`, `tabIndex=0`, accessible labels, Enter/Space
+  activation, and visible focus rings.
+- The matrix caught two real target-size regressions:
+  - Chat composer icon-only Analyze action measured 28px wide; fixed with a
+    44px minimum target.
+  - Generated-option Copy/Schedule/publish actions measured 28px tall; fixed
+    option actions and schedule dialog buttons with 44px minimum targets.
+- Verification:
+  - `npm run typecheck` — passed.
+  - `npm run lint` — passed with the existing generated Convex
+    `eslint-disable` warnings and no errors.
+  - `npm test` — passed: 48 files passed, 1 skipped; 434 tests passed,
+    1 skipped.
+  - `NEXT_PUBLIC_CONVEX_URL=... npm run test:mobile` — passed: 12 tests across
+    4 viewport projects.
+  - `npm run security:audit` — passed.
+  - `npm run build` — passed.
+- Dead end / dependency note: running the matrix with no Convex URL fails today
+  because `/api/auth/demo` and server session lookup require Convex. S4 owns
+  isolating or disabling production demo and making local/CI zero-key demo
+  deterministic; S2 only wires the current real app flow into CI.
