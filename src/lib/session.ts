@@ -37,6 +37,7 @@ export type SessionUser = {
   displayName: string;
   avatar?: string;
   plan: string;
+  betaAccessExpiresAt?: number;
   defaultModel?: string;
   goal?: "audience" | "leads" | "authority";
   onboardingCompletedAt?: number;

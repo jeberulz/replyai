@@ -35,6 +35,24 @@ export const env = {
   get xClientSecret(): string {
     return process.env.X_CLIENT_SECRET ?? "";
   },
+  get authProvisionSecret(): string {
+    return process.env.CONVEX_AUTH_PROVISION_SECRET ?? "";
+  },
+  get publicDemoEnabled(): boolean {
+    if (process.env.ENABLE_PUBLIC_DEMO === "true") return true;
+    if (process.env.NODE_ENV === "production") return false;
+    return process.env.ENABLE_PUBLIC_DEMO !== "false";
+  },
+  get supportEmail(): string {
+    return (
+      process.env.REPLYPILOT_SUPPORT_EMAIL ??
+      process.env.NEXT_PUBLIC_REPLYPILOT_SUPPORT_EMAIL ??
+      ""
+    ).trim();
+  },
+  get operatorName(): string {
+    return (process.env.REPLYPILOT_OPERATOR_NAME ?? "").trim();
+  },
 };
 
 export function hasXCredentials(): boolean {

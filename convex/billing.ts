@@ -43,6 +43,10 @@ export const status = query({
     return {
       plan: user.plan,
       isDemo: user.isDemo,
+      betaAccessExpiresAt: user.betaAccessExpiresAt ?? null,
+      hasBetaAccess:
+        typeof user.betaAccessExpiresAt === "number" &&
+        user.betaAccessExpiresAt > Date.now(),
       hasProAccess: proAccess,
       stripeConfigured: stripeConfigured(),
       canStartCheckout: stripeConfigured() && !user.isDemo && !proAccess,

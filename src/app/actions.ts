@@ -9,6 +9,7 @@ import { z } from "zod";
 import { api } from "../../convex/_generated/api";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 import type { AccountExportPayload } from "../../shared/accountData";
+import type { XReadPriority, XReadSource } from "../../shared/xReadLimits";
 import {
   analyzeTweet,
   generateComposeOptions,
@@ -87,6 +88,78 @@ async function assertFairUseInAction(
     return { error: status.message };
   }
   return null;
+}
+
+async function assertAiSpendInAction(
+  sessionToken: string,
+  kind: "analysis" | "generation",
+  source: string
+): Promise<{ error: string } | null> {
+  const result = await convexServer().mutation(api.spend.recordAiSpendAttempt, {
+    sessionToken,
+    kind,
+    source,
+  });
+  if (!result.allowed) {
+    return {
+      error: result.message ?? "AI generation is temporarily unavailable.",
+    };
+  }
+  return null;
+}
+
+type XReadAttempt = {
+  ledgerId?: Id<"xReadLedger">;
+};
+
+function hashXResource(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+async function beginXReadInAction(
+  sessionToken: string,
+  source: XReadSource,
+  endpoint: string,
+  priority: XReadPriority
+): Promise<XReadAttempt | { error: string }> {
+  const result = await convexServer().mutation(api.xReads.recordAttempt, {
+    sessionToken,
+    source,
+    endpoint,
+    priority,
+  });
+  if (!result.allowed) {
+    return {
+      error: result.message ?? "X reads are temporarily unavailable.",
+    };
+  }
+  return { ledgerId: result.ledgerId };
+}
+
+async function finishXReadInAction(
+  sessionToken: string,
+  attempt: XReadAttempt,
+  rawResourceCount: number,
+  resourceKeys: string[],
+  status: "succeeded" | "failed" = "succeeded"
+) {
+  await convexServer().mutation(api.xReads.completeAttempt, {
+    sessionToken,
+    ledgerId: attempt.ledgerId,
+    rawResourceCount,
+    resourceHashes: resourceKeys.map(hashXResource),
+    status,
+  });
+}
+
+function tweetBundleResourceKeys(bundle: TweetBundle): string[] {
+  return [
+    `tweet:${bundle.tweetId}`,
+    ...bundle.threadAncestors.map((ancestor) => `tweet:${ancestor.tweetId}`),
+    ...bundle.topReplies.map(
+      (reply) => `reply:${bundle.tweetId}:${reply.authorHandle}:${reply.likes}`
+    ),
+  ];
 }
 
 async function resolveXAccessToken(sessionToken: string): Promise<string | null> {
@@ -265,9 +338,10 @@ async function buildManualNicheContext(sessionToken: string): Promise<NicheConte
 
 async function classifyManualSemanticRelevance(
   text: string,
-  niche: NicheContext
+  niche: NicheContext,
+  forceDemo = false
 ): Promise<SemanticScore> {
-  if (!hasAnthropicKey()) {
+  if (forceDemo || !hasAnthropicKey()) {
     return demoSemanticRelevance(text, niche);
   }
 
@@ -349,12 +423,51 @@ export async function startAnalysisAction(input: {
       if (urlTweetId) {
         const accessToken = await resolveXAccessToken(sessionToken);
         if (accessToken) {
-          replySettings = await fetchTweetReplySettings(urlTweetId, accessToken);
+          const readAttempt = await beginXReadInAction(
+            sessionToken,
+            "manual_analysis",
+            "tweets/:id/reply_settings",
+            "high"
+          );
+          if ("error" in readAttempt) {
+            replySettings = undefined;
+          } else {
+            replySettings = await fetchTweetReplySettings(urlTweetId, accessToken);
+            await finishXReadInAction(
+              sessionToken,
+              readAttempt,
+              replySettings ? 1 : 0,
+              replySettings ? [`tweet:${urlTweetId}:reply_settings`] : []
+            );
+          }
         }
       }
     } else {
       const accessToken = await resolveXAccessToken(sessionToken);
-      bundle = await fetchTweetBundle(urlTweetId as string, accessToken);
+      if (accessToken) {
+        const readAttempt = await beginXReadInAction(
+          sessionToken,
+          "manual_analysis",
+          "tweets/:id",
+          "high"
+        );
+        if ("error" in readAttempt) return readAttempt;
+        try {
+          bundle = await fetchTweetBundle(urlTweetId as string, accessToken);
+          await finishXReadInAction(
+            sessionToken,
+            readAttempt,
+            1 + bundle.threadAncestors.length + bundle.topReplies.length,
+            tweetBundleResourceKeys(bundle),
+            bundle.isDemoData ? "failed" : "succeeded"
+          );
+        } catch (error) {
+          await finishXReadInAction(sessionToken, readAttempt, 0, [], "failed");
+          throw error;
+        }
+      } else {
+        bundle = await fetchTweetBundle(urlTweetId as string, accessToken);
+      }
       replySettings = bundle.replySettings;
     }
 
@@ -372,7 +485,8 @@ export async function startAnalysisAction(input: {
         : 0;
     const semantic = await classifyManualSemanticRelevance(
       bundle.text,
-      nicheContext
+      nicheContext,
+      Boolean(me?.isDemo)
     );
     const topicRelevance = resolveManualTopicRelevance(
       keywordRelevance,
@@ -467,6 +581,12 @@ export async function continueAnalysisAction(
   if (needsAnalysis) {
     const fairUseBlock = await assertFairUseInAction(sessionToken, "run_analysis");
     if (fairUseBlock) return fairUseBlock;
+    const spendBlock = await assertAiSpendInAction(
+      sessionToken,
+      "analysis",
+      "continue_analysis"
+    );
+    if (spendBlock) return spendBlock;
   }
   if (needsGeneration) {
     const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
@@ -485,7 +605,7 @@ export async function continueAnalysisAction(
       missingAngles: doc.missingAngles,
     };
     if (!doc.summary) {
-      const result = await analyzeTweet(bundle);
+      const result = await analyzeTweet(bundle, { forceDemo: user.isDemo });
       analysis = result.analysis;
       await convex.mutation(api.analyses.setAnalysis, {
         sessionToken,
@@ -513,6 +633,12 @@ export async function continueAnalysisAction(
 
     const generateKind = async (kind: "reply" | "quote") => {
       if (existing.some((r) => r.kind === kind)) return;
+      const spendBlock = await assertAiSpendInAction(
+        sessionToken,
+        "generation",
+        `continue_analysis_${kind}`
+      );
+      if (spendBlock) throw new Error(spendBlock.error);
       // Fired per kind, only when a generation call is actually about to
       // run — a retry where both kinds already exist (e.g. re-entering this
       // try block after analyses.complete failed) must not report a
@@ -531,6 +657,7 @@ export async function continueAnalysisAction(
         voiceNegativeConstraints: negativeConstraints,
         goal,
         model,
+        forceDemo: user.isDemo,
       });
       await convex.mutation(api.replies.insertMany, {
         sessionToken,
@@ -588,6 +715,12 @@ export async function generateMoreAction(args: {
 
   const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
   if (fairUseBlock) throw new Error(fairUseBlock.error);
+  const spendBlock = await assertAiSpendInAction(
+    sessionToken,
+    "generation",
+    `generate_more_${args.kind}`
+  );
+  if (spendBlock) throw new Error(spendBlock.error);
 
   const analysis = await convex.query(api.analyses.get, {
     sessionToken,
@@ -627,6 +760,7 @@ export async function generateMoreAction(args: {
       .filter((r) => r.kind === args.kind)
       .map((r) => r.content),
     model,
+    forceDemo: user.isDemo,
   });
 
   await convex.mutation(api.replies.insertMany, {
@@ -655,10 +789,16 @@ export async function rewriteAction(args: {
   analysisId: string;
   direction: string;
 }) {
-  const { sessionToken } = await requireSession();
+  const { sessionToken, user } = await requireSession();
   const convex = convexServer();
   const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
   if (fairUseBlock) throw new Error(fairUseBlock.error);
+  const spendBlock = await assertAiSpendInAction(
+    sessionToken,
+    "generation",
+    `rewrite_${args.direction}`
+  );
+  if (spendBlock) throw new Error(spendBlock.error);
 
   const direction = REWRITE_DIRECTIONS.find((d) => d === args.direction);
   if (!direction) throw new Error("Unknown rewrite direction");
@@ -685,6 +825,7 @@ export async function rewriteAction(args: {
     voiceExamples: profile?.examples ?? [],
     voiceNegativeConstraints: negativeConstraintsForProfile(profile),
     model,
+    forceDemo: user.isDemo,
   });
 
   await convex.mutation(api.replies.updateContent, {
@@ -739,8 +880,17 @@ export async function setDefaultModelAction(model: string) {
  * is good enough?" decision.
  */
 export async function runModelEvalAction(analysisId: string) {
-  const { sessionToken } = await requireSession();
+  const { sessionToken, user } = await requireSession();
   const convex = convexServer();
+
+  const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
+  if (fairUseBlock) throw new Error(fairUseBlock.error);
+  const spendBlock = await assertAiSpendInAction(
+    sessionToken,
+    "generation",
+    "model_eval"
+  );
+  if (spendBlock) throw new Error(spendBlock.error);
 
   const analysis = await convex.query(api.analyses.get, {
     sessionToken,
@@ -773,6 +923,7 @@ export async function runModelEvalAction(analysisId: string) {
         voiceExamples: examples,
         voiceNegativeConstraints: negativeConstraints,
         model: m.id,
+        forceDemo: user.isDemo,
       });
       return { model: m.id, ...result };
     })
@@ -785,6 +936,7 @@ export async function runModelEvalAction(analysisId: string) {
     voiceExamples: examples,
     voiceNegativeConstraints: negativeConstraints,
     candidates: runs.map((r) => ({ model: r.model, options: r.options })),
+    forceDemo: user.isDemo,
   });
 
   const scoreFor = (model: string) =>
@@ -974,15 +1126,34 @@ export async function syncOfflineDraftUpdateAction(args: {
 // ---------------------------------------------------------------------------
 
 export async function trainVoiceAction(name: string) {
-  const { sessionToken } = await requireSession();
+  const { sessionToken, user } = await requireSession();
   const convex = convexServer();
   const auth = await convex.query(api.users.xAuthForSession, { sessionToken });
   const accessToken = await resolveXAccessToken(sessionToken);
+  const readAttempt = accessToken
+    ? await beginXReadInAction(
+        sessionToken,
+        "voice_refresh",
+        "users/:id/tweets",
+        "low"
+      )
+    : null;
+  if (readAttempt && "error" in readAttempt) throw new Error(readAttempt.error);
   const tweets = await fetchUserTweets(auth?.xUserId ?? "", accessToken);
+  if (readAttempt) {
+    await finishXReadInAction(
+      sessionToken,
+      readAttempt,
+      tweets.length,
+      tweets.map((text) => `voice:${text.slice(0, 64)}`),
+      tweets.length === DEMO_TWEETS.length ? "failed" : "succeeded"
+    );
+  }
   const measuredStyle = buildVoiceStyleFromTweets(tweets);
   const { style } = await refineVoiceStyleLabels({
     style: measuredStyle,
     examples: tweets,
+    forceDemo: user.isDemo,
   });
   const constraints = buildVoiceNegativeConstraints(tweets, style);
   await convex.mutation(api.voiceProfiles.create, {
@@ -1141,7 +1312,28 @@ export async function fetchOwnedListsAction(): Promise<{
     sessionToken,
   });
   const accessToken = await resolveXAccessToken(sessionToken);
-  return fetchOwnedLists(auth?.xUserId ?? "", accessToken);
+  const readAttempt = accessToken
+    ? await beginXReadInAction(
+        sessionToken,
+        "owned_lists",
+        "users/:id/owned_lists",
+        "low"
+      )
+    : null;
+  if (readAttempt && "error" in readAttempt) {
+    return { lists: [], error: readAttempt.error };
+  }
+  const result = await fetchOwnedLists(auth?.xUserId ?? "", accessToken);
+  if (readAttempt) {
+    await finishXReadInAction(
+      sessionToken,
+      readAttempt,
+      result.lists.length,
+      result.lists.map((list) => `list:${list.id}`),
+      result.error ? "failed" : "succeeded"
+    );
+  }
+  return result;
 }
 
 export async function saveEngageListsAction(
@@ -1275,7 +1467,27 @@ export async function buildWritingModelAction(args: {
   } else {
     const auth = await convex.query(api.users.xAuthForSession, { sessionToken });
     const accessToken = await resolveXAccessToken(sessionToken);
+    const readAttempt = accessToken
+      ? await beginXReadInAction(
+          sessionToken,
+          "onboarding",
+          "users/:id/tweets",
+          "low"
+        )
+      : null;
+    if (readAttempt && "error" in readAttempt) {
+      throw new Error(readAttempt.error);
+    }
     tweets = await fetchUserTweets(auth?.xUserId ?? "", accessToken);
+    if (readAttempt) {
+      await finishXReadInAction(
+        sessionToken,
+        readAttempt,
+        tweets.length,
+        tweets.map((text) => `onboarding:${text.slice(0, 64)}`),
+        tweets.length === DEMO_TWEETS.length ? "failed" : "succeeded"
+      );
+    }
   }
   // fetchUserTweets falls back to sample tweets without X credentials —
   // tell the UI so it can say so instead of implying we read the account.
@@ -1288,6 +1500,7 @@ export async function buildWritingModelAction(args: {
   const { style } = await refineVoiceStyleLabels({
     style: measuredStyle,
     examples: tweets,
+    forceDemo: user.isDemo,
   });
   const constraints = buildVoiceNegativeConstraints(tweets, style);
   const profileName = `${user.displayName.split(" ")[0]}'s voice`;
@@ -1371,6 +1584,18 @@ export async function dismissSetupChecklistAction() {
     sessionToken,
   });
   revalidatePath("/dashboard");
+}
+
+export async function disconnectXAction() {
+  const { sessionToken } = await requireSession();
+  const result = await convexServer().mutation(api.users.disconnectX, {
+    sessionToken,
+  });
+  revalidatePath("/settings");
+  revalidatePath("/feed");
+  revalidatePath("/drafts");
+  revalidatePath("/dashboard");
+  return result;
 }
 
 export async function exportAccountDataAction(): Promise<
@@ -1530,6 +1755,12 @@ export async function startComposeAction(args: {
 
   const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
   if (fairUseBlock) return { runId: "", error: fairUseBlock.error };
+  const spendBlock = await assertAiSpendInAction(
+    sessionToken,
+    "generation",
+    `compose_${args.format}`
+  );
+  if (spendBlock) return { runId: "", error: spendBlock.error };
 
   const { profile } = await defaultVoice(sessionToken, args.voiceProfileId);
   const { model } = await resolveGenerationPrefs(sessionToken);
@@ -1560,6 +1791,7 @@ export async function startComposeAction(args: {
       voiceExamples: profile?.examples ?? [],
       voiceNegativeConstraints: negativeConstraints,
       model,
+      forceDemo: user.isDemo,
     });
 
     await convex.mutation(api.compose.completeRun, {

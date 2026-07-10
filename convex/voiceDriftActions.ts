@@ -2,6 +2,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { createHash } from "node:crypto";
 import { v } from "convex/values";
 import { z } from "zod";
 import { internal } from "./_generated/api";
@@ -20,6 +21,14 @@ const DRIFT_SUMMARY_MODEL =
   process.env.ANTHROPIC_VOICE_MODEL ??
   process.env.ANTHROPIC_GENERATE_MODEL ??
   "claude-sonnet-5";
+
+type XReadAttempt =
+  | { allowed: true; ledgerId?: Id<"xReadLedger"> }
+  | { allowed: false; message?: string };
+
+function hashXReadResource(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
 
 const SummarySchema = z.object({
   summary: z
@@ -71,18 +80,54 @@ async function resolveAccessToken(
 
 /** Recent original tweets for voice re-measure. Empty on any failure. */
 async function fetchRecentUserTweets(
+  ctx: ActionCtx,
+  userId: Id<"users">,
+  isDemo: boolean,
   xUserId: string,
   accessToken: string
 ): Promise<string[]> {
+  const attempt = (await ctx.runMutation(
+    internal.xReads.recordAttemptForUserInternal,
+    {
+      userId,
+      isDemo,
+      source: "voice_refresh",
+      endpoint: "users/:id/tweets",
+      priority: "low",
+    }
+  )) as XReadAttempt;
+  if (!attempt.allowed) return [];
+
   const url = new URL(`https://api.x.com/2/users/${xUserId}/tweets`);
   url.searchParams.set("max_results", "50");
   url.searchParams.set("exclude", "retweets,replies");
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    await ctx.runMutation(internal.xReads.completeAttemptInternal, {
+      userId,
+      ledgerId: attempt.ledgerId,
+      rawResourceCount: 0,
+      resourceHashes: [],
+      status: "failed",
+    });
+    return [];
+  }
   const json = (await res.json()) as { data?: Array<{ text: string }> };
-  return (json.data ?? []).map((t) => t.text).filter((t) => t.trim().length > 0);
+  const tweets = (json.data ?? [])
+    .map((t) => t.text)
+    .filter((t) => t.trim().length > 0);
+  await ctx.runMutation(internal.xReads.completeAttemptInternal, {
+    userId,
+    ledgerId: attempt.ledgerId,
+    rawResourceCount: tweets.length,
+    resourceHashes: tweets.map((text) =>
+      hashXReadResource(`voice:${text.slice(0, 64)}`)
+    ),
+    status: "succeeded",
+  });
+  return tweets;
 }
 
 function mergeExamples(priority: string[][]): string[] {
@@ -179,7 +224,13 @@ export const runDriftCheck = internalAction({
       if (hasXCredentials() && context.xUserId && !context.isDemo) {
         const accessToken = await resolveAccessToken(ctx, userId);
         if (accessToken) {
-          xTexts = await fetchRecentUserTweets(context.xUserId, accessToken);
+          xTexts = await fetchRecentUserTweets(
+            ctx,
+            userId,
+            context.isDemo,
+            context.xUserId,
+            accessToken
+          );
           if (xTexts.length > 0) sources.push("x_timeline");
         }
       }

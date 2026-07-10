@@ -95,14 +95,24 @@ export function DraftRow({
     draft.status === "failed" &&
     (draft.kind === "reply" || draft.kind === "quote") &&
     draft.publishMode !== "standalone";
+  const rowLabel = `Open ${draftStatusMeta[draft.status].label.toLowerCase()} ${draftKindLabel(draft)}`;
 
   return (
     <Card
+      role="button"
+      tabIndex={0}
+      aria-label={rowLabel}
       onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
       data-testid={`draft-row-${draft._id}`}
       padding={3}
       className={cn(
-        "cursor-pointer transition-colors hover:border-muted-foreground/30",
+        "cursor-pointer transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70",
         selected && "border-primary/60 ring-1 ring-primary/40",
         pending && "opacity-50"
       )}

@@ -34,14 +34,24 @@ export function OpportunityRow({
   const freshness = opportunity.freshnessLabel;
   const windowClosed = opportunity.windowClosed ?? false;
   const displayScore = opportunity.effectiveScore ?? opportunity.score;
+  const rowLabel = `Open opportunity from ${opportunity.authorName} @${opportunity.authorHandle}`;
 
   return (
     <Card
+      role="button"
+      tabIndex={0}
+      aria-label={rowLabel}
       onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
       data-testid={`opportunity-row-${opportunity._id}`}
       padding={3}
       className={cn(
-        "cursor-pointer transition-colors hover:border-border",
+        "cursor-pointer transition-colors hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70",
         selected && "border-primary/60 ring-1 ring-primary/40",
         pending && "opacity-50",
         windowClosed && "opacity-60"
@@ -108,7 +118,7 @@ export function OpportunityRow({
             href={`/dashboard?url=${encodeURIComponent(opportunity.tweetUrl)}`}
             as={Link}
             onClick={(e) => e.stopPropagation()}
-            className="w-full sm:w-auto"
+            className="min-h-11 w-full sm:w-auto"
           />
           <Button
             size="sm"
@@ -116,7 +126,7 @@ export function OpportunityRow({
             label="Dismiss"
             icon={<X className="size-3.5" />}
             isDisabled={pending}
-            className="w-full sm:w-auto"
+            className="min-h-11 w-full sm:w-auto"
             onClick={(e) => {
               e.stopPropagation();
               startTransition(() => dismissOpportunityAction(opportunity._id));

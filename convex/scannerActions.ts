@@ -1,5 +1,6 @@
 "use node";
 
+import { createHash } from "node:crypto";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -36,6 +37,7 @@ import {
   demoSearchTweets,
 } from "../shared/demoData";
 import { refreshAccessToken } from "../shared/xOAuth";
+import type { XReadSource } from "../shared/xReadLimits";
 
 const MIN_OPPORTUNITY_SCORE = 30;
 const SCAN_FAN_OUT_STAGGER_MS = 250;
@@ -64,6 +66,53 @@ export type TimelineTweet = {
   sourceLabel?: string;
   isReply?: boolean;
 };
+
+type XReadAttempt =
+  | { allowed: true; ledgerId?: Id<"xReadLedger"> }
+  | { allowed: false; message?: string };
+
+function hashXReadResource(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+async function beginXRead(
+  ctx: ActionCtx,
+  args: {
+    userId: Id<"users">;
+    isDemo: boolean;
+    source: XReadSource;
+    endpoint: string;
+  }
+): Promise<XReadAttempt> {
+  return await ctx.runMutation(internal.xReads.recordAttemptForUserInternal, {
+    userId: args.userId,
+    isDemo: args.isDemo,
+    source: args.source,
+    endpoint: args.endpoint,
+    priority: "low",
+  });
+}
+
+async function finishXRead(
+  ctx: ActionCtx,
+  args: {
+    userId: Id<"users">;
+    attempt: XReadAttempt;
+    tweets: TimelineTweet[];
+    status?: "succeeded" | "failed";
+  }
+) {
+  if (!args.attempt.allowed) return;
+  await ctx.runMutation(internal.xReads.completeAttemptInternal, {
+    userId: args.userId,
+    ledgerId: args.attempt.ledgerId,
+    rawResourceCount: args.tweets.length,
+    resourceHashes: args.tweets.map((tweet) =>
+      hashXReadResource(`tweet:${tweet.tweetId}`)
+    ),
+    status: args.status ?? "succeeded",
+  });
+}
 
 type ScanContext = {
   xUserId: string;
@@ -561,12 +610,24 @@ async function collectCandidates(
 
   if (enabledSources.includes("following")) {
     attempted = true;
+    const readAttempt = await beginXRead(ctx, {
+      userId,
+      isDemo: context.isDemo,
+      source: "scanner_following",
+      endpoint: "users/:id/timelines/reverse_chronological",
+    });
+    if (!readAttempt.allowed) {
+      firstError = firstError ?? readAttempt.message;
+    } else {
     const fetched = await fetchXTimeline(context.xUserId, accessToken);
     if (fetched.error) {
       firstError = firstError ?? fetched.error;
+      await finishXRead(ctx, { userId, attempt: readAttempt, tweets: [], status: "failed" });
     } else {
       succeeded = true;
       following.push(...fetched.tweets.map((t) => ({ ...t, source: "following" as const })));
+      await finishXRead(ctx, { userId, attempt: readAttempt, tweets: fetched.tweets });
+    }
     }
   }
 
@@ -575,14 +636,26 @@ async function collectCandidates(
       attempted = true;
       const listId = context.engageListIds[i];
       const listName = context.engageListNames[i];
+      const readAttempt = await beginXRead(ctx, {
+        userId,
+        isDemo: context.isDemo,
+        source: "scanner_list",
+        endpoint: "lists/:id/tweets",
+      });
+      if (!readAttempt.allowed) {
+        firstError = firstError ?? readAttempt.message;
+        continue;
+      }
       const fetched = await fetchListTweets(listId, accessToken);
       if (fetched.error) {
         firstError = firstError ?? fetched.error;
+        await finishXRead(ctx, { userId, attempt: readAttempt, tweets: [], status: "failed" });
       } else {
         succeeded = true;
         lists.push(
           ...fetched.tweets.map((t) => ({ ...t, sourceLabel: listName }))
         );
+        await finishXRead(ctx, { userId, attempt: readAttempt, tweets: fetched.tweets });
       }
     }
   }
@@ -591,12 +664,24 @@ async function collectCandidates(
     const handles = selectWatchedHandlesForScan(context.watchedHandles);
     for (const handle of handles) {
       attempted = true;
+      const readAttempt = await beginXRead(ctx, {
+        userId,
+        isDemo: context.isDemo,
+        source: "scanner_watched",
+        endpoint: "tweets/search/recent",
+      });
+      if (!readAttempt.allowed) {
+        firstError = firstError ?? readAttempt.message;
+        continue;
+      }
       const fetched = await fetchHandleTweets(handle, accessToken);
       if (fetched.error) {
         firstError = firstError ?? fetched.error;
+        await finishXRead(ctx, { userId, attempt: readAttempt, tweets: [], status: "failed" });
       } else {
         succeeded = true;
         watched.push(...fetched.tweets);
+        await finishXRead(ctx, { userId, attempt: readAttempt, tweets: fetched.tweets });
       }
     }
   }
@@ -606,6 +691,16 @@ async function collectCandidates(
     const terms = context.searchKeywords.slice(0, searchBudget.keywordLimit);
     for (const term of terms) {
       attempted = true;
+      const readAttempt = await beginXRead(ctx, {
+        userId,
+        isDemo: context.isDemo,
+        source: "scanner_search",
+        endpoint: "tweets/search/recent",
+      });
+      if (!readAttempt.allowed) {
+        firstError = firstError ?? readAttempt.message;
+        continue;
+      }
       const fetched = await fetchSearchTweets(
         term,
         accessToken,
@@ -613,9 +708,11 @@ async function collectCandidates(
       );
       if (fetched.error) {
         firstError = firstError ?? fetched.error;
+        await finishXRead(ctx, { userId, attempt: readAttempt, tweets: [], status: "failed" });
       } else {
         succeeded = true;
         search.push(...fetched.tweets);
+        await finishXRead(ctx, { userId, attempt: readAttempt, tweets: fetched.tweets });
       }
     }
   }
@@ -912,4 +1009,3 @@ async function fetchSearchTweets(
     tweets: mapTweetsResponse(json).map((t) => ({ ...t, source: "search" as const })),
   };
 }
-

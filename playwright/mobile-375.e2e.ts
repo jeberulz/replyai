@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { DEMO_TWEETS } from "../shared/demoData";
 
 const DEMO_TWEET = DEMO_TWEETS[0];
@@ -52,6 +52,13 @@ async function expectNoHorizontalScroll(page: Page, surface: string) {
     layout.pageWidth,
     `${surface} overflowed horizontally; offenders: ${layout.offenders.join(", ")}`
   ).toBeLessThanOrEqual(layout.viewport + 1);
+}
+
+async function expectTargetSize(locator: Locator, label: string) {
+  const box = await locator.boundingBox();
+  expect(box, `${label} should be visible and measurable`).not.toBeNull();
+  expect(box!.width, `${label} width`).toBeGreaterThanOrEqual(44);
+  expect(box!.height, `${label} height`).toBeGreaterThanOrEqual(44);
 }
 
 async function waitForOptions(page: Page) {
@@ -115,7 +122,7 @@ test.beforeEach(async ({ page }) => {
   await loginDemo(page);
 });
 
-test("feed detail stacks cleanly at 375px", async ({ page }) => {
+test("feed detail stays responsive across critical widths", async ({ page }) => {
   await page.goto("/feed");
 
   await expect(page.getByRole("heading", { name: "Feed scanner" })).toBeVisible();
@@ -131,24 +138,34 @@ test("feed detail stacks cleanly at 375px", async ({ page }) => {
     return;
   }
 
-  await page.locator('[data-testid^="opportunity-row-"]').first().click();
+  const firstOpportunity = page.locator('[data-testid^="opportunity-row-"]').first();
+  await firstOpportunity.focus();
+  await expect(firstOpportunity).toBeFocused();
+  await page.keyboard.press("Enter");
 
-  await expect(page.getByRole("button", { name: "Opportunities" })).toBeVisible();
+  const backButton = page.getByRole("button", { name: "Opportunities" });
+  if (await backButton.isVisible().catch(() => false)) {
+    await expectTargetSize(backButton, "mobile opportunities back button");
+  }
   await expect(page.getByRole("heading", { name: "Opportunity" })).toBeVisible();
   await expectNoHorizontalScroll(page, "feed detail");
 
-  await page.getByRole("link", { name: /Analyze & reply/i }).click();
+  const analyzeLink = page.getByRole("link", { name: /Analyze & reply/i }).last();
+  await expectTargetSize(analyzeLink, "analyze opportunity action");
+  await analyzeLink.click();
   await expect(page).toHaveURL(/\/dashboard\?url=/);
   await expectNoHorizontalScroll(page, "feed analyze handoff");
 });
 
-test("analysis flow keeps mobile controls inside the viewport", async ({ page }) => {
+test("analysis flow keeps controls inside the viewport", async ({ page }) => {
   await page.goto("/dashboard");
 
   await page
     .getByPlaceholder(/Paste a tweet or its URL to analyze/i)
     .fill(DEMO_TWEET_URL);
-  await page.getByRole("button", { name: "Analyze" }).click();
+  const analyzeButton = page.getByRole("button", { name: "Analyze" });
+  await expectTargetSize(analyzeButton, "analyze submit action");
+  await analyzeButton.click();
 
   await page.waitForURL(/\/analysis\//, { timeout: 30_000 });
   await waitForOptions(page);
@@ -157,10 +174,12 @@ test("analysis flow keeps mobile controls inside the viewport", async ({ page })
   ).toBeVisible();
   await expectNoHorizontalScroll(page, "analysis workbench");
 
-  await page.getByRole("button", { name: /Copy/i }).first().click();
+  const copyButton = page.getByRole("button", { name: /Copy/i }).first();
+  await expectTargetSize(copyButton, "copy option action");
+  await copyButton.click();
 });
 
-test("draft detail stack stays readable at 375px", async ({ page }) => {
+test("draft detail stays readable across critical widths", async ({ page }) => {
   await page.goto("/dashboard");
 
   await page
@@ -171,12 +190,15 @@ test("draft detail stack stays readable at 375px", async ({ page }) => {
   await page.waitForURL(/\/analysis\//, { timeout: 30_000 });
   await waitForOptions(page);
 
-  await page.getByRole("button", { name: /^Schedule$/ }).first().click();
+  const scheduleOption = page.getByRole("button", { name: /^Schedule$/ }).first();
+  await expectTargetSize(scheduleOption, "schedule option action");
+  await scheduleOption.click();
   await page.locator('input[type="datetime-local"]').fill(futureDatetimeLocal());
-  await page
+  const confirmSchedule = page
     .getByRole("dialog")
-    .getByRole("button", { name: /^Schedule$/ })
-    .click();
+    .getByRole("button", { name: /^Schedule$/ });
+  await expectTargetSize(confirmSchedule, "confirm schedule action");
+  await confirmSchedule.click();
 
   await page.goto("/drafts");
   await expect(
@@ -184,13 +206,30 @@ test("draft detail stack stays readable at 375px", async ({ page }) => {
   ).toBeVisible({ timeout: 30_000 });
   await expectNoHorizontalScroll(page, "drafts list");
 
-  await page
+  const scheduledDraft = page
     .locator('[data-testid^="draft-row-"]')
     .filter({ hasText: "Scheduled" })
-    .first()
-    .click();
+    .first();
+  await expect(scheduledDraft).toHaveAttribute("role", "button");
+  await expectTargetSize(scheduledDraft, "scheduled draft row");
+  await scheduledDraft.focus();
+  await expect(scheduledDraft).toBeFocused();
+  await page.keyboard.press("Enter");
 
-  await expect(page.getByRole("button", { name: "Drafts" })).toBeVisible();
+  const backButton = page.getByRole("button", { name: "Drafts" });
+  if (await backButton.isVisible().catch(() => false)) {
+    await expectTargetSize(backButton, "mobile drafts back button");
+  }
   await expect(page.getByRole("heading", { name: "Draft detail" })).toBeVisible();
   await expectNoHorizontalScroll(page, "draft detail");
+
+  await page.goto("/drafts");
+  const scheduledDraftForSpace = page
+    .locator('[data-testid^="draft-row-"]')
+    .filter({ hasText: "Scheduled" })
+    .first();
+  await scheduledDraftForSpace.focus();
+  await expect(scheduledDraftForSpace).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(page.getByRole("heading", { name: "Draft detail" })).toBeVisible();
 });

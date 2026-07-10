@@ -218,3 +218,47 @@ Ruling:
 4. **WP15 and WP39 may run in parallel** — disjoint file boundaries; if both
    need `src/app/actions.ts`, each WP owns named action groups only.
 
+## 2026-07-10 - WP40 - First-10 beta launch gate
+
+Question: Which launch-hardening items are required before the first ten users,
+and how should agents handle demo access, beta entitlement, billing, production
+secrets, and the unusually broad file surface without inventing product policy?
+
+Ruling:
+
+1. **The first ten are no-card design partners.** This is the Private Proof
+   cohort in `docs/GO_TO_MARKET_AND_BRAND_STRATEGY.md`, not the paid 50-user
+   founder beta. WP40 must show a truthful, time-bounded beta entitlement and
+   hide checkout/internal Stripe configuration from this cohort. Activating
+   live Stripe charging is a later paid-beta gate, not a WP40 shortcut or
+   blocker.
+2. **Production is private by default.** Only owner-approved X handles may
+   complete OAuth while the beta access mode is `allowlist`. Denied identities
+   must not create user rows, store X tokens, consume AI, or enter onboarding.
+3. **Public production demo is off.** Demo mode remains deterministic and fully
+   usable with zero keys in local development, automated tests, and explicitly
+   authorized internal verification. A demo session must never use a shared
+   production user or paid model. This narrows production exposure without
+   weakening the permanent demo-mode guardrail.
+4. **Beta access is not Stripe Pro state.** Use an additive, expiring beta
+   entitlement so design partners receive scanner/notification/briefing access
+   without contaminating subscription status or blocking later checkout.
+5. **Spend controls fail closed in production.** X reads and AI-spending paths
+   require explicit per-user/global limits and kill switches. Missing production
+   budget configuration disables the paid path with a clear user state; it must
+   not silently become unlimited. Do not hardcode X prices as permanent truth —
+   record resource usage and take the current price from the owner-approved
+   launch inventory.
+6. **Secrets are operational state, never repository content.** The worker
+   produces a names-only dry-run inventory; the owner approves it; then the
+   exact variables are applied to Vercel/Convex. No values, tokens, DSNs, email
+   addresses, or screenshots containing them enter git or progress files.
+7. **WP40 is sequential on one branch.** Its auth, schema, scanner, settings,
+   and gate stories overlap. Do not run implementation workers in parallel on
+   those files. A fresh gate/reviewer session may run after the implementation
+   stories finish.
+8. **Owner-supplied launch inputs are blocking acceptance criteria.** The ten X
+   handles, real support email/operator identity, spend-cap values, observability
+   projects, notification sender, and owner-controlled X smoke-test posts must
+   be recorded in the private launch inventory before the production gate can
+   be marked green.
