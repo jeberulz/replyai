@@ -73,7 +73,7 @@ export function PersonalAnalyticsCard() {
           <p className="text-xs uppercase tracking-[0.1em] text-muted-foreground">
             Personal analytics
           </p>
-          <CardTitle className="font-serif text-2xl leading-8 text-foreground">
+          <CardTitle className="font-serif text-xl leading-8 text-foreground">
             What your closed reply outcomes are actually showing
           </CardTitle>
         </div>
@@ -202,7 +202,7 @@ export function PersonalAnalyticsCard() {
         <section className="space-y-3 border-t border-border pt-4">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="font-serif text-2xl leading-8 text-foreground">Hourly response map</p>
+              <p className="font-serif text-xl leading-8 text-foreground">Hourly response map</p>
               <p className="text-sm text-muted-foreground">
                 Each hour reflects closed reply outcomes in your local time.
               </p>

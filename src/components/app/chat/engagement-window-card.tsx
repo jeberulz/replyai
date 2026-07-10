@@ -51,7 +51,7 @@ export function EngagementWindowCard() {
             Engagement window
             {snapshot.isDemo ? " · demo" : ""}
           </p>
-          <CardTitle className="font-serif text-2xl leading-8 text-foreground">
+          <CardTitle className="font-serif text-xl leading-8 text-foreground">
             When reply-backs actually land in your niches
           </CardTitle>
         </div>
