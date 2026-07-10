@@ -1,0 +1,243 @@
+{"kind":"deck","id":"pr/p2cy5n","name":"Deck"}
+{"kind":"layout","layoutId":"aef50065-0f54-4e3c-bd7a-4bb61eb11735","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"dbf40306-0716-49f9-a735-fa26b6a0f664","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/sjrxhu","slide":1,"title":"REPLYPILOT AI","textShapes":8}
+{"kind":"shape","id":"sh/2p8nqxs7","slide":1,"name":"left-rail","bbox":[0,0,28,720]}
+{"kind":"shape","id":"sh/9gr2p8nq","slide":1,"name":"top-rule","bbox":[28,0,1252,1]}
+{"kind":"textbox","id":"sh/gvy90je9","slide":1,"name":"title-eyebrow","text":"REPLYPILOT AI","textPreview":"REPLYPILOT AI","textChars":13,"textLines":1,"bbox":[72,78,360,28]}
+{"kind":"textbox","id":"sh/r2p8nqxs","slide":1,"name":"deck-title","text":"Go-to-market and brand strategy","textPreview":"Go-to-market and brand strategy","textChars":31,"textLines":1,"bbox":[72,145,760,150]}
+{"kind":"textbox","id":"sh/2hwfyxob","slide":1,"name":"deck-subtitle","text":"A low-budget founder plan to launch ReplyPilot as the conversation-timing tool for X-native builders.","textPreview":"A low-budget founder plan to launch ReplyPilot as the conversation-timing tool for X-native builders.","textChars":101,"textLines":1,"bbox":[76,322,650,92]}
+{"kind":"shape","id":"sh/94fu18jq","slide":1,"name":"hero-panel","bbox":[820,104,340,430]}
+{"kind":"textbox","id":"sh/kjm1cfa9","slide":1,"name":"hero-panel-label","text":"LIVE OPPORTUNITY","textPreview":"LIVE OPPORTUNITY","textChars":16,"textLines":1,"bbox":[850,134,200,22]}
+{"kind":"textbox","id":"sh/rqd4vmtw","slide":1,"name":"hero-score","text":"87","textPreview":"87","textChars":2,"textLines":1,"bbox":[850,176,118,72]}
+{"kind":"textbox","id":"sh/25kb6xkf","slide":1,"name":"hero-reason","text":"Young thread. Strong topic fit. Missing founder angle.","textPreview":"Young thread. Strong topic fit. Missing founder angle.","textChars":54,"textLines":1,"bbox":[850,266,260,76]}
+{"kind":"shape","id":"sh/4fu18jqh","slide":1,"name":"hero-divider","bbox":[850,370,260,1]}
+{"kind":"textbox","id":"sh/x0nuxc3y","slide":1,"name":"hero-options","text":"3 reply drafts\nReason for each\nHuman-sent always","textPreview":"3 reply drafts | Reason for each | Human-sent always","textChars":48,"textLines":3,"bbox":[850,392,260,92]}
+{"kind":"textbox","id":"sh/m94fu18j","slide":1,"name":"footer-1","text":"REPLYPILOT GTM / 01","textPreview":"REPLYPILOT GTM / 01","textChars":19,"textLines":1,"bbox":[72,660,260,22]}
+{"kind":"notes","id":"nt/sjrxhu","slide":1,"text":""}
+{"kind":"slide","id":"sl/5slibq","slide":2,"title":"LAUNCH DECISION","textShapes":10}
+{"kind":"shape","id":"sh/svu9knih","slide":2,"name":"left-rail","bbox":[0,0,28,720]}
+{"kind":"shape","id":"sh/za1gvy90","slide":2,"name":"top-rule","bbox":[28,0,1252,1]}
+{"kind":"textbox","id":"sh/ap4r65wj","slide":2,"name":"eyebrow-2","text":"LAUNCH DECISION","textPreview":"LAUNCH DECISION","textChars":15,"textLines":1,"bbox":[72,54,430,24]}
+{"kind":"textbox","id":"sh/hoza1gvy","slide":2,"name":"title-2","text":"ReplyPilot should own conversation timing, not generic AI writing.","textPreview":"ReplyPilot should own conversation timing, not generic AI writing.","textChars":66,"textLines":1,"bbox":[72,92,900,96]}
+{"kind":"textbox","id":"sh/s36hcrmh","slide":2,"name":"footer-2","text":"REPLYPILOT GTM / 02","textPreview":"REPLYPILOT GTM / 02","textChars":19,"textLines":1,"bbox":[72,660,260,22]}
+{"kind":"textbox","id":"sh/zidonyd0","slide":2,"name":"claim","text":"The market already has tools for drafting, scheduling, rewriting, and analytics. The product becomes easier to explain when it starts before the composer: what is worth replying to right now?","textPreview":"The market already has tools for drafting, scheduling, rewriting, and analytics. The product becomes easier to explain when it starts bef...","textChars":191,"textLines":1,"bbox":[92,212,660,118]}
+{"kind":"shape","id":"sh/a1gvy90j","slide":2,"name":"decision-1-card","bbox":[790,205,340,110]}
+{"kind":"textbox","id":"sh/lszqtcj6","slide":2,"name":"decision-1-title","text":"Not the wedge","textPreview":"Not the wedge","textChars":13,"textLines":1,"bbox":[814,227,292,32]}
+{"kind":"textbox","id":"sh/s72x4nap","slide":2,"name":"decision-1-body","text":"AI tweet writing is table stakes and easy to compare against larger tools.","textPreview":"AI tweet writing is table stakes and easy to compare against larger tools.","textChars":74,"textLines":1,"bbox":[814,271,292,24]}
+{"kind":"shape","id":"sh/idonyd0z","slide":2,"name":"decision-2-card","bbox":[790,340,340,110]}
+{"kind":"shape","id":"sh/byhgn29g","slide":2,"name":"decision-2-bar","bbox":[790,340,6,110]}
+{"kind":"textbox","id":"sh/0je9cvix","slide":2,"name":"decision-2-title","text":"The wedge","textPreview":"The wedge","textChars":9,"textLines":1,"bbox":[814,362,292,32]}
+{"kind":"textbox","id":"sh/t47y1kre","slide":2,"name":"decision-2-body","text":"Discovery, timing, and the missing angle before the conversation cools.","textPreview":"Discovery, timing, and the missing angle before the conversation cools.","textChars":71,"textLines":1,"bbox":[814,406,292,24]}
+{"kind":"shape","id":"sh/il0rqd4v","slide":2,"name":"decision-3-card","bbox":[790,475,340,110]}
+{"kind":"textbox","id":"sh/b6xkf6dc","slide":2,"name":"decision-3-title","text":"The constraint","textPreview":"The constraint","textChars":14,"textLines":1,"bbox":[814,497,292,32]}
+{"kind":"textbox","id":"sh/0rqd4vmt","slide":2,"name":"decision-3-body","text":"No auto-posting, no fake virality scores, and every send stays human-approved.","textPreview":"No auto-posting, no fake virality scores, and every send stays human-approved.","textChars":78,"textLines":1,"bbox":[814,541,292,24]}
+{"kind":"notes","id":"nt/5slibq","slide":2,"text":""}
+{"kind":"slide","id":"sl/gr9dpm","slide":3,"title":"MARKET REALITY","textShapes":10}
+{"kind":"shape","id":"sh/rmhk3q5o","slide":3,"name":"left-rail","bbox":[0,0,28,720]}
+{"kind":"shape","id":"sh/g7adsji5","slide":3,"name":"top-rule","bbox":[28,0,1252,1]}
+{"kind":"textbox","id":"sh/9s36hcrm","slide":3,"name":"eyebrow-3","text":"MARKET REALITY","textPreview":"MARKET REALITY","textChars":14,"textLines":1,"bbox":[72,54,430,24]}
+{"kind":"textbox","id":"sh/yd0z6103","slide":3,"name":"title-3","text":"Competitors are broad; ReplyPilot can be narrow and sharper.","textPreview":"Competitors are broad; ReplyPilot can be narrow and sharper.","textChars":60,"textLines":1,"bbox":[72,92,900,96]}
+{"kind":"textbox","id":"sh/rytsvu9k","slide":3,"name":"footer-3","text":"REPLYPILOT GTM / 03","textPreview":"REPLYPILOT GTM / 03","textChars":19,"textLines":1,"bbox":[72,660,260,22]}
+{"kind":"shape","id":"sh/gfmlkjm1","slide":3,"name":"typefully-card","bbox":[72,220,340,190]}
+{"kind":"textbox","id":"sh/90je9cvi","slide":3,"name":"typefully-title","text":"Typefully","textPreview":"Typefully","textChars":9,"textLines":1,"bbox":[96,242,292,32]}
+{"kind":"textbox","id":"sh/ylc7u54z","slide":3,"name":"typefully-body","text":"AI-assisted writing, collaborative scheduling, cross-posting, previews, and analytics.","textPreview":"AI-assisted writing, collaborative scheduling, cross-posting, previews, and analytics.","textChars":86,"textLines":1,"bbox":[96,286,292,104]}
+{"kind":"shape","id":"sh/r65wjudg","slide":3,"name":"tweethunter-card","bbox":[470,220,340,190]}
+{"kind":"textbox","id":"sh/vahoza1g","slide":3,"name":"tweethunter-title","text":"Tweet Hunter","textPreview":"Tweet Hunter","textChars":12,"textLines":1,"bbox":[494,242,292,32]}
+{"kind":"textbox","id":"sh/6tovahoz","slide":3,"name":"tweethunter-body","text":"Viral tweet libraries, AI writing, scheduling, automation, and X growth workflows.","textPreview":"Viral tweet libraries, AI writing, scheduling, automation, and X growth workflows.","textChars":82,"textLines":1,"bbox":[494,286,292,104]}
+{"kind":"shape","id":"sh/dg7adsji","slide":3,"name":"hypefury-card","bbox":[868,220,340,190]}
+{"kind":"textbox","id":"sh/ovahoza1","slide":3,"name":"hypefury-title","text":"Hypefury","textPreview":"Hypefury","textChars":8,"textLines":1,"bbox":[892,242,292,32]}
+{"kind":"textbox","id":"sh/z25kb6xk","slide":3,"name":"hypefury-body","text":"Scheduling, cross-posting, auto-plugs, AI posts, analytics, and engagement builder.","textPreview":"Scheduling, cross-posting, auto-plugs, AI posts, analytics, and engagement builder.","textChars":83,"textLines":1,"bbox":[892,286,292,104]}
+{"kind":"textbox","id":"sh/6hcrmhk3","slide":3,"name":"market-bottom","text":"ReplyPilot's opening: the radar layer that tells a founder which conversation deserves a reply before they start writing.","textPreview":"ReplyPilot's opening: the radar layer that tells a founder which conversation deserves a reply before they start writing.","textChars":121,"textLines":1,"bbox":[148,488,990,82]}
+{"kind":"notes","id":"nt/gr9dpm","slide":3,"text":""}
+{"kind":"slide","id":"sl/d60cg5","slide":4,"title":"BEACHHEAD CUSTOMER","textShapes":13}
+{"kind":"shape","id":"sh/v6psfil0","slide":4,"name":"left-rail","bbox":[0,0,28,720]}
+{"kind":"shape","id":"sh/knih4byh","slide":4,"name":"top-rule","bbox":[28,0,1252,1]}
+{"kind":"textbox","id":"sh/d8bat47y","slide":4,"name":"eyebrow-4","text":"BEACHHEAD CUSTOMER","textPreview":"BEACHHEAD CUSTOMER","textChars":18,"textLines":1,"bbox":[72,54,430,24]}
+{"kind":"textbox","id":"sh/29gr2p8n","slide":4,"name":"title-4","text":"Start with X-native founders who already believe replies drive growth.","textPreview":"Start with X-native founders who already believe replies drive growth.","textChars":70,"textLines":1,"bbox":[72,92,900,96]}
+{"kind":"textbox","id":"sh/vu9knih4","slide":4,"name":"footer-4","text":"REPLYPILOT GTM / 04","textPreview":"REPLYPILOT GTM / 04","textChars":19,"textLines":1,"bbox":[72,660,260,22]}
+{"kind":"shape","id":"sh/kf6dcbul","slide":4,"name":"icp-main","bbox":[72,212,548,330]}
+{"kind":"textbox","id":"sh/d0z61032","slide":4,"name":"icp-title","text":"Best first users","textPreview":"Best first users","textChars":16,"textLines":1,"bbox":[108,246,450,34]}
+{"kind":"shape","id":"sh/2x4nap4r","slide":4,"name":"icp-dot-0","bbox":[108,314,10,10]}
+{"kind":"textbox","id":"sh/vixczed8","slide":4,"name":"icp-text-0","text":"Solo founders, indie hackers, and AI builders.","textPreview":"Solo founders, indie hackers, and AI builders.","textChars":46,"textLines":1,"bbox":[134,306,424,44]}
+{"kind":"shape","id":"sh/vmtwra5g","slide":4,"name":"icp-dot-1","bbox":[108,362,10,10]}
+{"kind":"textbox","id":"sh/61032lsz","slide":4,"name":"icp-text-1","text":"500-25,000 followers with a visible niche.","textPreview":"500-25,000 followers with a visible niche.","textChars":42,"textLines":1,"bbox":[134,354,424,44]}
+{"kind":"shape","id":"sh/dsji5sne","slide":4,"name":"icp-dot-2","bbox":[108,410,10,10]}
+{"kind":"textbox","id":"sh/o7qpg3ex","slide":4,"name":"icp-text-2","text":"Posts or replies at least 4 days per week.","textPreview":"Posts or replies at least 4 days per week.","textChars":42,"textLines":1,"bbox":[134,402,424,44]}
+{"kind":"shape","id":"sh/vy90je9c","slide":4,"name":"icp-dot-3","bbox":[108,458,10,10]}
+{"kind":"textbox","id":"sh/6dcbulwv","slide":4,"name":"icp-text-3","text":"Already uses X as a customer, investor, or audience channel.","textPreview":"Already uses X as a customer, investor, or audience channel.","textChars":60,"textLines":1,"bbox":[134,450,424,44]}
+{"kind":"shape","id":"sh/d4vmtwra","slide":4,"name":"avoid-main","bbox":[690,212,470,330]}
+{"kind":"textbox","id":"sh/oj2t83it","slide":4,"name":"avoid-title","text":"Avoid at launch","textPreview":"Avoid at launch","textChars":15,"textLines":1,"bbox":[726,246,380,34]}
+{"kind":"shape","id":"sh/z25kb6xk","slide":4,"name":"avoid-dot-0","bbox":[726,314,10,10]}
+{"kind":"textbox","id":"sh/6hcrmhk3","slide":4,"name":"avoid-text-0","text":"Agencies and multi-account teams.","textPreview":"Agencies and multi-account teams.","textChars":33,"textLines":1,"bbox":[752,306,334,44]}
+{"kind":"shape","id":"sh/at47y1kr","slide":4,"name":"avoid-dot-1","bbox":[726,362,10,10]}
+{"kind":"textbox","id":"sh/3ex0nuxc","slide":4,"name":"avoid-text-1","text":"Beginners without a niche.","textPreview":"Beginners without a niche.","textChars":26,"textLines":1,"bbox":[752,354,334,44]}
+{"kind":"shape","id":"sh/szqtcj6t","slide":4,"name":"avoid-dot-2","bbox":[726,410,10,10]}
+{"kind":"textbox","id":"sh/lkjm1cfa","slide":4,"name":"avoid-text-2","text":"Users seeking automated replies.","textPreview":"Users seeking automated replies.","textChars":32,"textLines":1,"bbox":[752,402,334,44]}
+{"kind":"shape","id":"sh/ahoza1gv","slide":4,"name":"avoid-dot-3","bbox":[726,458,10,10]}
+{"kind":"textbox","id":"sh/32lszqtc","slide":4,"name":"avoid-text-3","text":"Enterprise approval workflows.","textPreview":"Enterprise approval workflows.","textChars":30,"textLines":1,"bbox":[752,450,334,44]}
+{"kind":"notes","id":"nt/d60cg5","slide":4,"text":""}
+{"kind":"slide","id":"sl/4b0woh","slide":5,"title":"POSITIONING","textShapes":10}
+{"kind":"shape","id":"sh/e1w7mp0b","slide":5,"name":"left-rail","bbox":[0,0,28,720]}
+{"kind":"shape","id":"sh/psfil0rq","slide":5,"name":"top-rule","bbox":[28,0,1252,1]}
+{"kind":"textbox","id":"sh/w7mp0bi9","slide":5,"name":"eyebrow-5","text":"POSITIONING","textPreview":"POSITIONING","textChars":11,"textLines":1,"bbox":[72,54,430,24]}
+{"kind":"textbox","id":"sh/7adsji5s","slide":5,"name":"title-5","text":"Own conversation intelligence for X growth.","textPreview":"Own conversation intelligence for X growth.","textChars":43,"textLines":1,"bbox":[72,92,900,96]}
+{"kind":"textbox","id":"sh/epkzupwb","slide":5,"name":"footer-5","text":"REPLYPILOT GTM / 05","textPreview":"REPLYPILOT GTM / 05","textChars":19,"textLines":1,"bbox":[72,660,260,22]}
+{"kind":"textbox","id":"sh/pg3ex0nu","slide":5,"name":"positioning-statement","text":"For founders who grow through X, ReplyPilot surfaces high-opportunity posts early and drafts three on-voice replies with a clear reason to send.","textPreview":"For founders who grow through X, ReplyPilot surfaces high-opportunity posts early and drafts three on-voice replies with a clear reason t...","textChars":144,"textLines":1,"bbox":[100,214,1020,92]}
+{"kind":"shape","id":"sh/wval87ed","slide":5,"name":"pos-1-card","bbox":[112,374,300,130]}
+{"kind":"shape","id":"sh/36hcrmhk","slide":5,"name":"pos-1-bar","bbox":[112,374,6,130]}
+{"kind":"textbox","id":"sh/eloj2t83","slide":5,"name":"pos-1-title","text":"Primary line","textPreview":"Primary line","textChars":12,"textLines":1,"bbox":[136,396,252,32]}
+{"kind":"textbox","id":"sh/wra5gbq1","slide":5,"name":"pos-1-body","text":"Find high-fit X conversations before the window closes.","textPreview":"Find high-fit X conversations before the window closes.","textChars":55,"textLines":1,"bbox":[136,440,252,44]}
+{"kind":"shape","id":"sh/lc7u54zi","slide":5,"name":"pos-2-card","bbox":[490,374,300,130]}
+{"kind":"textbox","id":"sh/eloj2t83","slide":5,"name":"pos-2-title","text":"Founder pitch","textPreview":"Founder pitch","textChars":13,"textLines":1,"bbox":[514,396,252,32]}
+{"kind":"textbox","id":"sh/36hcrmhk","slide":5,"name":"pos-2-body","text":"The hard part is not writing. It is finding the right post early.","textPreview":"The hard part is not writing. It is finding the right post early.","textChars":65,"textLines":1,"bbox":[514,440,252,44]}
+{"kind":"shape","id":"sh/wfyxobm5","slide":5,"name":"pos-3-card","bbox":[868,374,300,130]}
+{"kind":"textbox","id":"sh/l0rqd4vm","slide":5,"name":"pos-3-title","text":"Trust line","textPreview":"Trust line","textChars":10,"textLines":1,"bbox":[892,396,252,32]}
+{"kind":"textbox","id":"sh/ed8bat47","slide":5,"name":"pos-3-body","text":"AI-assisted replies. Human-sent, always.","textPreview":"AI-assisted replies. Human-sent, always.","textChars":40,"textLines":1,"bbox":[892,440,252,44]}
+{"kind":"notes","id":"nt/4b0woh","slide":5,"text":""}
+{"kind":"slide","id":"sl/fwky0r","slide":6,"title":"BRAND STRATEGY","textShapes":9}
+{"kind":"shape","id":"sh/dsji5sne","slide":6,"name":"left-rail","bbox":[0,0,28,720]}
+{"kind":"shape","id":"sh/61032lsz","slide":6,"name":"top-rule","bbox":[28,0,1252,1]}
+{"kind":"textbox","id":"sh/vmtwra5g","slide":6,"name":"eyebrow-6","text":"BRAND STRATEGY","textPreview":"BRAND STRATEGY","textChars":14,"textLines":1,"bbox":[72,54,430,24]}
+{"kind":"textbox","id":"sh/oj2t83it","slide":6,"name":"title-6","text":"The brand should feel like a private radar.","textPreview":"The brand should feel like a private radar.","textChars":43,"textLines":1,"bbox":[72,92,900,96]}
+{"kind":"textbox","id":"sh/d4vmtwra","slide":6,"name":"footer-6","text":"REPLYPILOT GTM / 06","textPreview":"REPLYPILOT GTM / 06","textChars":19,"textLines":1,"bbox":[72,660,260,22]}
+{"kind":"textbox","id":"sh/6dcbulwv","slide":6,"name":"brand-idea","text":"The private radar for founder-led conversations.","textPreview":"The private radar for founder-led conversations.","textChars":48,"textLines":1,"bbox":[110,210,660,72]}
+{"kind":"shape","id":"sh/vy90je9c","slide":6,"name":"brand-principles-dot-0","bbox":[118,338,10,10]}
+{"kind":"textbox","id":"sh/onyd0z61","slide":6,"name":"brand-principles-text-0","text":"No fake certainty. Use reasons and observed outcomes.","textPreview":"No fake certainty. Use reasons and observed outcomes.","textChars":53,"textLines":1,"bbox":[144,330,604,50]}
+{"kind":"shape","id":"sh/d8v6psfi","slide":6,"name":"brand-principles-dot-1","bbox":[118,392,10,10]}
+{"kind":"textbox","id":"sh/twra5gbq","slide":6,"name":"brand-principles-text-1","text":"Human sends every time. The product prepares, the user decides.","textPreview":"Human sends every time. The product prepares, the user decides.","textChars":63,"textLines":1,"bbox":[144,384,604,50]}
+{"kind":"shape","id":"sh/4byhgn29","slide":6,"name":"brand-principles-dot-2","bbox":[118,446,10,10]}
+{"kind":"textbox","id":"sh/bq1oryts","slide":6,"name":"brand-principles-text-2","text":"Angles over templates. Show what is missing in the conversation.","textPreview":"Angles over templates. Show what is missing in the conversation.","textChars":64,"textLines":1,"bbox":[144,438,604,50]}
+{"kind":"shape","id":"sh/m58z25kb","slide":6,"name":"brand-principles-dot-3","bbox":[118,500,10,10]}
+{"kind":"textbox","id":"sh/t83itgfm","slide":6,"name":"brand-principles-text-3","text":"Quiet confidence. Editorial, restrained, precise.","textPreview":"Quiet confidence. Editorial, restrained, precise.","textChars":49,"textLines":1,"bbox":[144,492,604,50]}
+{"kind":"shape","id":"sh/4nap4r65","slide":6,"name":"brand-swatch-1","bbox":[850,230,68,68]}
+{"kind":"shape","id":"sh/b2hwfyxo","slide":6,"name":"brand-swatch-2","bbox":[930,230,68,68]}
+{"kind":"shape","id":"sh/mhk3q5o7","slide":6,"name":"brand-swatch-3","bbox":[1010,230,68,68]}
+{"kind":"shape","id":"sh/tgfmlkjm","slide":6,"name":"brand-swatch-4","bbox":[1090,230,68,68]}
+{"kind":"textbox","id":"sh/4vmtwra5","slide":6,"name":"brand-palette","text":"Dark Chrome: charcoal surfaces, orange timing signal, serif headlines, mono operational detail, 1px borders.","textPreview":"Dark Chrome: charcoal surfaces, orange timing signal, serif headlines, mono operational detail, 1px borders.","textChars":108,"textLines":1,"bbox":[850,330,305,132]}
+{"kind":"notes","id":"nt/fwky0r","slide":6,"text":""}
+{"kind":"slide","id":"sl/p9idzh","slide":7,"title":"OFFER AND PRICING","textShapes":12}
+{"kind":"shape","id":"sh/qpg3ex0n","slide":7,"name":"left-rail","bbox":[0,0,28,720]}
+{"kind":"shape","id":"sh/xczed8v6","slide":7,"name":"top-rule","bbox":[28,0,1252,1]}
+{"kind":"textbox","id":"sh/8v6psfil","slide":7,"name":"eyebrow-7","text":"OFFER AND PRICING","textPreview":"OFFER AND PRICING","textChars":17,"textLines":1,"bbox":[72,54,430,24]}
+{"kind":"textbox","id":"sh/fyxobm58","slide":7,"name":"title-7","text":"Validate willingness to pay without punishing usage.","textPreview":"Validate willingness to pay without punishing usage.","textChars":52,"textLines":1,"bbox":[72,92,900,96]}
+{"kind":"textbox","id":"sh/qd4vmtwr","slide":7,"name":"footer-7","text":"REPLYPILOT GTM / 07","textPreview":"REPLYPILOT GTM / 07","textChars":19,"textLines":1,"bbox":[72,660,260,22]}
+{"kind":"textbox","id":"sh/x4nap4r6","slide":7,"name":"beta-price","text":"$19/mo","textPreview":"$19/mo","textChars":6,"textLines":1,"bbox":[86,218,250,70]}
+{"kind":"textbox","id":"sh/8jqh0fep","slide":7,"name":"beta-copy","text":"Founder Beta for the first 100 users, locked for 12 months. Include onboarding, scanner access, watched accounts, and fair-use caps.","textPreview":"Founder Beta for the first 100 users, locked for 12 months. Include onboarding, scanner access, watched accounts, and fair-use caps.","textChars":132,"textLines":1,"bbox":[90,304,430,116]}
+{"kind":"shape","id":"sh/fmlkjm1c","slide":7,"name":"free-card","bbox":[570,218,190,220]}
+{"kind":"textbox","id":"sh/q1orytsv","slide":7,"name":"free-title","text":"Free","textPreview":"Free","textChars":4,"textLines":1,"bbox":[594,240,142,32]}
+{"kind":"textbox","id":"sh/4nap4r65","slide":7,"name":"free-body","text":"3 analyses/day\n1 voice profile\nManual URL analyze\nNo full scanner","textPreview":"3 analyses/day | 1 voice profile | Manual URL analyze | No full scanner","textChars":65,"textLines":4,"bbox":[594,284,142,134]}
+{"kind":"shape","id":"sh/t83itgfm","slide":7,"name":"pro-card","bbox":[782,218,190,220]}
+{"kind":"shape","id":"sh/mhk3q5o7","slide":7,"name":"pro-bar","bbox":[782,218,6,220]}
+{"kind":"textbox","id":"sh/b2hwfyxo","slide":7,"name":"pro-title","text":"Pro","textPreview":"Pro","textChars":3,"textLines":1,"bbox":[806,240,142,32]}
+{"kind":"textbox","id":"sh/4byhgn29","slide":7,"name":"pro-body","text":"$29/month\nScanner\nNotifications\nReply analytics","textPreview":"$29/month | Scanner | Notifications | Reply analytics","textChars":47,"textLines":4,"bbox":[806,284,142,134]}
+{"kind":"shape","id":"sh/twra5gbq","slide":7,"name":"founder-card","bbox":[994,218,190,220]}
+{"kind":"textbox","id":"sh/m58z25kb","slide":7,"name":"founder-title","text":"Founder","textPreview":"Founder","textChars":7,"textLines":1,"bbox":[1018,240,142,32]}
+{"kind":"textbox","id":"sh/bq1oryts","slide":7,"name":"founder-body","text":"$59/month\nPriority cadence\nDaily briefing\nA/B variants","textPreview":"$59/month | Priority cadence | Daily briefing | A/B variants","textChars":54,"textLines":4,"bbox":[1018,284,142,134]}
+{"kind":"textbox","id":"sh/47y1kre1","slide":7,"name":"pricing-risk","text":"Keep credits behind the scenes. Visible credits would make users hesitate before analyzing, which works against habit formation.","textPreview":"Keep credits behind the scenes. Visible credits would make users hesitate before analyzing, which works against habit formation.","textChars":128,"textLines":1,"bbox":[90,512,1010,56]}
+{"kind":"notes","id":"nt/p9idzh","slide":7,"text":""}
+{"kind":"slide","id":"sl/3a9m0s","slide":8,"title":"LAUNCH MOTION","textShapes":15}
+{"kind":"shape","id":"sh/rmhk3q5o","slide":8,"name":"left-rail","bbox":[0,0,28,720]}
+{"kind":"shape","id":"sh/g7adsji5","slide":8,"name":"top-rule","bbox":[28,0,1252,1]}
+{"kind":"textbox","id":"sh/9s36hcrm","slide":8,"name":"eyebrow-8","text":"LAUNCH MOTION","textPreview":"LAUNCH MOTION","textChars":13,"textLines":1,"bbox":[72,54,430,24]}
+{"kind":"textbox","id":"sh/yd0z6103","slide":8,"name":"title-8","text":"Launch through proof and founder-led distribution.","textPreview":"Launch through proof and founder-led distribution.","textChars":50,"textLines":1,"bbox":[72,92,900,96]}
+{"kind":"textbox","id":"sh/rytsvu9k","slide":8,"name":"footer-8","text":"REPLYPILOT GTM / 08","textPreview":"REPLYPILOT GTM / 08","textChars":19,"textLines":1,"bbox":[72,660,260,22]}
+{"kind":"shape","id":"sh/gfmlkjm1","slide":8,"name":"launch-node-0","bbox":[86,296,28,28]}
+{"kind":"textbox","id":"sh/90je9cvi","slide":8,"name":"launch-phase-0","text":"PHASE 1","textPreview":"PHASE 1","textChars":7,"textLines":1,"bbox":[86,238,260,30]}
+{"kind":"textbox","id":"sh/ylc7u54z","slide":8,"name":"launch-title-0","text":"Private proof","textPreview":"Private proof","textChars":13,"textLines":1,"bbox":[86,334,260,34]}
+{"kind":"textbox","id":"sh/r65wjudg","slide":8,"name":"launch-body-0","text":"10 design partners. Five reply sessions each. Validate timing and angle quality.","textPreview":"10 design partners. Five reply sessions each. Validate timing and angle quality.","textChars":80,"textLines":1,"bbox":[86,376,260,90]}
+{"kind":"shape","id":"sh/vahoza1g","slide":8,"name":"launch-line-1","bbox":[346,308,18,2]}
+{"kind":"shape","id":"sh/6tovahoz","slide":8,"name":"launch-node-1","bbox":[364,296,28,28]}
+{"kind":"textbox","id":"sh/dg7adsji","slide":8,"name":"launch-phase-1","text":"PHASE 2","textPreview":"PHASE 2","textChars":7,"textLines":1,"bbox":[364,238,260,30]}
+{"kind":"textbox","id":"sh/ovahoza1","slide":8,"name":"launch-title-1","text":"Paid beta","textPreview":"Paid beta","textChars":9,"textLines":1,"bbox":[364,334,260,34]}
+{"kind":"textbox","id":"sh/z25kb6xk","slide":8,"name":"launch-body-1","text":"50 invited users. Charge after trial. Create one reply-win case study weekly.","textPreview":"50 invited users. Charge after trial. Create one reply-win case study weekly.","textChars":77,"textLines":1,"bbox":[364,376,260,90]}
+{"kind":"shape","id":"sh/6hcrmhk3","slide":8,"name":"launch-line-2","bbox":[624,308,18,2]}
+{"kind":"shape","id":"sh/d8v6psfi","slide":8,"name":"launch-node-2","bbox":[642,296,28,28]}
+{"kind":"textbox","id":"sh/onyd0z61","slide":8,"name":"launch-phase-2","text":"PHASE 3","textPreview":"PHASE 3","textChars":7,"textLines":1,"bbox":[642,238,260,30]}
+{"kind":"textbox","id":"sh/vy90je9c","slide":8,"name":"launch-title-2","text":"Public launch","textPreview":"Public launch","textChars":13,"textLines":1,"bbox":[642,334,260,34]}
+{"kind":"textbox","id":"sh/6dcbulwv","slide":8,"name":"launch-body-2","text":"X launch first. Product Hunt after proof. Founder pricing for first 100.","textPreview":"X launch first. Product Hunt after proof. Founder pricing for first 100.","textChars":72,"textLines":1,"bbox":[642,376,260,90]}
+{"kind":"shape","id":"sh/ahoza1gv","slide":8,"name":"launch-line-3","bbox":[902,308,18,2]}
+{"kind":"shape","id":"sh/32lszqtc","slide":8,"name":"launch-node-3","bbox":[920,296,28,28]}
+{"kind":"textbox","id":"sh/sneloj2t","slide":8,"name":"launch-phase-3","text":"PHASE 4","textPreview":"PHASE 4","textChars":7,"textLines":1,"bbox":[920,238,260,30]}
+{"kind":"textbox","id":"sh/l87ed8ba","slide":8,"name":"launch-title-3","text":"Referral habit","textPreview":"Referral habit","textChars":14,"textLines":1,"bbox":[920,334,260,34]}
+{"kind":"textbox","id":"sh/at47y1kr","slide":8,"name":"launch-body-3","text":"Prompt referrals after five useful replies. Share sanitized wins.","textPreview":"Prompt referrals after five useful replies. Share sanitized wins.","textChars":65,"textLines":1,"bbox":[920,376,260,90]}
+{"kind":"notes","id":"nt/3a9m0s","slide":8,"text":""}
+{"kind":"slide","id":"sl/6khjem","slide":9,"title":"CHANNELS","textShapes":10}
+{"kind":"shape","id":"sh/36hcrmhk","slide":9,"name":"left-rail","bbox":[0,0,28,720]}
+{"kind":"shape","id":"sh/wra5gbq1","slide":9,"name":"top-rule","bbox":[28,0,1252,1]}
+{"kind":"textbox","id":"sh/lc7u54zi","slide":9,"name":"eyebrow-9","text":"CHANNELS","textPreview":"CHANNELS","textChars":8,"textLines":1,"bbox":[72,54,430,24]}
+{"kind":"textbox","id":"sh/ed8bat47","slide":9,"name":"title-9","text":"The main channel is the same network the product improves.","textPreview":"The main channel is the same network the product improves.","textChars":58,"textLines":1,"bbox":[72,92,900,96]}
+{"kind":"textbox","id":"sh/7u54zido","slide":9,"name":"footer-9","text":"REPLYPILOT GTM / 09","textPreview":"REPLYPILOT GTM / 09","textChars":19,"textLines":1,"bbox":[72,660,260,22]}
+{"kind":"shape","id":"sh/wfyxobm5","slide":9,"name":"channel-x-card","bbox":[88,220,310,250]}
+{"kind":"shape","id":"sh/l0rqd4vm","slide":9,"name":"channel-x-bar","bbox":[88,220,6,250]}
+{"kind":"textbox","id":"sh/e1w7mp0b","slide":9,"name":"channel-x-title","text":"X founder content","textPreview":"X founder content","textChars":17,"textLines":1,"bbox":[112,242,262,32]}
+{"kind":"textbox","id":"sh/7mp0bi9s","slide":9,"name":"channel-x-body","text":"Weekly reply teardowns, build-in-public posts, customer proof, and 10-20 thoughtful founder replies per day.","textPreview":"Weekly reply teardowns, build-in-public posts, customer proof, and 10-20 thoughtful founder replies per day.","textChars":108,"textLines":1,"bbox":[112,286,262,164]}
+{"kind":"shape","id":"sh/zed8v6ps","slide":9,"name":"channel-outreach-card","bbox":[486,220,310,250]}
+{"kind":"textbox","id":"sh/6xkf6dcb","slide":9,"name":"channel-outreach-title","text":"Direct outreach","textPreview":"Direct outreach","textChars":15,"textLines":1,"bbox":[510,242,262,32]}
+{"kind":"textbox","id":"sh/hk3q5o7q","slide":9,"name":"channel-outreach-body","text":"Manual, niche-specific messages to active founders already posting about AI, SaaS, devtools, and building in public.","textPreview":"Manual, niche-specific messages to active founders already posting about AI, SaaS, devtools, and building in public.","textChars":116,"textLines":1,"bbox":[510,286,262,164]}
+{"kind":"shape","id":"sh/oza1gvy9","slide":9,"name":"channel-partners-card","bbox":[884,220,310,250]}
+{"kind":"textbox","id":"sh/zqtcj6to","slide":9,"name":"channel-partners-title","text":"Community partners","textPreview":"Community partners","textChars":18,"textLines":1,"bbox":[908,242,262,32]}
+{"kind":"textbox","id":"sh/65wjudg7","slide":9,"name":"channel-partners-body","text":"Low-cost workshops, reply sprints, and co-branded teardown reports for founder communities.","textPreview":"Low-cost workshops, reply sprints, and co-branded teardown reports for founder communities.","textChars":91,"textLines":1,"bbox":[908,286,262,164]}
+{"kind":"textbox","id":"sh/hwfyxobm","slide":9,"name":"channel-rule","text":"Avoid paid ads until retention is proven.","textPreview":"Avoid paid ads until retention is proven.","textChars":41,"textLines":1,"bbox":[190,540,900,42]}
+{"kind":"notes","id":"nt/6khjem","slide":9,"text":""}
+{"kind":"slide","id":"sl/uzzufq","slide":10,"title":"SOLO FOUNDER CADENCE","textShapes":12}
+{"kind":"shape","id":"sh/fa9w3m94","slide":10,"name":"left-rail","bbox":[0,0,28,720]}
+{"kind":"shape","id":"sh/8v6psfil","slide":10,"name":"top-rule","bbox":[28,0,1252,1]}
+{"kind":"textbox","id":"sh/xczed8v6","slide":10,"name":"eyebrow-10","text":"SOLO FOUNDER CADENCE","textPreview":"SOLO FOUNDER CADENCE","textChars":20,"textLines":1,"bbox":[72,54,430,24]}
+{"kind":"textbox","id":"sh/qd4vmtwr","slide":10,"name":"title-10","text":"Keep the operating system small enough to repeat every week.","textPreview":"Keep the operating system small enough to repeat every week.","textChars":60,"textLines":1,"bbox":[72,92,900,96]}
+{"kind":"textbox","id":"sh/fyxobm58","slide":10,"name":"footer-10","text":"REPLYPILOT GTM / 10","textPreview":"REPLYPILOT GTM / 10","textChars":19,"textLines":1,"bbox":[72,660,260,22]}
+{"kind":"textbox","id":"sh/8jqh0fep","slide":10,"name":"m1-value","text":"20m","textPreview":"20m","textChars":3,"textLines":1,"bbox":[92,230,180,58]}
+{"kind":"textbox","id":"sh/x4nap4r6","slide":10,"name":"m1-label","text":"Use ReplyPilot on the founder account every day.","textPreview":"Use ReplyPilot on the founder account every day.","textChars":48,"textLines":1,"bbox":[92,284,230,54]}
+{"kind":"textbox","id":"sh/q1orytsv","slide":10,"name":"m2-value","text":"5","textPreview":"5","textChars":1,"textLines":1,"bbox":[344,230,180,58]}
+{"kind":"textbox","id":"sh/fmlkjm1c","slide":10,"name":"m2-label","text":"Manual qualified prospect messages per day.","textPreview":"Manual qualified prospect messages per day.","textChars":43,"textLines":1,"bbox":[344,284,230,54]}
+{"kind":"textbox","id":"sh/jqh0fepk","slide":10,"name":"m3-value","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[596,230,180,58]}
+{"kind":"textbox","id":"sh/q5o7qpg3","slide":10,"name":"m3-label","text":"User call, session review, or proof example per day.","textPreview":"User call, session review, or proof example per day.","textChars":52,"textLines":1,"bbox":[596,284,230,54]}
+{"kind":"textbox","id":"sh/1w7mp0bi","slide":10,"name":"m4-value","text":"$500","textPreview":"$500","textChars":4,"textLines":1,"bbox":[848,230,180,58]}
+{"kind":"textbox","id":"sh/8bat47y1","slide":10,"name":"m4-label","text":"Monthly cash ceiling until retention is proven.","textPreview":"Monthly cash ceiling until retention is proven.","textChars":47,"textLines":1,"bbox":[848,284,230,54]}
+{"kind":"shape","id":"sh/j2t83itg","slide":10,"name":"cadence-band","bbox":[114,446,976,88]}
+{"kind":"textbox","id":"sh/qh0fepkz","slide":10,"name":"cadence-text","text":"Monday metrics, Tuesday onboarding, Wednesday product friction, Thursday teardown post, Friday follow-ups and referrals.","textPreview":"Monday metrics, Tuesday onboarding, Wednesday product friction, Thursday teardown post, Friday follow-ups and referrals.","textChars":120,"textLines":1,"bbox":[146,468,912,42]}
+{"kind":"notes","id":"nt/uzzufq","slide":10,"text":""}
+{"kind":"slide","id":"sl/t366qt","slide":11,"title":"90-DAY PLAN","textShapes":15}
+{"kind":"shape","id":"sh/y90je9cv","slide":11,"name":"left-rail","bbox":[0,0,28,720]}
+{"kind":"shape","id":"sh/5wjudg7a","slide":11,"name":"top-rule","bbox":[28,0,1252,1]}
+{"kind":"textbox","id":"sh/gbq1oryt","slide":11,"name":"eyebrow-11","text":"90-DAY PLAN","textPreview":"90-DAY PLAN","textChars":11,"textLines":1,"bbox":[72,54,430,24]}
+{"kind":"textbox","id":"sh/n29gr2p8","slide":11,"name":"title-11","text":"Use 90 days to prove missed reply moments.","textPreview":"Use 90 days to prove missed reply moments.","textChars":42,"textLines":1,"bbox":[72,92,900,96]}
+{"kind":"textbox","id":"sh/yhgn29gr","slide":11,"name":"footer-11","text":"REPLYPILOT GTM / 11","textPreview":"REPLYPILOT GTM / 11","textChars":19,"textLines":1,"bbox":[72,660,260,22]}
+{"kind":"shape","id":"sh/58z25kb6","slide":11,"name":"days-node-0","bbox":[86,293,28,28]}
+{"kind":"textbox","id":"sh/gn29gr2p","slide":11,"name":"days-phase-0","text":"DAYS 1-14","textPreview":"DAYS 1-14","textChars":9,"textLines":1,"bbox":[86,235,260,30]}
+{"kind":"textbox","id":"sh/neloj2t8","slide":11,"name":"days-title-0","text":"Proof setup","textPreview":"Proof setup","textChars":11,"textLines":1,"bbox":[86,331,260,34]}
+{"kind":"textbox","id":"sh/ytsvu9kn","slide":11,"name":"days-body-0","text":"Waitlist page, onboarding script, first 10 users, and 3 proof examples.","textPreview":"Waitlist page, onboarding script, first 10 users, and 3 proof examples.","textChars":71,"textLines":1,"bbox":[86,373,260,90]}
+{"kind":"shape","id":"sh/83itgfml","slide":11,"name":"days-line-1","bbox":[346,305,18,2]}
+{"kind":"shape","id":"sh/xobm58z2","slide":11,"name":"days-node-1","bbox":[364,293,28,28]}
+{"kind":"textbox","id":"sh/qxs72x4n","slide":11,"name":"days-phase-1","text":"DAYS 15-45","textPreview":"DAYS 15-45","textChars":10,"textLines":1,"bbox":[364,235,260,30]}
+{"kind":"textbox","id":"sh/fil0rqd4","slide":11,"name":"days-title-1","text":"Paid beta","textPreview":"Paid beta","textChars":9,"textLines":1,"bbox":[364,331,260,34]}
+{"kind":"textbox","id":"sh/4fu18jqh","slide":11,"name":"days-body-1","text":"Invite 50 users, charge after trial, collect proof, tighten first value.","textPreview":"Invite 50 users, charge after trial, collect proof, tighten first value.","textChars":72,"textLines":1,"bbox":[364,373,260,90]}
+{"kind":"shape","id":"sh/x0nuxc3y","slide":11,"name":"days-line-2","bbox":[624,305,18,2]}
+{"kind":"shape","id":"sh/m94fu18j","slide":11,"name":"days-node-2","bbox":[642,293,28,28]}
+{"kind":"textbox","id":"sh/fu18jqh0","slide":11,"name":"days-phase-2","text":"DAYS 46-75","textPreview":"DAYS 46-75","textChars":10,"textLines":1,"bbox":[642,235,260,30]}
+{"kind":"textbox","id":"sh/4r65wjud","slide":11,"name":"days-title-2","text":"Launch prep","textPreview":"Launch prep","textChars":11,"textLines":1,"bbox":[642,331,260,34]}
+{"kind":"textbox","id":"sh/xc3ylc7u","slide":11,"name":"days-body-2","text":"Screenshots, demo clips, comparison pages, FAQ, and launch thread.","textPreview":"Screenshots, demo clips, comparison pages, FAQ, and launch thread.","textChars":66,"textLines":1,"bbox":[642,373,260,90]}
+{"kind":"shape","id":"sh/x4nap4r6","slide":11,"name":"days-line-3","bbox":[902,305,18,2]}
+{"kind":"shape","id":"sh/8jqh0fep","slide":11,"name":"days-node-3","bbox":[920,293,28,28]}
+{"kind":"textbox","id":"sh/fyxobm58","slide":11,"name":"days-phase-3","text":"DAYS 76-90","textPreview":"DAYS 76-90","textChars":10,"textLines":1,"bbox":[920,235,260,30]}
+{"kind":"textbox","id":"sh/qd4vmtwr","slide":11,"name":"days-title-3","text":"Public launch","textPreview":"Public launch","textChars":13,"textLines":1,"bbox":[920,331,260,34]}
+{"kind":"textbox","id":"sh/xczed8v6","slide":11,"name":"days-body-3","text":"Launch on X, then Product Hunt. Onboard serious signups live.","textPreview":"Launch on X, then Product Hunt. Onboard serious signups live.","textChars":61,"textLines":1,"bbox":[920,373,260,90]}
+{"kind":"notes","id":"nt/t366qt","slide":11,"text":""}
+{"kind":"slide","id":"sl/ter1cc","slide":12,"title":"IMMEDIATE NEXT STEPS","textShapes":9}
+{"kind":"shape","id":"sh/at47y1kr","slide":12,"name":"left-rail","bbox":[0,0,28,720]}
+{"kind":"shape","id":"sh/lkjm1cfa","slide":12,"name":"top-rule","bbox":[28,0,1252,1]}
+{"kind":"textbox","id":"sh/szqtcj6t","slide":12,"name":"eyebrow-12","text":"IMMEDIATE NEXT STEPS","textPreview":"IMMEDIATE NEXT STEPS","textChars":20,"textLines":1,"bbox":[72,54,430,24]}
+{"kind":"textbox","id":"sh/32lszqtc","slide":12,"name":"title-12","text":"Create proof before spending on scale.","textPreview":"Create proof before spending on scale.","textChars":38,"textLines":1,"bbox":[72,92,900,96]}
+{"kind":"textbox","id":"sh/ahoza1gv","slide":12,"name":"footer-12","text":"REPLYPILOT GTM / 12","textPreview":"REPLYPILOT GTM / 12","textChars":19,"textLines":1,"bbox":[72,660,260,22]}
+{"kind":"shape","id":"sh/l87ed8ba","slide":12,"name":"next-dot-0","bbox":[118,226,10,10]}
+{"kind":"textbox","id":"sh/sneloj2t","slide":12,"name":"next-text-0","text":"Update landing-page copy around the reply window and conversation timing.","textPreview":"Update landing-page copy around the reply window and conversation timing.","textChars":73,"textLines":1,"bbox":[144,218,934,54]}
+{"kind":"shape","id":"sh/3q5o7qpg","slide":12,"name":"next-dot-1","bbox":[118,284,10,10]}
+{"kind":"textbox","id":"sh/e9cvixcz","slide":12,"name":"next-text-1","text":"Build a 10-person design partner list from active founder accounts.","textPreview":"Build a 10-person design partner list from active founder accounts.","textChars":67,"textLines":1,"bbox":[144,276,934,54]}
+{"kind":"shape","id":"sh/87ed8bat","slide":12,"name":"next-dot-2","bbox":[118,342,10,10]}
+{"kind":"textbox","id":"sh/xs72x4na","slide":12,"name":"next-text-2","text":"Prepare concierge onboarding: niche, watched accounts, keywords, voice profile.","textPreview":"Prepare concierge onboarding: niche, watched accounts, keywords, voice profile.","textChars":79,"textLines":1,"bbox":[144,334,934,54]}
+{"kind":"shape","id":"sh/q1orytsv","slide":12,"name":"next-dot-3","bbox":[118,400,10,10]}
+{"kind":"textbox","id":"sh/fmlkjm1c","slide":12,"name":"next-text-3","text":"Instrument first visit -> first copied or sent reply.","textPreview":"Instrument first visit -> first copied or sent reply.","textChars":53,"textLines":1,"bbox":[144,392,934,54]}
+{"kind":"shape","id":"sh/8z25kb6x","slide":12,"name":"next-dot-4","bbox":[118,458,10,10]}
+{"kind":"textbox","id":"sh/1gvy90je","slide":12,"name":"next-text-4","text":"Use ReplyPilot daily from the founder account and publish one teardown per week.","textPreview":"Use ReplyPilot daily from the founder account and publish one teardown per week.","textChars":80,"textLines":1,"bbox":[144,450,934,54]}
+{"kind":"textbox","id":"sh/qtcj6tov","slide":12,"name":"sources","text":"Sources used: PRD, product strategy, design system, X API pricing, Typefully, Tweet Hunter, and Hypefury public positioning.","textPreview":"Sources used: PRD, product strategy, design system, X API pricing, Typefully, Tweet Hunter, and Hypefury public positioning.","textChars":124,"textLines":1,"bbox":[118,590,980,44]}
+{"kind":"notes","id":"nt/ter1cc","slide":12,"text":""}
