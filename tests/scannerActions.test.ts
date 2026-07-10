@@ -80,6 +80,21 @@ describe("cadenceMinutesForScan", () => {
     expect(cadenceMinutesForScan({ plan: "pro", lastScanCount: 0 })).toBe(60);
     expect(cadenceMinutesForScan({ plan: "free", lastScanCount: 0 })).toBe(120);
   });
+
+  it("raises slow lanes to the operator cadence floor", () => {
+    // Floor above the computed cadence wins (throttles frequent scanners).
+    expect(cadenceMinutesForScan({ plan: "pro", lastScanCount: 8 }, 45)).toBe(45);
+    expect(cadenceMinutesForScan({ plan: "founder", lastScanCount: 8 }, 45)).toBe(45);
+  });
+
+  it("never lowers a cadence that is already slower than the floor", () => {
+    // Floor below the computed cadence is a no-op.
+    expect(cadenceMinutesForScan({ plan: "free", lastScanCount: 0 }, 45)).toBe(120);
+  });
+
+  it("ignores a zero/unset floor", () => {
+    expect(cadenceMinutesForScan({ plan: "pro", lastScanCount: 8 }, 0)).toBe(15);
+  });
 });
 
 describe("shouldEnqueueScan", () => {
@@ -103,6 +118,18 @@ describe("shouldEnqueueScan", () => {
         lastScanAt: now - 30 * 60_000,
       })
     ).toBe(true);
+  });
+
+  it("holds users longer when the operator cadence floor is raised", () => {
+    const now = Date.now();
+    const context = {
+      plan: "pro" as const,
+      lastScanCount: 8, // would normally re-scan every 15 minutes
+      lastScanAt: now - 20 * 60_000,
+    };
+    // Default cadence (15m) would enqueue; a 45m floor holds it back.
+    expect(shouldEnqueueScan(now, context)).toBe(true);
+    expect(shouldEnqueueScan(now, context, 45)).toBe(false);
   });
 });
 

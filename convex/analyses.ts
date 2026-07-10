@@ -8,6 +8,9 @@ import { tweetAncestorSnapshot, tweetSnapshot } from "./schema";
 
 const STALE_PIPELINE_MS = 15 * 60 * 1000;
 const STALE_SWEEP_LIMIT = 50;
+// Re-analysis dedup window: reuse a recent completed analysis for the same
+// tweet instead of re-running the pipeline (see startAnalysisAction).
+const REUSE_WINDOW_MS = 30 * 60 * 1000;
 const STALE_PIPELINE_ERROR =
   "This analysis stalled before completion. Please retry; nothing was lost.";
 
@@ -90,6 +93,43 @@ export const start = mutation({
       await ctx.db.patch(projectId, { updatedAt: now });
     }
     return analysisId;
+  },
+});
+
+/**
+ * Returns a recent completed analysis this user already has for the same tweet,
+ * so the caller can reuse it instead of paying for another full pipeline. Only
+ * matches a fully analyzed row (has summary, status complete/legacy) within the
+ * reuse window and in the same project context. Ownership is enforced via
+ * requireUser + the by_user_tweet index, so no cross-user row can be returned.
+ */
+export const findReusableByTweet = query({
+  args: {
+    sessionToken: v.string(),
+    tweetId: v.string(),
+    projectId: v.optional(v.id("projects")),
+  },
+  handler: async (ctx, { sessionToken, tweetId, projectId }) => {
+    const user = await requireUser(ctx, sessionToken);
+    if (!tweetId) return null;
+    const requestedProject = projectId ?? undefined;
+    const now = Date.now();
+    const rows = await ctx.db
+      .query("tweetAnalyses")
+      .withIndex("by_user_tweet", (q) =>
+        q.eq("userId", user._id).eq("tweetId", tweetId)
+      )
+      .collect();
+    const reusable = rows
+      .filter(
+        (r) =>
+          (r.status === "complete" || r.status === undefined) &&
+          r.summary.trim().length > 0 &&
+          now - (r.updatedAt ?? r.createdAt) <= REUSE_WINDOW_MS &&
+          (r.projectId ?? undefined) === requestedProject
+      )
+      .sort((a, b) => (b.updatedAt ?? b.createdAt) - (a.updatedAt ?? a.createdAt));
+    return reusable[0]?._id ?? null;
   },
 });
 

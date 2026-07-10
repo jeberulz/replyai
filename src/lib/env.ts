@@ -19,15 +19,20 @@ export const env = {
     return process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8";
   },
   // Per-operation overrides. Analysis is reasoning-heavy (finding missing
-  // angles), so it defaults to the strongest model; generation and rewrite are
-  // higher-volume and latency-sensitive, so they can be pointed at a faster
-  // model (e.g. claude-sonnet-5) without touching analysis quality. Both fall
-  // back to ANTHROPIC_MODEL when unset.
+  // angles), so it defaults to the strongest model (ANTHROPIC_MODEL).
+  // Generation and rewrite are the high-volume, latency-sensitive path and the
+  // dominant token-cost line, so they default to a faster/cheaper model
+  // (Sonnet). An explicit ANTHROPIC_GENERATE_MODEL always wins; ANTHROPIC_MODEL
+  // raises the floor for any operation lacking its own override.
   get anthropicAnalyzeModel(): string {
     return process.env.ANTHROPIC_ANALYZE_MODEL ?? this.anthropicModel;
   },
   get anthropicGenerateModel(): string {
-    return process.env.ANTHROPIC_GENERATE_MODEL ?? this.anthropicModel;
+    return (
+      process.env.ANTHROPIC_GENERATE_MODEL ??
+      process.env.ANTHROPIC_MODEL ??
+      "claude-sonnet-5"
+    );
   },
   get xClientId(): string {
     return process.env.X_CLIENT_ID ?? "";

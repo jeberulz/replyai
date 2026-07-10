@@ -99,10 +99,16 @@ export function fingerprintText(text: string): string {
   return hash.toString(36);
 }
 
-/** Which candidates warrant a Haiku classification call this scan. */
+/**
+ * Which candidates warrant a Haiku classification call this scan.
+ * `batchLimit` is the hard cap on tweets sent to the classifier; the operator
+ * can lower it (env: SCANNER_SEMANTIC_BATCH_LIMIT) to trim per-scan AI spend
+ * during the beta without a redeploy.
+ */
 export function selectSemanticClassificationTargets(
   candidates: SemanticCandidateInput[],
-  maxRescue = SEMANTIC_RESCUE_LIMIT
+  maxRescue = SEMANTIC_RESCUE_LIMIT,
+  batchLimit = SEMANTIC_BATCH_LIMIT
 ): SemanticCandidateInput[] {
   const targets: SemanticCandidateInput[] = [];
   const rescuePool: SemanticCandidateInput[] = [];
@@ -132,7 +138,8 @@ export function selectSemanticClassificationTargets(
     seen.add(t.tweetId);
     deduped.push(t);
   }
-  return deduped.slice(0, SEMANTIC_BATCH_LIMIT);
+  const cap = batchLimit > 0 ? batchLimit : SEMANTIC_BATCH_LIMIT;
+  return deduped.slice(0, cap);
 }
 
 /** Whether a tweet should surface after semantic scoring (source-aware bar). */

@@ -163,6 +163,25 @@ describe("selectSemanticClassificationTargets", () => {
     expect(targets.some((t) => t.tweetId === "f0")).toBe(false);
     expect(targets.some((t) => t.tweetId === "f9")).toBe(true);
   });
+
+  it("caps the batch at the operator-supplied limit", () => {
+    const candidates = Array.from({ length: 30 }, (_, i) => ({
+      tweetId: `t${i}`,
+      text: "x",
+      source: "list" as const,
+      keywordScore: 1,
+      velocity: i,
+    }));
+    // Default cap is 25; a lower operator limit trims further.
+    expect(selectSemanticClassificationTargets(candidates).length).toBe(25);
+    expect(
+      selectSemanticClassificationTargets(candidates, undefined, 10).length
+    ).toBe(10);
+    // A non-positive limit falls back to the default cap.
+    expect(
+      selectSemanticClassificationTargets(candidates, undefined, 0).length
+    ).toBe(25);
+  });
 });
 
 describe("resolveSuggestedAngle", () => {
