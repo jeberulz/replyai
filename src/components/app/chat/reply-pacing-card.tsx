@@ -62,9 +62,9 @@ export function ReplyPacingCard() {
 
   return (
     <Card className={cn("w-full", meta.tone)}>
-      <CardHeader className="space-y-3 p-6 pb-4">
+      <CardHeader className="space-y-4 p-6 pb-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
+          <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.1em] text-muted-foreground">
               Reply budget
             </p>
@@ -75,14 +75,14 @@ export function ReplyPacingCard() {
           <Badge variant={meta.badge}>{meta.label}</Badge>
         </div>
 
-        <div className="flex flex-wrap items-end justify-between gap-6 pb-5">
+        <div className="flex items-end justify-between gap-6 pb-5">
           <div>
             <div className="font-mono text-[2.5rem] font-bold leading-none tabular-nums text-foreground">
               {pacing.sentRepliesToday}
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">sent today</p>
+            <p className="mt-3.5 text-xs text-muted-foreground">sent today</p>
           </div>
-          <div className="flex flex-wrap items-end justify-end gap-x-6 gap-y-3 text-[13px] leading-[18px] text-muted-foreground">
+          <div className="flex flex-col items-end gap-2.5 text-[13px] leading-[18px] text-muted-foreground opacity-90">
             <div className="inline-flex items-center gap-2">
               <Target className="size-4 text-primary" />
               <span>
@@ -112,8 +112,8 @@ export function ReplyPacingCard() {
         <p className="text-[15px] leading-[22px] text-foreground">{pacing.detail}</p>
       </CardHeader>
 
-      <CardContent className="space-y-3 px-6 pb-6 pt-0">
-        <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
+      <CardContent className="space-y-5 px-6 pb-6 pt-0">
+        <div className="flex items-center justify-between gap-2 border-t border-border pt-5">
           <div>
             <p className="text-lg font-semibold text-foreground">Today&apos;s best windows</p>
             <p className="text-sm text-muted-foreground">
@@ -137,14 +137,14 @@ export function ReplyPacingCard() {
                   {window.reason}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <div className="flex shrink-0 flex-wrap gap-2 text-xs text-muted-foreground">
                 {window.opportunityCount > 0 && (
-                  <span className="font-mono tabular-nums">
+                  <span className="whitespace-nowrap font-mono tabular-nums">
                     {window.opportunityCount} live
                   </span>
                 )}
                 {window.noOrMinorRate !== null && (
-                  <span className="font-mono tabular-nums">
+                  <span className="whitespace-nowrap font-mono tabular-nums">
                     {window.noOrMinorRate}% clean
                   </span>
                 )}
