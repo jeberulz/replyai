@@ -427,3 +427,51 @@ The first implementation worker appends:
     for production env before S8/S9 readiness evidence. The source no longer
     contains `hello@switchtoux.com`, but production readiness cannot be claimed
     until those real values are configured and verified.
+
+## 2026-07-10 — Production change inventory: AI spend caps (unblock generation)
+
+Symptom: non-demo AI generation returns "AI generation is temporarily
+unavailable until beta spend caps are configured." This is the intended
+fail-closed state (RULINGS #5, DoD #5): kill switch off + no hourly cap set +
+`AI_SPEND_LIMITS_REQUIRED` not `false`. Resolution is configuration only — no
+source change; the guard and its `tests/spendLimits.test.ts` coverage stay.
+
+Names-only inventory per the WP40 production change gate (values approved by
+owner; not committed):
+
+1. Convex production variables to add/change (via `npx convex env set`):
+   - `AI_ANALYSIS_HOURLY_LIMIT` — currently unset → set (owner-approved, per
+     user per hour).
+   - `AI_GENERATION_HOURLY_LIMIT` — currently unset → set (owner-approved, per
+     user per hour).
+   - `AI_SPEND_LIMITS_REQUIRED` — remains `true` (unchanged; not silently
+     unlimited).
+   - `AI_SPEND_KILL_SWITCH` — remains `false` (unchanged; operator kill switch
+     available for incidents).
+2. Enable/disable state: limits required stays ON; kill switch stays OFF; the
+   two hourly caps move from "unset (fail closed)" to "set (metered)".
+3. Approved caps: analysis and generation hourly caps recorded in the private
+   launch inventory. Worst-case daily estimate = per-user hourly cap × 24 ×
+   active users × current Anthropic unit cost from the owner-approved launch
+   inventory (no dollar figure committed here).
+4. Affected tables: none. `aiSpendLedger` rows are written per attempt as
+   before; existing rows unchanged.
+5. Rollback: for an incident set `AI_SPEND_KILL_SWITCH=true` (blocks all
+   non-demo AI spend immediately); to fully revert this change, unset both
+   hourly cap variables (returns to fail-closed) — `npx convex env remove
+   AI_ANALYSIS_HOURLY_LIMIT` / `AI_GENERATION_HOURLY_LIMIT`.
+6. Environment-only change: no production data mutation, so no restore-point
+   data tag required.
+
+Operator apply steps (run against the production Convex deployment):
+
+```
+npx convex env set AI_SPEND_KILL_SWITCH false
+npx convex env set AI_SPEND_LIMITS_REQUIRED true
+npx convex env set AI_ANALYSIS_HOURLY_LIMIT <approved-analysis-cap>
+npx convex env set AI_GENERATION_HOURLY_LIMIT <approved-generation-cap>
+```
+
+Verify: `npx convex env list` shows all four present; a non-demo generation
+request now succeeds and each attempt writes one `aiSpendLedger` row until the
+hourly cap, after which the user sees "Hourly generation capacity is full."
