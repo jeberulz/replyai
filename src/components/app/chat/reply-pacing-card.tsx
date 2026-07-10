@@ -43,11 +43,11 @@ export function ReplyPacingCard() {
 
   if (!pacing) {
     return (
-      <Card className="w-full max-w-3xl">
-        <CardContent className="space-y-4 p-5">
+      <Card className="w-full">
+        <CardContent className="space-y-4 p-6">
           <Skeleton className="h-4 w-36" />
           <Skeleton className="h-14 w-32" />
-          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-6 w-full" />
           <div className="space-y-2">
             <Skeleton className="h-14 w-full" />
             <Skeleton className="h-14 w-full" />
@@ -61,28 +61,28 @@ export function ReplyPacingCard() {
   const meta = warningMeta[pacing.warningLevel];
 
   return (
-    <Card className={cn("w-full max-w-3xl", meta.tone)}>
-      <CardHeader className="space-y-3 pb-4">
+    <Card className={cn("w-full", meta.tone)}>
+      <CardHeader className="space-y-3 p-6 pb-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <p className="font-mono text-xs uppercase tracking-[0.16em] text-primary">
+            <p className="text-xs uppercase tracking-[0.1em] text-muted-foreground">
               Reply budget
             </p>
-            <CardTitle className="text-base font-semibold">
+            <CardTitle className="font-serif text-2xl leading-8 text-foreground">
               Pace the day, then stop pushing volume
             </CardTitle>
           </div>
           <Badge variant={meta.badge}>{meta.label}</Badge>
         </div>
 
-        <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-6 pb-5">
           <div>
-            <div className="font-mono text-[2rem] leading-none tabular-nums text-foreground">
+            <div className="font-mono text-[2.5rem] font-bold leading-none tabular-nums text-foreground">
               {pacing.sentRepliesToday}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">sent today</p>
           </div>
-          <div className="space-y-1 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-end justify-end gap-x-6 gap-y-3 text-[13px] leading-[18px] text-muted-foreground">
             <div className="inline-flex items-center gap-2">
               <Target className="size-4 text-primary" />
               <span>
@@ -109,14 +109,14 @@ export function ReplyPacingCard() {
           </div>
         </div>
 
-        <p className="text-sm leading-6 text-muted-foreground">{pacing.detail}</p>
+        <p className="text-[15px] leading-[22px] text-foreground">{pacing.detail}</p>
       </CardHeader>
 
-      <CardContent className="space-y-3 pt-0">
+      <CardContent className="space-y-3 px-6 pb-6 pt-0">
         <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
           <div>
-            <p className="text-sm font-medium text-foreground">Today&apos;s best windows</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-lg font-semibold text-foreground">Today&apos;s best windows</p>
+            <p className="text-sm text-muted-foreground">
               Ranked from your sent-reply history plus live opportunity timing.
             </p>
           </div>
@@ -130,10 +130,10 @@ export function ReplyPacingCard() {
               className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
             >
               <div className="space-y-1">
-                <div className="font-mono text-sm tabular-nums text-foreground">
+                <div className="font-mono text-sm font-semibold tabular-nums text-foreground">
                   {window.label}
                 </div>
-                <p className="max-w-[52ch] text-xs leading-5 text-muted-foreground">
+                <p className="max-w-[52ch] text-base leading-6 text-muted-foreground">
                   {window.reason}
                 </p>
               </div>

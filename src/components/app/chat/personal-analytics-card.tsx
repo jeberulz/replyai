@@ -40,15 +40,14 @@ export function PersonalAnalyticsCard() {
 
   if (!analytics) {
     return (
-      <Card className="w-full max-w-3xl">
-        <CardHeader className="space-y-3 pb-4">
+      <Card className="w-full">
+        <CardHeader className="space-y-3 p-6 pb-4">
           <Skeleton className="h-4 w-36" />
           <Skeleton className="h-6 w-56" />
           <Skeleton className="h-4 w-full" />
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Skeleton className="h-32 w-full" />
+        <CardContent className="space-y-4 px-6 pb-6 pt-0">
+          <div className="grid gap-5 sm:grid-cols-2">
             <Skeleton className="h-32 w-full" />
             <Skeleton className="h-32 w-full" />
           </div>
@@ -68,19 +67,19 @@ export function PersonalAnalyticsCard() {
         : "Observed counts only — these are closed outcomes, not predictions.";
 
   return (
-    <Card className="w-full max-w-3xl">
-      <CardHeader className="space-y-3 pb-4">
+    <Card className="w-full">
+      <CardHeader className="space-y-3 p-6 pb-4">
         <div className="space-y-1">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-primary">
+          <p className="text-xs uppercase tracking-[0.1em] text-muted-foreground">
             Personal analytics
           </p>
-          <CardTitle className="text-base font-semibold">
+          <CardTitle className="font-serif text-2xl leading-8 text-foreground">
             What your closed reply outcomes are actually showing
           </CardTitle>
         </div>
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-3 pb-3">
           <div>
-            <div className="font-mono text-[2rem] leading-none tabular-nums text-foreground">
+            <div className="font-mono text-[2.5rem] font-bold leading-none tabular-nums text-foreground">
               {sample.responded}/{sample.sent}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -96,18 +95,18 @@ export function PersonalAnalyticsCard() {
             </p>
           </div>
         </div>
-        <p className="text-sm leading-6 text-muted-foreground">{sparseCopy}</p>
+        <p className="text-[13px] leading-[18px] text-muted-foreground">{sparseCopy}</p>
       </CardHeader>
 
-      <CardContent className="space-y-5 pt-0">
-        <div className="grid gap-5 md:grid-cols-3">
+      <CardContent className="space-y-5 px-6 pb-6 pt-0">
+        <div className="grid gap-5 sm:grid-cols-2">
           <section className="space-y-3">
-            <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
+            <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
               <Tag className="size-4 text-primary" />
               Categories
             </div>
             {categories.length === 0 ? (
-              <p className="text-xs leading-5 text-muted-foreground">
+              <p className="text-[13px] leading-[18px] text-muted-foreground">
                 No generated-reply category history yet.
               </p>
             ) : (
@@ -134,12 +133,12 @@ export function PersonalAnalyticsCard() {
           </section>
 
           <section className="space-y-3">
-            <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
+            <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
               <Lightbulb className="size-4 text-primary" />
               Openings
             </div>
             {angles.length === 0 ? (
-              <p className="text-xs leading-5 text-muted-foreground">
+              <p className="text-[13px] leading-[18px] text-muted-foreground">
                 No attributed opening history yet.
               </p>
             ) : (
@@ -166,12 +165,12 @@ export function PersonalAnalyticsCard() {
           </section>
 
           <section className="space-y-3">
-            <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
+            <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
               <Clock3 className="size-4 text-primary" />
               Response windows
             </div>
             {timeOfDay.bestHours.length === 0 ? (
-              <p className="text-xs leading-5 text-muted-foreground">
+              <p className="text-[13px] leading-[18px] text-muted-foreground">
                 No closed reply windows yet.
               </p>
             ) : (
@@ -203,14 +202,14 @@ export function PersonalAnalyticsCard() {
         <section className="space-y-3 border-t border-border pt-4">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="text-sm font-medium text-foreground">Hourly response map</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="font-serif text-2xl leading-8 text-foreground">Hourly response map</p>
+              <p className="text-sm text-muted-foreground">
                 Each hour reflects closed reply outcomes in your local time.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-12 gap-1 sm:grid-cols-24">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(26px,1fr))] gap-1">
             {timeOfDay.buckets.map((bucket) => (
               <div key={bucket.hour} className="space-y-1">
                 <div
@@ -220,7 +219,7 @@ export function PersonalAnalyticsCard() {
                   )}
                   title={`${formatWindow(bucket.hour)} · ${bucket.responded}/${bucket.sent} replied${bucket.responseRate === null ? "" : ` · ${bucket.responseRate}%`}`}
                 />
-                <div className="text-center font-mono text-xs text-muted-foreground">
+                <div className="pt-1 text-center font-mono text-xs text-muted-foreground">
                   {formatHour(bucket.hour)}
                 </div>
               </div>

@@ -23,8 +23,8 @@ export function EngagementWindowCard() {
 
   if (!snapshot) {
     return (
-      <Card className="w-full max-w-3xl">
-        <CardContent className="space-y-4 p-5">
+      <Card className="w-full">
+        <CardContent className="space-y-4 p-6">
           <Skeleton className="h-4 w-40" />
           <Skeleton className="h-14 w-48" />
           <Skeleton className="h-4 w-full" />
@@ -44,25 +44,25 @@ export function EngagementWindowCard() {
     (snapshot.totalResponded === 0 && !snapshot.isDemo);
 
   return (
-    <Card className="w-full max-w-3xl">
-      <CardHeader className="space-y-3 pb-4">
+    <Card className="w-full">
+      <CardHeader className="space-y-3 p-6 pb-4">
         <div className="space-y-1">
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-primary">
+          <p className="text-xs uppercase tracking-[0.1em] text-muted-foreground">
             Engagement window
             {snapshot.isDemo ? " · demo" : ""}
           </p>
-          <CardTitle className="text-base font-semibold">
+          <CardTitle className="font-serif text-2xl leading-8 text-foreground">
             When reply-backs actually land in your niches
           </CardTitle>
         </div>
 
         {empty || !guidance ? (
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
+            <div className="inline-flex items-center gap-2 text-xs font-medium text-foreground">
               <Clock3 className="size-4 text-primary" />
               Not enough data yet
             </div>
-            <p className="text-sm leading-6 text-muted-foreground">
+            <p className="text-[13px] leading-[18px] text-muted-foreground">
               Need at least {snapshot.minSampleSize} reply-backs in an author
               band before showing a timing window. Observed counts only — never
               a fake engagement score.
@@ -70,7 +70,7 @@ export function EngagementWindowCard() {
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="font-mono text-[2rem] leading-none tabular-nums text-foreground">
+            <div className="font-mono text-[2.5rem] font-bold leading-none tabular-nums text-foreground">
               {primary.hasEnoughData && primary.medianPeakMinutes != null
                 ? formatEngagementMinutes(primary.medianPeakMinutes)
                 : "—"}
@@ -86,7 +86,7 @@ export function EngagementWindowCard() {
       </CardHeader>
 
       {!empty && snapshot.buckets.length > 0 ? (
-        <CardContent className="space-y-3 border-t border-border pt-4">
+        <CardContent className="space-y-3 border-t border-border px-6 pb-6 pt-4">
           <p className="text-xs text-muted-foreground">
             Per author-size band
             {snapshot.buckets.some((b) => b.topicTag)
