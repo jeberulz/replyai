@@ -110,6 +110,14 @@
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --font-serif: var(--font-instrument-serif), Georgia, serif;
 
+  /* Figma 379:3874 + design.md — fixed leading pairs (see src/theme/typography.ts) */
+  --leading-rp-xs: 1rem;
+  --leading-rp-sm: 1.25rem;
+  --leading-rp-meta: 1.125rem;
+  --leading-rp-base: 1.5rem;
+  --leading-rp-title: 2rem;
+  --leading-rp-metric: 2.5rem;
+
   --animate-fade-rise: fade-rise 0.5s cubic-bezier(0.25, 1, 0.5, 1) both;
 
   @keyframes fade-rise {

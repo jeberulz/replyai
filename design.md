@@ -149,22 +149,29 @@ apply `font-semibold`/`font-bold` to it (the browser will synthesize a fake
 bold, which looks broken on a display serif). Use the italic style for
 emphasis inside headings instead of weight.
 
-Scale (modular, ~1.25 ratio, tight at the top):
+Scale (modular, ~1.25 ratio, tight at the top). **Line heights are fixed
+pixel pairs from Figma** (`ReplyAI` frame `379:3874`); implementation lives in
+`src/theme/typography.ts` as `rpType` / `insightCardType`.
 
-| Step | Size | Notes |
-|---|---|---|
-| `display` | `clamp(2.5rem, 6vw, 4.5rem)` | Landing hero only. Serif display, weight 550–600, tracking `-0.025em`, leading 1.05 |
-| `h1` | `2rem` | Page titles. Serif display, tracking `-0.02em` |
-| `h2` | `1.5rem` | Section titles. Serif display |
-| `h3` | `1.125rem` | Card titles. Sans semibold — serif stops at h2 |
-| `body` | `1rem` / 1.5 | Sans (Inter) everywhere, including prose and reply previews |
-| `sm` | `0.875rem` | Secondary UI text |
-| `xs` | `0.75rem` | Meta rows, badges. Often mono, uppercase, tracking `+0.05em` |
+| Step | Size | Leading | Notes |
+|---|---|---|---|
+| `display` | `clamp(2.5rem, 6vw, 4.5rem)` | tight | Landing hero only. Serif display, tracking `-0.025em`, leading 1.05 |
+| `h1` | `2rem` / `2.125rem` | `1.05` | Page titles. Serif display, tracking `-0.02em` |
+| `h2` / card title | `1.5rem` (24px) | `2rem` (32px) | Section + insight card titles. Instrument Serif regular |
+| `h3` | `1.125rem` (18px) | `1.5rem` (24px) | In-card section headings. Sans semibold |
+| `body` | `1rem` (16px) | `1.5rem` (24px) | Sans everywhere, including prose and reply previews |
+| `detail` | `0.9375rem` (15px) | `1.5rem` (24px) | Emphasized card detail (reply budget guidance) |
+| `sm` | `0.875rem` (14px) | `1.25rem` (20px) | Supporting UI, list labels, section subtitles |
+| `meta` | `0.8125rem` (13px) | `1.125rem` (18px) | Inline meta rows, pane pills |
+| `xs` | `0.75rem` (12px) | `1rem` (16px) | Eyebrows, captions, badges. Often uppercase, tracking `+0.1em` |
+| `metric` | `2.5rem` (40px) | `2.5rem` (40px) | Hero counts in insight cards. Geist Mono bold, tabular |
 
 Rules:
 
 - Fluid `clamp()` sizing on the landing page only; fixed `rem` steps inside
   the app (dashboard/feed/settings).
+- **Use `rpType` from `src/theme/typography.ts`** for in-app surfaces — never
+  mix arbitrary `leading-*` with the Figma scale.
 - Generated replies and tweet content render in `--font-sans` (Inter) like the
   rest of the interface — the serif is reserved for headings only.
 - Prose never exceeds `65ch`. Reply preview cards cap at `~55ch`.

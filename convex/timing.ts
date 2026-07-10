@@ -9,6 +9,10 @@ import {
   demoEngagementWindowSnapshot,
   type EngagementWindowObservation,
 } from "../shared/engagementWindow";
+import {
+  countPacingPublishesOnLocalDay,
+  isPacingPublishKind,
+} from "../shared/replyPacing";
 
 const curveValidator = v.object({
   authorBand: v.union(
@@ -31,6 +35,7 @@ const snapshotValidator = v.object({
   minSampleSize: v.number(),
   scanLimit: v.number(),
   totalResponded: v.number(),
+  publishedToday: v.number(),
   buckets: v.array(curveValidator),
   primary: v.union(curveValidator, v.null()),
   isDemo: v.boolean(),
@@ -43,13 +48,15 @@ const snapshotValidator = v.object({
 export const engagementWindow = query({
   args: {
     sessionToken: v.string(),
+    timezoneOffsetMinutes: v.optional(v.number()),
   },
   returns: snapshotValidator,
-  handler: async (ctx, { sessionToken }) => {
+  handler: async (ctx, { sessionToken, timezoneOffsetMinutes = 0 }) => {
     const user = await requireUser(ctx, sessionToken);
+    const nowMs = Date.now();
 
     if (user.isDemo) {
-      return demoEngagementWindowSnapshot();
+      return { ...demoEngagementWindowSnapshot(), publishedToday: 1 };
     }
 
     const recentTrackers = await ctx.db
@@ -58,10 +65,18 @@ export const engagementWindow = query({
       .order("desc")
       .take(ENGAGEMENT_WINDOW_SCAN_LIMIT);
 
+    const publishedToday = countPacingPublishesOnLocalDay(
+      recentTrackers
+        .filter((tracker) => isPacingPublishKind(tracker.kind))
+        .map((tracker) => tracker.publishedAt),
+      nowMs,
+      timezoneOffsetMinutes
+    );
+
     const observations: EngagementWindowObservation[] = [];
 
     for (const tracker of recentTrackers) {
-      if (tracker.kind !== "reply") continue;
+      if (!isPacingPublishKind(tracker.kind)) continue;
       if (tracker.status !== "responded" || tracker.respondedAt == null) {
         continue;
       }
@@ -115,12 +130,15 @@ export const engagementWindow = query({
       });
     }
 
-    return buildEngagementWindowSnapshot({
-      observations,
-      isDemo: false,
-      minSampleSize: MIN_ENGAGEMENT_WINDOW_SAMPLE,
-      maxBuckets: ENGAGEMENT_WINDOW_MAX_BUCKETS,
-      scanLimit: ENGAGEMENT_WINDOW_SCAN_LIMIT,
-    });
+    return {
+      ...buildEngagementWindowSnapshot({
+        observations,
+        isDemo: false,
+        minSampleSize: MIN_ENGAGEMENT_WINDOW_SAMPLE,
+        maxBuckets: ENGAGEMENT_WINDOW_MAX_BUCKETS,
+        scanLimit: ENGAGEMENT_WINDOW_SCAN_LIMIT,
+      }),
+      publishedToday,
+    };
   },
 });

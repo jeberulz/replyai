@@ -1,6 +1,6 @@
 # ReplyPilot AI — Product Strategy & Delivery Roadmap
 
-**Status:** working document · **Owner:** product · **Last updated:** 2026-07-07 (rev 3: feature review + format-intelligence research added)
+**Status:** working document · **Owner:** product · **Last updated:** 2026-07-10 (rev 4: first-10 beta launch gate added)
 **Companion docs:** `PRD.md` (v3, product source of truth) · `STRATEGY.md`
 (concise strategy note) · `design.md` (Dark Chrome design system) ·
 `README.md` (architecture)
@@ -777,7 +777,8 @@ mobile = triage + send.**
 7. Command palette; onboarding concierge groundwork.
 8. **Launch:** waitlist → founder-led beta (50 users) → public launch
    (Product Hunt + build-in-public thread using the product itself — the
-   founder's reply-driven growth is the case study).
+   founder's reply-driven growth is the case study). The first ten-user
+   Private Proof gate is WP40.
 
 ### Phase 2 — Compounding intelligence (weeks 9–19) · *Exit: data moat visible*
 1. Daily briefing agent + surface (§7.2.4).
@@ -897,8 +898,11 @@ npm test && npm run build`), Convex guidelines
 | WP28 | AI / chat surfaces (deferred) | P1 | `src/components/app/chat/**` (excl. analytics until WP11) | Chat/Tokenizer/Progress where they cut custom CSS; ReplyPreview untouched; defer until WP24–27 gate |
 | WP29 | Voice Studio onto Astryx `ds/` | P0 | `src/components/app/voice-studio.tsx` | Voice tab uses ds Card/Badge/Button/TextInput/TextArea; Dialog stays ui/; train/CRUD/default unchanged; checks green |
 | WP30 | Settings onto Astryx `ds/` | P0 | `settings/page.tsx`, `account-data-controls.tsx`, `default-model-card.tsx` | Settings sections on ds primitives; Dialog stays ui/ for delete confirm; billing/export/delete/model default unchanged |
+| WP40 | First-10 beta launch gate | Launch | private access + demo isolation; X/AI spend controls; wedge-quality fixes; legal/settings/accessibility; observability + notifications; production gate | Ten allow-listed design partners can use the real X workflow without shared demo data or uncapped spend; production telemetry and hot-window delivery are live; legal/support copy and critical accessibility gaps are corrected; security/full/mobile checks and the real-X launch runbook are green |
 
-Program brief: `docs/wp/WP24-ASTRYX-ADOPTION-PLAN.md`. Rulings: `docs/wp/RULINGS.md` (2026-07-09).
+Program briefs: `docs/wp/WP24-ASTRYX-ADOPTION-PLAN.md` and
+`docs/wp/WP40-FIRST-10-BETA-LAUNCH-GATE.md`. Rulings:
+`docs/wp/RULINGS.md` (2026-07-10).
 
 ---
 

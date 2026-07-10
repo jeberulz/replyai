@@ -5,6 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { usePersonalAnalytics } from "@/components/app/personal-analytics/use-personal-analytics";
+import { insightCardTypography as t } from "./insight-card-typography";
+import { rpType } from "@/theme/typography";
+import {
+  personalAnalyticsHeroCaption,
+  personalAnalyticsHeroMetric,
+  personalAnalyticsHistoryLabel,
+  personalAnalyticsInProgressLabel,
+  personalAnalyticsSections,
+  personalAnalyticsSparseCopy,
+  personalAnalyticsTitle,
+  personalAnalyticsTitleSubtitle,
+} from "@/lib/dashboard-insight-copy";
 
 function formatRate(rate: number | null) {
   return rate === null ? "—" : `${rate}%`;
@@ -20,12 +32,6 @@ function formatHour(hour: number) {
   const period = hour >= 12 ? "p" : "a";
   const hour12 = hour % 12 || 12;
   return `${hour12}${period}`;
-}
-
-function historyLabel(sent: number, historyLimit: number) {
-  return sent >= historyLimit
-    ? `Most recent ${historyLimit} closed replies`
-    : `${sent} closed ${sent === 1 ? "reply" : "replies"}`;
 }
 
 function intensityClass(sent: number, rate: number | null) {
@@ -57,58 +63,66 @@ export function PersonalAnalyticsCard() {
     );
   }
 
-  const { sample, categories, angles, timeOfDay, historyLimit } = analytics;
+  const {
+    sample,
+    categories,
+    angles,
+    timeOfDay,
+    historyLimit,
+    publishedToday,
+    awaitingOutcome,
+  } = analytics;
 
-  const sparseCopy =
-    sample.sent === 0
-      ? "Once a sent reply either gets a response or ages out of its observation window, this fills with observed patterns."
-      : sample.isSparse
-        ? "Early read only — keep sending before treating any pattern here as durable."
-        : "Observed counts only — these are closed outcomes, not predictions.";
+  const inProgressLabel = personalAnalyticsInProgressLabel(awaitingOutcome);
+  const sparseCopy = personalAnalyticsSparseCopy({
+    sent: sample.sent,
+    isSparse: sample.isSparse,
+    publishedToday,
+  });
 
   return (
     <Card className="w-full">
       <CardHeader className="space-y-3 p-6 pb-4">
         <div className="space-y-1">
-          <p className="text-xs uppercase tracking-[0.1em] text-muted-foreground">
-            Personal analytics
+          <p className={t.eyebrow}>Personal analytics</p>
+          <CardTitle className={t.title}>{personalAnalyticsTitle()}</CardTitle>
+          <p className={cn(rpType.sm, "text-muted-foreground")}>
+            {personalAnalyticsTitleSubtitle()}
           </p>
-          <CardTitle className="font-serif text-xl leading-8 text-foreground">
-            What your closed reply outcomes are actually showing
-          </CardTitle>
         </div>
         <div className="flex flex-wrap items-end justify-between gap-3 pb-3">
           <div>
-            <div className="font-mono text-[2.5rem] font-bold leading-none tabular-nums text-foreground">
-              {sample.responded}/{sample.sent}
+            <div className={t.heroMetric}>
+              {personalAnalyticsHeroMetric({
+                responded: sample.responded,
+                sent: sample.sent,
+                publishedToday,
+              })}
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              replies earned a response back
+            <p className={cn("mt-1", t.metricCaption)}>
+              {personalAnalyticsHeroCaption()}
             </p>
           </div>
           <div className="space-y-1 text-right">
-            <div className="font-mono text-sm tabular-nums text-foreground">
-              {formatRate(sample.responseRate)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {historyLabel(sample.sent, historyLimit)}
+            <div className={t.listValue}>{formatRate(sample.responseRate)}</div>
+            <p className={t.metricCaption}>
+              {inProgressLabel ??
+                personalAnalyticsHistoryLabel(sample.sent, historyLimit)}
             </p>
           </div>
         </div>
-        <p className="text-[13px] leading-[18px] text-muted-foreground">{sparseCopy}</p>
+        <p className={t.body}>{sparseCopy}</p>
       </CardHeader>
 
       <CardContent className="space-y-5 px-6 pb-6 pt-0">
         <div className="grid gap-5 sm:grid-cols-2">
           <section className="space-y-3">
-            <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <div className={cn("inline-flex items-center gap-2", t.sectionLabel)}>
               <Tag className="size-4 text-primary" />
-              Categories
+              {personalAnalyticsSections.categories}
             </div>
             {categories.length === 0 ? (
-              <p className="text-[13px] leading-[18px] text-muted-foreground">
-                No generated-reply category history yet.
-              </p>
+              <p className={t.body}>{personalAnalyticsSections.emptyCategories}</p>
             ) : (
               <ul className="space-y-2">
                 {categories.map((item) => (
@@ -117,15 +131,14 @@ export function PersonalAnalyticsCard() {
                     className="flex items-start justify-between gap-3 border-b border-border pb-2 last:border-b-0 last:pb-0"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm text-foreground">{item.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.responded}/{item.sent} replied
-                        {item.isSparse ? " · thin sample" : ""}
+                      <p className={t.listLabel}>{item.label}</p>
+                      <p className={t.listMeta}>
+                        {item.responded}/{item.sent}{" "}
+                        {personalAnalyticsSections.listReplied}
+                        {item.isSparse ? personalAnalyticsSections.sparseSample : ""}
                       </p>
                     </div>
-                    <div className="font-mono text-sm tabular-nums text-foreground">
-                      {item.responseRate}%
-                    </div>
+                    <div className={t.listValue}>{item.responseRate}%</div>
                   </li>
                 ))}
               </ul>
@@ -133,14 +146,12 @@ export function PersonalAnalyticsCard() {
           </section>
 
           <section className="space-y-3">
-            <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <div className={cn("inline-flex items-center gap-2", t.sectionLabel)}>
               <Lightbulb className="size-4 text-primary" />
-              Openings
+              {personalAnalyticsSections.angles}
             </div>
             {angles.length === 0 ? (
-              <p className="text-[13px] leading-[18px] text-muted-foreground">
-                No attributed opening history yet.
-              </p>
+              <p className={t.body}>{personalAnalyticsSections.emptyAngles}</p>
             ) : (
               <ul className="space-y-2">
                 {angles.map((item) => (
@@ -149,15 +160,14 @@ export function PersonalAnalyticsCard() {
                     className="flex items-start justify-between gap-3 border-b border-border pb-2 last:border-b-0 last:pb-0"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm text-foreground">{item.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.responded}/{item.sent} replied
-                        {item.isSparse ? " · thin sample" : ""}
+                      <p className={t.listLabel}>{item.label}</p>
+                      <p className={t.listMeta}>
+                        {item.responded}/{item.sent}{" "}
+                        {personalAnalyticsSections.listReplied}
+                        {item.isSparse ? personalAnalyticsSections.sparseSample : ""}
                       </p>
                     </div>
-                    <div className="font-mono text-sm tabular-nums text-foreground">
-                      {item.responseRate}%
-                    </div>
+                    <div className={t.listValue}>{item.responseRate}%</div>
                   </li>
                 ))}
               </ul>
@@ -165,14 +175,12 @@ export function PersonalAnalyticsCard() {
           </section>
 
           <section className="space-y-3">
-            <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <div className={cn("inline-flex items-center gap-2", t.sectionLabel)}>
               <Clock3 className="size-4 text-primary" />
-              Response windows
+              {personalAnalyticsSections.sendHours}
             </div>
             {timeOfDay.bestHours.length === 0 ? (
-              <p className="text-[13px] leading-[18px] text-muted-foreground">
-                No closed reply windows yet.
-              </p>
+              <p className={t.body}>{personalAnalyticsSections.emptySendHours}</p>
             ) : (
               <ul className="space-y-2">
                 {timeOfDay.bestHours.map((bucket) => (
@@ -181,15 +189,16 @@ export function PersonalAnalyticsCard() {
                     className="flex items-start justify-between gap-3 border-b border-border pb-2 last:border-b-0 last:pb-0"
                   >
                     <div>
-                      <p className="font-mono text-sm tabular-nums text-foreground">
+                      <p className={t.windowTime}>
                         {formatWindow(bucket.hour)}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {bucket.responded}/{bucket.sent} replied
-                        {bucket.isSparse ? " · thin sample" : ""}
+                      <p className={t.listMeta}>
+                        {bucket.responded}/{bucket.sent}{" "}
+                        {personalAnalyticsSections.listReplied}
+                        {bucket.isSparse ? personalAnalyticsSections.sparseSample : ""}
                       </p>
                     </div>
-                    <div className="font-mono text-sm tabular-nums text-foreground">
+                    <div className={t.listValue}>
                       {formatRate(bucket.responseRate)}
                     </div>
                   </li>
@@ -202,9 +211,9 @@ export function PersonalAnalyticsCard() {
         <section className="space-y-3 border-t border-border pt-4">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="font-serif text-xl leading-8 text-foreground">Hourly response map</p>
-              <p className="text-sm text-muted-foreground">
-                Each hour reflects closed reply outcomes in your local time.
+              <p className={t.title}>{personalAnalyticsSections.heatmapTitle}</p>
+              <p className={t.sectionSubtitle}>
+                {personalAnalyticsSections.heatmapSubtitle}
               </p>
             </div>
           </div>
@@ -217,9 +226,9 @@ export function PersonalAnalyticsCard() {
                     "h-8 rounded-md border transition-colors",
                     intensityClass(bucket.sent, bucket.responseRate)
                   )}
-                  title={`${formatWindow(bucket.hour)} · ${bucket.responded}/${bucket.sent} replied${bucket.responseRate === null ? "" : ` · ${bucket.responseRate}%`}`}
+                  title={`${formatWindow(bucket.hour)} · ${bucket.responded}/${bucket.sent} ${personalAnalyticsSections.listReplied}${bucket.responseRate === null ? "" : ` · ${bucket.responseRate}%`}`}
                 />
-                <div className="pt-1 text-center font-mono text-xs text-muted-foreground">
+                <div className={cn("pt-1 text-center", t.hourLabel)}>
                   {formatHour(bucket.hour)}
                 </div>
               </div>

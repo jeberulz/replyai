@@ -89,6 +89,24 @@ async function assertFairUseInAction(
   return null;
 }
 
+async function assertAiSpendInAction(
+  sessionToken: string,
+  kind: "analysis" | "generation",
+  source: string
+): Promise<{ error: string } | null> {
+  const result = await convexServer().mutation(api.spend.recordAiSpendAttempt, {
+    sessionToken,
+    kind,
+    source,
+  });
+  if (!result.allowed) {
+    return {
+      error: result.message ?? "AI generation is temporarily unavailable.",
+    };
+  }
+  return null;
+}
+
 async function resolveXAccessToken(sessionToken: string): Promise<string | null> {
   const convex = convexServer();
   const serverSecret = process.env.CONVEX_SERVER_TOKEN_ACCESS_SECRET;
@@ -467,6 +485,12 @@ export async function continueAnalysisAction(
   if (needsAnalysis) {
     const fairUseBlock = await assertFairUseInAction(sessionToken, "run_analysis");
     if (fairUseBlock) return fairUseBlock;
+    const spendBlock = await assertAiSpendInAction(
+      sessionToken,
+      "analysis",
+      "continue_analysis"
+    );
+    if (spendBlock) return spendBlock;
   }
   if (needsGeneration) {
     const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
@@ -513,6 +537,12 @@ export async function continueAnalysisAction(
 
     const generateKind = async (kind: "reply" | "quote") => {
       if (existing.some((r) => r.kind === kind)) return;
+      const spendBlock = await assertAiSpendInAction(
+        sessionToken,
+        "generation",
+        `continue_analysis_${kind}`
+      );
+      if (spendBlock) throw new Error(spendBlock.error);
       // Fired per kind, only when a generation call is actually about to
       // run — a retry where both kinds already exist (e.g. re-entering this
       // try block after analyses.complete failed) must not report a
@@ -588,6 +618,12 @@ export async function generateMoreAction(args: {
 
   const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
   if (fairUseBlock) throw new Error(fairUseBlock.error);
+  const spendBlock = await assertAiSpendInAction(
+    sessionToken,
+    "generation",
+    `generate_more_${args.kind}`
+  );
+  if (spendBlock) throw new Error(spendBlock.error);
 
   const analysis = await convex.query(api.analyses.get, {
     sessionToken,
@@ -659,6 +695,12 @@ export async function rewriteAction(args: {
   const convex = convexServer();
   const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
   if (fairUseBlock) throw new Error(fairUseBlock.error);
+  const spendBlock = await assertAiSpendInAction(
+    sessionToken,
+    "generation",
+    `rewrite_${args.direction}`
+  );
+  if (spendBlock) throw new Error(spendBlock.error);
 
   const direction = REWRITE_DIRECTIONS.find((d) => d === args.direction);
   if (!direction) throw new Error("Unknown rewrite direction");
@@ -741,6 +783,15 @@ export async function setDefaultModelAction(model: string) {
 export async function runModelEvalAction(analysisId: string) {
   const { sessionToken } = await requireSession();
   const convex = convexServer();
+
+  const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
+  if (fairUseBlock) throw new Error(fairUseBlock.error);
+  const spendBlock = await assertAiSpendInAction(
+    sessionToken,
+    "generation",
+    "model_eval"
+  );
+  if (spendBlock) throw new Error(spendBlock.error);
 
   const analysis = await convex.query(api.analyses.get, {
     sessionToken,
@@ -1530,6 +1581,12 @@ export async function startComposeAction(args: {
 
   const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
   if (fairUseBlock) return { runId: "", error: fairUseBlock.error };
+  const spendBlock = await assertAiSpendInAction(
+    sessionToken,
+    "generation",
+    `compose_${args.format}`
+  );
+  if (spendBlock) return { runId: "", error: spendBlock.error };
 
   const { profile } = await defaultVoice(sessionToken, args.voiceProfileId);
   const { model } = await resolveGenerationPrefs(sessionToken);

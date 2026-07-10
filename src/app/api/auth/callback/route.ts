@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "../../../../../convex/_generated/api";
+import { authProvisioningSecret } from "@/lib/authProvisioning";
 import { guardAuthRoute } from "@/lib/authSecurity";
 import { env } from "@/lib/env";
 import { convexServer } from "@/lib/convex";
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
       avatar: optionalString(xUser.avatar),
       isDemo: false,
       sessionToken,
+      provisioningSecret: authProvisioningSecret(),
       xAuth: {
         accessToken: token.accessToken,
         refreshToken: optionalString(token.refreshToken),

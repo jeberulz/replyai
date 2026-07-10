@@ -18,6 +18,61 @@ export type PublishedReplyPoint = {
   editBucket?: ReplyEditBucket;
 };
 
+export type PacingDraftInput = {
+  id: string;
+  kind: string;
+  status: "draft" | "scheduled" | "published" | "failed";
+  publishedAt?: number;
+  scheduledFor?: number;
+  editBucket?: ReplyEditBucket;
+};
+
+/** Kinds that consume daily X publish volume for account-health pacing. */
+export function isPacingPublishKind(kind: string): boolean {
+  return kind === "reply" || kind === "quote" || kind === "standalone";
+}
+
+/**
+ * Build observed publish points for pacing from saved drafts.
+ * Includes in-flight scheduled publishes once their send time is due.
+ */
+export function collectPacingPublishPoints(
+  drafts: PacingDraftInput[],
+  nowMs: number
+): PublishedReplyPoint[] {
+  const points: PublishedReplyPoint[] = [];
+  const seen = new Set<string>();
+
+  for (const draft of drafts) {
+    if (!isPacingPublishKind(draft.kind)) continue;
+
+    if (draft.status === "published" && draft.publishedAt != null) {
+      if (seen.has(draft.id)) continue;
+      seen.add(draft.id);
+      points.push({
+        publishedAt: draft.publishedAt,
+        editBucket: draft.editBucket,
+      });
+      continue;
+    }
+
+    if (
+      draft.status === "scheduled" &&
+      draft.scheduledFor != null &&
+      draft.scheduledFor <= nowMs
+    ) {
+      if (seen.has(draft.id)) continue;
+      seen.add(draft.id);
+      points.push({
+        publishedAt: draft.scheduledFor,
+        editBucket: draft.editBucket,
+      });
+    }
+  }
+
+  return points;
+}
+
 export type LiveOpportunityPoint = {
   postedAt: number;
   scannedAt: number;
@@ -256,15 +311,15 @@ function describeWindow({
 }): string {
   switch (source) {
     case "blend":
-      return `${opportunityCount} live threads are surfacing here, and your sent replies stay clean in this hour.`;
+      return "Your cleanest sends and today's live threads overlap here.";
     case "history":
       return historyCount === 1 || noOrMinorRate === null
-        ? "You already ship cleanly in this hour — worth keeping in the rotation."
-        : `${noOrMinorRate}% of your sent replies in this hour needed no or only minor edits.`;
+        ? "You ship cleanly in this hour — keep it in rotation."
+        : "Historically your strongest send hour.";
     case "live":
       return opportunityCount === 1
-        ? "A live conversation is surfacing in this hour."
-        : `${opportunityCount} live conversations are surfacing in this hour.`;
+        ? "A live thread is worth a look right now."
+        : "Several live threads are clustering here.";
     case "default":
     default:
       return "Use this as a calm fallback block when the feed is quiet.";
@@ -276,21 +331,21 @@ function buildHeadline(
   warningLevel: ReplyPacingWarningLevel
 ): string {
   if (warningLevel === "limit") {
-    return `${sentRepliesToday} replies sent today — back off volume.`;
+    return "Past today's safety envelope";
   }
   if (warningLevel === "warning") {
-    return `${sentRepliesToday} replies sent today — slow the pace.`;
+    return "Near the daily volume ceiling";
   }
   if (warningLevel === "watch") {
-    return `${sentRepliesToday} replies sent today — stay selective from here.`;
+    return "Well above the quality target";
   }
   if (sentRepliesToday < DAILY_REPLY_TARGET_MIN) {
-    return `${sentRepliesToday} replies sent today — build toward ${DAILY_REPLY_TARGET_MIN}-${DAILY_REPLY_TARGET_MAX}.`;
+    return "Room left in today's budget";
   }
   if (sentRepliesToday <= DAILY_REPLY_TARGET_MAX) {
-    return `${sentRepliesToday} replies sent today — you are in the target lane.`;
+    return "On pace for today";
   }
-  return `${sentRepliesToday} replies sent today — quality over extra volume now.`;
+  return "Over target — tighten up";
 }
 
 function buildDetail(
@@ -298,21 +353,21 @@ function buildDetail(
   warningLevel: ReplyPacingWarningLevel
 ): string {
   if (warningLevel === "limit") {
-    return "You are past the researched safety envelope. Ship only obvious winners and leave room for tomorrow.";
+    return "Anything beyond obvious winners risks account health. Save the rest for tomorrow.";
   }
   if (warningLevel === "warning") {
-    return "You are close to the ~50/day spam-heuristic zone. Prioritize the clearest opportunities only.";
+    return "You're approaching ~50/day territory — where spam heuristics kick in. Ship only your best remaining threads.";
   }
   if (warningLevel === "watch") {
-    return "You are well above the 15-20 quality target. Trim volume and keep only the strongest threads.";
+    return "Volume is crowding out quality. Cut the filler and keep replies you'd send without the tool.";
   }
   if (sentRepliesToday < DAILY_REPLY_TARGET_MIN) {
-    return "Aim for 15-20 strong replies, not maximum output. The goal is clean sends and good timing.";
+    return "Pick strong threads and good timing over raw output. The count above is your pace check, not a quota to max out.";
   }
   if (sentRepliesToday <= DAILY_REPLY_TARGET_MAX) {
-    return "You have hit the recommended daily range. Keep the bar high rather than pushing more volume.";
+    return "You're in the recommended range. Hold the bar high instead of padding the day with extra sends.";
   }
-  return "You are beyond the target range. Keep only high-conviction replies from here.";
+  return "Past the sweet spot. From here, only send what you'd defend in public.";
 }
 
 function getHourStats(map: Map<number, HourStats>, hour: number): HourStats {
@@ -341,6 +396,24 @@ function isSameLocalDay(
     localDayKey(timestampMs, timezoneOffsetMinutes) ===
     localDayKey(nowMs, timezoneOffsetMinutes)
   );
+}
+
+export function isPublishedOnLocalDay(
+  publishedAt: number,
+  nowMs: number,
+  timezoneOffsetMinutes: number
+): boolean {
+  return isSameLocalDay(publishedAt, nowMs, timezoneOffsetMinutes);
+}
+
+export function countPacingPublishesOnLocalDay(
+  publishedAts: number[],
+  nowMs: number,
+  timezoneOffsetMinutes: number
+): number {
+  return publishedAts.filter((publishedAt) =>
+    isPublishedOnLocalDay(publishedAt, nowMs, timezoneOffsetMinutes)
+  ).length;
 }
 
 function localDayKey(timestampMs: number, timezoneOffsetMinutes: number): string {

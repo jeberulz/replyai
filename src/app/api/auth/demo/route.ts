@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "../../../../../convex/_generated/api";
+import { authProvisioningSecret } from "@/lib/authProvisioning";
 import { guardAuthRoute } from "@/lib/authSecurity";
 import { convexServer } from "@/lib/convex";
 import { ensureDefaults, postLoginPath } from "@/lib/onboarding";
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
       displayName: "Demo Builder",
       isDemo: true,
       sessionToken,
+      provisioningSecret: authProvisioningSecret(),
     });
     await setSessionCookie(sessionToken);
     await ensureDefaults(sessionToken);

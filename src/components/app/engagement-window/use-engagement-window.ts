@@ -6,8 +6,9 @@ import { useSessionToken } from "@/components/app/convex-provider";
 
 export function useEngagementWindow() {
   const sessionToken = useSessionToken();
+  const timezoneOffsetMinutes = new Date().getTimezoneOffset();
   return useQuery(
     api.timing.engagementWindow,
-    sessionToken ? { sessionToken } : "skip"
+    sessionToken ? { sessionToken, timezoneOffsetMinutes } : "skip"
   );
 }

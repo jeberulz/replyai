@@ -10,7 +10,13 @@ import {
   type OpportunityFunnelRow,
 } from "../shared/rankingWeights";
 import { countObservedEditBuckets } from "../shared/editDistance";
-import { summarizeReplyPacing } from "../shared/replyPacing";
+import {
+  collectPacingPublishPoints,
+  countPacingPublishesOnLocalDay,
+  isPacingPublishKind,
+  isPublishedOnLocalDay,
+  summarizeReplyPacing,
+} from "../shared/replyPacing";
 import { replyResponseStats } from "../shared/outcomes";
 import {
   buildPersonalAnalytics,
@@ -108,7 +114,7 @@ export const duplicateReplyCheck = query({
       recentPublished: publishedDrafts
         .filter(
           (draft) =>
-            draft.kind === "reply" &&
+            isPacingPublishKind(draft.kind) &&
             Boolean(draft.publishedAt) &&
             draft.publishedAt! >= lookbackStart
         )
@@ -225,13 +231,27 @@ export const pacingCoach = query({
     const user = await requireUser(ctx, sessionToken);
     const nowMs = Date.now();
 
-    const publishedDrafts = await ctx.db
-      .query("savedDrafts")
-      .withIndex("by_user_status", (q) =>
-        q.eq("userId", user._id).eq("status", "published")
-      )
-      .order("desc")
-      .take(200);
+    const [publishedDrafts, scheduledDrafts, recentTrackers] = await Promise.all([
+      ctx.db
+        .query("savedDrafts")
+        .withIndex("by_user_status", (q) =>
+          q.eq("userId", user._id).eq("status", "published")
+        )
+        .order("desc")
+        .take(200),
+      ctx.db
+        .query("savedDrafts")
+        .withIndex("by_user_status", (q) =>
+          q.eq("userId", user._id).eq("status", "scheduled")
+        )
+        .order("desc")
+        .take(50),
+      ctx.db
+        .query("replyOutcomeTrackers")
+        .withIndex("by_user_and_publishedAt", (q) => q.eq("userId", user._id))
+        .order("desc")
+        .take(100),
+    ]);
 
     const opportunities = await ctx.db
       .query("opportunities")
@@ -239,15 +259,33 @@ export const pacingCoach = query({
       .order("desc")
       .take(200);
 
+    const pacingDrafts = [...publishedDrafts, ...scheduledDrafts].map((draft) => ({
+      id: draft._id,
+      kind: draft.kind,
+      status: draft.status,
+      publishedAt: draft.publishedAt,
+      scheduledFor: draft.scheduledFor,
+      editBucket: draft.editBucket,
+    }));
+
+    const publishedReplies = collectPacingPublishPoints(pacingDrafts, nowMs);
+
+    const countedDraftIds = new Set(
+      [...publishedDrafts, ...scheduledDrafts]
+        .filter((draft) => isPacingPublishKind(draft.kind))
+        .map((draft) => draft._id)
+    );
+    for (const tracker of recentTrackers) {
+      if (!isPacingPublishKind(tracker.kind)) continue;
+      if (countedDraftIds.has(tracker.draftId)) continue;
+      publishedReplies.push({ publishedAt: tracker.publishedAt });
+      countedDraftIds.add(tracker.draftId);
+    }
+
     return summarizeReplyPacing({
       nowMs,
       timezoneOffsetMinutes,
-      publishedReplies: publishedDrafts
-        .filter((draft) => draft.kind === "reply" && Boolean(draft.publishedAt))
-        .map((draft) => ({
-          publishedAt: draft.publishedAt!,
-          editBucket: draft.editBucket,
-        })),
+      publishedReplies,
       liveOpportunities: opportunities.map((opportunity) => ({
         postedAt: opportunity.postedAt,
         scannedAt: opportunity.scannedAt,
@@ -275,10 +313,29 @@ export const personalAnalytics = query({
     const completedReplyTrackers = recentTrackers
       .filter(
         (tracker) =>
-          tracker.kind === "reply" &&
+          isPacingPublishKind(tracker.kind) &&
           (tracker.status === "responded" || tracker.status === "expired")
       )
       .slice(0, PERSONAL_ANALYTICS_COMPLETED_LIMIT);
+
+    const nowMs = Date.now();
+    const publishedToday = countPacingPublishesOnLocalDay(
+      recentTrackers
+        .filter((tracker) => isPacingPublishKind(tracker.kind))
+        .map((tracker) => tracker.publishedAt),
+      nowMs,
+      timezoneOffsetMinutes
+    );
+    const awaitingOutcome = recentTrackers.filter(
+      (tracker) =>
+        isPacingPublishKind(tracker.kind) &&
+        tracker.status === "active" &&
+        isPublishedOnLocalDay(
+          tracker.publishedAt,
+          nowMs,
+          timezoneOffsetMinutes
+        )
+    ).length;
 
     const rows: ObservedAnalyticsRow[] = [];
 
@@ -320,6 +377,8 @@ export const personalAnalytics = query({
     return {
       historyLimit: PERSONAL_ANALYTICS_COMPLETED_LIMIT,
       scanLimit: PERSONAL_ANALYTICS_SCAN_LIMIT,
+      publishedToday,
+      awaitingOutcome,
       ...buildPersonalAnalytics({
         rows,
         timezoneOffsetMinutes,

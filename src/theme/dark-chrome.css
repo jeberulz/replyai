@@ -21,7 +21,7 @@
   :where(h2) {
     font-size: var(--font-size-xl);
     font-weight: 400;
-    line-height: 1.25;
+    line-height: 1.3333;
   }
 
   :where(h3) {
@@ -98,7 +98,7 @@
     --text-heading-1-leading: 1.15;
     --text-heading-2-size: var(--font-size-xl);
     --text-heading-2-weight: 400;
-    --text-heading-2-leading: 1.25;
+    --text-heading-2-leading: 1.3333;
     --text-heading-3-size: var(--font-size-lg);
     --text-heading-3-weight: var(--font-weight-semibold);
     --text-heading-3-leading: 1.3333;
@@ -125,7 +125,7 @@
     --text-code-leading: 1.3846;
     --text-supporting-size: var(--font-size-sm);
     --text-supporting-weight: var(--font-weight-normal);
-    --text-supporting-leading: 1.5;
+    --text-supporting-leading: 1.4286;
     --text-display-1-size: var(--font-size-5xl);
     --text-display-1-weight: var(--font-weight-normal);
     --text-display-1-leading: 1.1;

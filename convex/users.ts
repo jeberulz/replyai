@@ -17,11 +17,21 @@ import {
 
 const SESSION_TTL_MS = SESSION_SLIDING_TTL_MS;
 const TOKEN_ACCESS_SECRET_ENV = "CONVEX_SERVER_TOKEN_ACCESS_SECRET";
+const AUTH_PROVISION_SECRET_ENV = "CONVEX_AUTH_PROVISION_SECRET";
 const X_PROVIDER = "x";
 
 function requireServerTokenAccess(secret: string) {
   const expected = process.env[TOKEN_ACCESS_SECRET_ENV]?.trim();
   if (!expected || secret !== expected) {
+    throw new Error("Unauthorized");
+  }
+}
+
+/** When configured, blocks direct public Convex calls that spoof OAuth signup. */
+function requireAuthProvisioningSecret(secret: string | undefined) {
+  const expected = process.env[AUTH_PROVISION_SECRET_ENV]?.trim();
+  if (!expected) return;
+  if (!secret?.trim() || secret !== expected) {
     throw new Error("Unauthorized");
   }
 }
@@ -47,8 +57,10 @@ export const upsertAndCreateSession = mutation({
         scope: v.string(),
       })
     ),
+    provisioningSecret: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireAuthProvisioningSecret(args.provisioningSecret);
     const now = Date.now();
     const identity = await ctx.db
       .query("accountIdentities")

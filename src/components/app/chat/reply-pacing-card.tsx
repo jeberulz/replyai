@@ -1,41 +1,41 @@
 "use client";
 
-import { Clock3, ShieldAlert, Target } from "lucide-react";
+import { Clock3 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { ReplyPacingWarningLevel } from "../../../../shared/replyPacing";
 import { useReplyPacing } from "@/components/app/reply-pacing/use-reply-pacing";
+import { insightCardTypography as t } from "./insight-card-typography";
 
-const warningMeta: Record<
-  ReplyPacingWarningLevel,
-  {
-    badge: "accent" | "warning" | "destructive";
-    label: string;
-    tone: string;
+function badgeForPacing(
+  warningLevel: ReplyPacingWarningLevel,
+  progress: "starting" | "target" | "above_target"
+): { badge: "accent" | "warning" | "destructive"; label: string } {
+  if (warningLevel === "limit") {
+    return { badge: "destructive", label: "Back off" };
   }
-> = {
-  none: {
-    badge: "accent",
-    label: "Target 15-20",
-    tone: "border-border",
-  },
-  watch: {
-    badge: "warning",
-    label: "Stay selective",
-    tone: "border-warning/30 bg-warning/5",
-  },
-  warning: {
-    badge: "warning",
-    label: "Slow the pace",
-    tone: "border-warning/40 bg-warning/10",
-  },
-  limit: {
-    badge: "destructive",
-    label: "Back off volume",
-    tone: "border-destructive/40 bg-destructive/10",
-  },
+  if (warningLevel === "warning") {
+    return { badge: "warning", label: "Slow down" };
+  }
+  if (warningLevel === "watch") {
+    return { badge: "warning", label: "Stay selective" };
+  }
+  if (progress === "target") {
+    return { badge: "accent", label: "On pace" };
+  }
+  if (progress === "above_target") {
+    return { badge: "warning", label: "Above target" };
+  }
+  return { badge: "accent", label: "Below target" };
+}
+
+const toneByWarning: Record<ReplyPacingWarningLevel, string> = {
+  none: "border-border",
+  watch: "border-warning/30 bg-warning/5",
+  warning: "border-warning/40 bg-warning/10",
+  limit: "border-destructive/40 bg-destructive/10",
 };
 
 export function ReplyPacingCard() {
@@ -58,66 +58,47 @@ export function ReplyPacingCard() {
     );
   }
 
-  const meta = warningMeta[pacing.warningLevel];
+  const badge = badgeForPacing(pacing.warningLevel, pacing.progress);
 
   return (
-    <Card className={cn("w-full", meta.tone)}>
+    <Card className={cn("w-full", toneByWarning[pacing.warningLevel])}>
       <CardHeader className="space-y-4 p-6 pb-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              Reply budget
-            </p>
-            <CardTitle className="font-serif text-xl leading-8 text-foreground">
-              Pace the day, then stop pushing volume
-            </CardTitle>
+            <p className={t.eyebrow}>Reply budget</p>
+            <CardTitle className={t.title}>{pacing.headline}</CardTitle>
           </div>
-          <Badge variant={meta.badge}>{meta.label}</Badge>
+          <Badge variant={badge.badge}>{badge.label}</Badge>
         </div>
 
-        <div className="flex items-end justify-between gap-6 pb-5">
+        <div className="flex items-end justify-between gap-6 pb-1">
           <div>
-            <div className="font-mono text-[2.5rem] font-bold leading-none tabular-nums text-foreground">
-              {pacing.sentRepliesToday}
-            </div>
-            <p className="mt-3.5 text-xs text-muted-foreground">sent today</p>
+            <div className={t.heroMetric}>{pacing.sentRepliesToday}</div>
+            <p className={cn("mt-3.5", t.metricCaption)}>sent today</p>
+            {pacing.remainingToTarget > 0 ? (
+              <p className={cn("mt-1", t.metricCaption)}>
+                {pacing.remainingToTarget} to reach {pacing.targetMin}
+              </p>
+            ) : null}
           </div>
-          <div className="flex flex-col items-end gap-2.5 text-[13px] leading-[18px] text-muted-foreground opacity-90">
-            <div className="inline-flex items-center gap-2">
-              <Target className="size-4 text-primary" />
-              <span>
-                Aim for{" "}
-                <span className="font-medium text-foreground">
-                  {pacing.targetMin}-{pacing.targetMax}
-                </span>{" "}
-                strong replies
-              </span>
-            </div>
-            <div className="inline-flex items-center gap-2">
-              <ShieldAlert
-                className={cn(
-                  "size-4",
-                  pacing.warningLevel === "limit"
-                    ? "text-destructive"
-                    : pacing.warningLevel === "none"
-                      ? "text-muted-foreground"
-                      : "text-warning"
-                )}
-              />
-              <span>{pacing.headline}</span>
-            </div>
-          </div>
+          <p className={cn("text-right", t.metaLine)}>
+            Target{" "}
+            <span className="font-medium text-foreground">
+              {pacing.targetMin}–{pacing.targetMax}
+            </span>{" "}
+            strong replies / day
+          </p>
         </div>
 
-        <p className="text-[15px] leading-[22px] text-foreground">{pacing.detail}</p>
+        <p className={t.bodyDetail}>{pacing.detail}</p>
       </CardHeader>
 
       <CardContent className="space-y-5 px-6 pb-6 pt-0">
         <div className="flex items-center justify-between gap-2 border-t border-border pt-5">
           <div>
-            <p className="text-lg font-semibold text-foreground">Today&apos;s best windows</p>
-            <p className="text-sm text-muted-foreground">
-              Ranked from your sent-reply history plus live opportunity timing.
+            <p className={t.sectionTitle}>Today&apos;s best windows</p>
+            <p className={t.sectionSubtitle}>
+              When to spend your remaining budget — from your send history and live feed.
             </p>
           </div>
           <Clock3 className="size-4 text-muted-foreground" />
@@ -130,10 +111,8 @@ export function ReplyPacingCard() {
               className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
             >
               <div className="space-y-1">
-                <div className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                  {window.label}
-                </div>
-                <p className="max-w-[52ch] text-base leading-6 text-muted-foreground">
+                <div className={t.windowTime}>{window.label}</div>
+                <p className={cn("max-w-[52ch]", t.windowReason)}>
                   {window.reason}
                 </p>
               </div>
