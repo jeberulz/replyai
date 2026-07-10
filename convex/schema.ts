@@ -402,6 +402,16 @@ export default defineSchema({
     generations: v.number(),
   }).index("by_user_month", ["userId", "month"]),
 
+  aiSpendLedger: defineTable({
+    userId: v.id("users"),
+    kind: v.union(v.literal("analysis"), v.literal("generation")),
+    source: v.string(),
+    hourKey: v.string(), // UTC "YYYY-MM-DDTHH"
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_hour_kind", ["userId", "hourKey", "kind"]),
+
   opportunities: defineTable({
     userId: v.id("users"),
     tweetId: v.string(),

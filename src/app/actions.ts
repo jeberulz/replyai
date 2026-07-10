@@ -89,6 +89,24 @@ async function assertFairUseInAction(
   return null;
 }
 
+async function assertAiSpendInAction(
+  sessionToken: string,
+  kind: "analysis" | "generation",
+  source: string
+): Promise<{ error: string } | null> {
+  const result = await convexServer().mutation(api.spend.recordAiSpendAttempt, {
+    sessionToken,
+    kind,
+    source,
+  });
+  if (!result.allowed) {
+    return {
+      error: result.message ?? "AI generation is temporarily unavailable.",
+    };
+  }
+  return null;
+}
+
 async function resolveXAccessToken(sessionToken: string): Promise<string | null> {
   const convex = convexServer();
   const serverSecret = process.env.CONVEX_SERVER_TOKEN_ACCESS_SECRET;
@@ -265,9 +283,10 @@ async function buildManualNicheContext(sessionToken: string): Promise<NicheConte
 
 async function classifyManualSemanticRelevance(
   text: string,
-  niche: NicheContext
+  niche: NicheContext,
+  forceDemo = false
 ): Promise<SemanticScore> {
-  if (!hasAnthropicKey()) {
+  if (forceDemo || !hasAnthropicKey()) {
     return demoSemanticRelevance(text, niche);
   }
 
@@ -372,7 +391,8 @@ export async function startAnalysisAction(input: {
         : 0;
     const semantic = await classifyManualSemanticRelevance(
       bundle.text,
-      nicheContext
+      nicheContext,
+      Boolean(me?.isDemo)
     );
     const topicRelevance = resolveManualTopicRelevance(
       keywordRelevance,
@@ -467,6 +487,12 @@ export async function continueAnalysisAction(
   if (needsAnalysis) {
     const fairUseBlock = await assertFairUseInAction(sessionToken, "run_analysis");
     if (fairUseBlock) return fairUseBlock;
+    const spendBlock = await assertAiSpendInAction(
+      sessionToken,
+      "analysis",
+      "continue_analysis"
+    );
+    if (spendBlock) return spendBlock;
   }
   if (needsGeneration) {
     const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
@@ -485,7 +511,7 @@ export async function continueAnalysisAction(
       missingAngles: doc.missingAngles,
     };
     if (!doc.summary) {
-      const result = await analyzeTweet(bundle);
+      const result = await analyzeTweet(bundle, { forceDemo: user.isDemo });
       analysis = result.analysis;
       await convex.mutation(api.analyses.setAnalysis, {
         sessionToken,
@@ -513,6 +539,12 @@ export async function continueAnalysisAction(
 
     const generateKind = async (kind: "reply" | "quote") => {
       if (existing.some((r) => r.kind === kind)) return;
+      const spendBlock = await assertAiSpendInAction(
+        sessionToken,
+        "generation",
+        `continue_analysis_${kind}`
+      );
+      if (spendBlock) throw new Error(spendBlock.error);
       // Fired per kind, only when a generation call is actually about to
       // run — a retry where both kinds already exist (e.g. re-entering this
       // try block after analyses.complete failed) must not report a
@@ -531,6 +563,7 @@ export async function continueAnalysisAction(
         voiceNegativeConstraints: negativeConstraints,
         goal,
         model,
+        forceDemo: user.isDemo,
       });
       await convex.mutation(api.replies.insertMany, {
         sessionToken,
@@ -588,6 +621,12 @@ export async function generateMoreAction(args: {
 
   const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
   if (fairUseBlock) throw new Error(fairUseBlock.error);
+  const spendBlock = await assertAiSpendInAction(
+    sessionToken,
+    "generation",
+    `generate_more_${args.kind}`
+  );
+  if (spendBlock) throw new Error(spendBlock.error);
 
   const analysis = await convex.query(api.analyses.get, {
     sessionToken,
@@ -627,6 +666,7 @@ export async function generateMoreAction(args: {
       .filter((r) => r.kind === args.kind)
       .map((r) => r.content),
     model,
+    forceDemo: user.isDemo,
   });
 
   await convex.mutation(api.replies.insertMany, {
@@ -655,10 +695,16 @@ export async function rewriteAction(args: {
   analysisId: string;
   direction: string;
 }) {
-  const { sessionToken } = await requireSession();
+  const { sessionToken, user } = await requireSession();
   const convex = convexServer();
   const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
   if (fairUseBlock) throw new Error(fairUseBlock.error);
+  const spendBlock = await assertAiSpendInAction(
+    sessionToken,
+    "generation",
+    `rewrite_${args.direction}`
+  );
+  if (spendBlock) throw new Error(spendBlock.error);
 
   const direction = REWRITE_DIRECTIONS.find((d) => d === args.direction);
   if (!direction) throw new Error("Unknown rewrite direction");
@@ -685,6 +731,7 @@ export async function rewriteAction(args: {
     voiceExamples: profile?.examples ?? [],
     voiceNegativeConstraints: negativeConstraintsForProfile(profile),
     model,
+    forceDemo: user.isDemo,
   });
 
   await convex.mutation(api.replies.updateContent, {
@@ -739,8 +786,17 @@ export async function setDefaultModelAction(model: string) {
  * is good enough?" decision.
  */
 export async function runModelEvalAction(analysisId: string) {
-  const { sessionToken } = await requireSession();
+  const { sessionToken, user } = await requireSession();
   const convex = convexServer();
+
+  const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
+  if (fairUseBlock) throw new Error(fairUseBlock.error);
+  const spendBlock = await assertAiSpendInAction(
+    sessionToken,
+    "generation",
+    "model_eval"
+  );
+  if (spendBlock) throw new Error(spendBlock.error);
 
   const analysis = await convex.query(api.analyses.get, {
     sessionToken,
@@ -773,6 +829,7 @@ export async function runModelEvalAction(analysisId: string) {
         voiceExamples: examples,
         voiceNegativeConstraints: negativeConstraints,
         model: m.id,
+        forceDemo: user.isDemo,
       });
       return { model: m.id, ...result };
     })
@@ -785,6 +842,7 @@ export async function runModelEvalAction(analysisId: string) {
     voiceExamples: examples,
     voiceNegativeConstraints: negativeConstraints,
     candidates: runs.map((r) => ({ model: r.model, options: r.options })),
+    forceDemo: user.isDemo,
   });
 
   const scoreFor = (model: string) =>
@@ -1530,6 +1588,12 @@ export async function startComposeAction(args: {
 
   const fairUseBlock = await assertFairUseInAction(sessionToken, "generate");
   if (fairUseBlock) return { runId: "", error: fairUseBlock.error };
+  const spendBlock = await assertAiSpendInAction(
+    sessionToken,
+    "generation",
+    `compose_${args.format}`
+  );
+  if (spendBlock) return { runId: "", error: spendBlock.error };
 
   const { profile } = await defaultVoice(sessionToken, args.voiceProfileId);
   const { model } = await resolveGenerationPrefs(sessionToken);
@@ -1560,6 +1624,7 @@ export async function startComposeAction(args: {
       voiceExamples: profile?.examples ?? [],
       voiceNegativeConstraints: negativeConstraints,
       model,
+      forceDemo: user.isDemo,
     });
 
     await convex.mutation(api.compose.completeRun, {

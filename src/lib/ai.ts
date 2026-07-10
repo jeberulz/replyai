@@ -226,9 +226,10 @@ const AnalysisSchema = z.object({
 export type Analysis = z.infer<typeof AnalysisSchema>;
 
 export async function analyzeTweet(
-  bundle: TweetBundle
+  bundle: TweetBundle,
+  options?: { forceDemo?: boolean }
 ): Promise<{ analysis: Analysis; usage: Usage }> {
-  if (!hasAnthropicKey()) {
+  if (options?.forceDemo || !hasAnthropicKey()) {
     return { analysis: demoAnalysis(bundle), usage: { tokensIn: 0, tokensOut: 0 } };
   }
   const response = await client().messages.parse({
@@ -432,9 +433,10 @@ export async function generateOptions(args: {
   avoidContents?: string[];
   /** Claude model override; falls back to ANTHROPIC_GENERATE_MODEL. */
   model?: string;
+  forceDemo?: boolean;
 }): Promise<{ options: GeneratedOption[]; usage: Usage }> {
   const count = args.count ?? 3;
-  if (!hasAnthropicKey()) {
+  if (args.forceDemo || !hasAnthropicKey()) {
     return {
       options: demoOptions(args.kind, args.bundle, args.analysis, count, args.voice, args.goal),
       usage: { tokensIn: 0, tokensOut: 0 },
@@ -555,8 +557,9 @@ export async function rewriteText(args: {
   voiceNegativeConstraints?: VoiceNegativeConstraints | null;
   /** Claude model override; falls back to ANTHROPIC_GENERATE_MODEL. */
   model?: string;
+  forceDemo?: boolean;
 }): Promise<{ text: string; usage: Usage }> {
-  if (!hasAnthropicKey()) {
+  if (args.forceDemo || !hasAnthropicKey()) {
     return {
       text: demoRewrite(args.text, args.direction),
       usage: { tokensIn: 0, tokensOut: 0 },
@@ -639,9 +642,10 @@ export async function judgeModelEval(args: {
   voiceExamples: string[];
   voiceNegativeConstraints?: VoiceNegativeConstraints | null;
   candidates: JudgeCandidate[];
+  forceDemo?: boolean;
 }): Promise<{ verdict: JudgeVerdict; usage: Usage; judgeModel: string }> {
   const judgeModel = env.anthropicAnalyzeModel;
-  if (!hasAnthropicKey()) {
+  if (args.forceDemo || !hasAnthropicKey()) {
     return {
       verdict: demoVerdict(args.candidates),
       usage: { tokensIn: 0, tokensOut: 0 },
@@ -1020,8 +1024,9 @@ export async function generateComposeOptions(args: {
   voiceExamples: string[];
   voiceNegativeConstraints?: VoiceNegativeConstraints | null;
   model?: string;
+  forceDemo?: boolean;
 }): Promise<{ bundle: ComposeBundle; usage: Usage; demo: boolean }> {
-  if (!hasAnthropicKey()) {
+  if (args.forceDemo || !hasAnthropicKey()) {
     return {
       bundle: demoComposeBundle(args.cluster, args.format),
       usage: { tokensIn: 0, tokensOut: 0 },

@@ -198,3 +198,73 @@ The first implementation worker appends:
     missing-expected provisioning-secret decisions.
   - `tests/billing.test.ts` now covers active and expired beta entitlement
     without Stripe Pro contamination.
+
+## 2026-07-10 — WP40-S4 demo isolation + AI spend caps
+
+- Public demo is now disabled by default in production via
+  `env.publicDemoEnabled`; public CTA/footer demo paths are hidden when the
+  switch is off, and no missing-X-credentials production request silently falls
+  into demo login. Local/CI remains demo-enabled unless
+  `ENABLE_PUBLIC_DEMO=false` is set.
+- Demo login now creates an isolated demo identity derived from the session
+  token, not the shared `demo-user` row. The isolated demo session gets starter
+  defaults and is marked onboarded so zero-key local/CI flows land on the
+  dashboard deterministically.
+- Demo AI paths now force deterministic zero-token fallbacks by authenticated
+  demo identity, even if `ANTHROPIC_API_KEY` is configured. This covers
+  semantic relevance, analysis, generation, rewrite, model eval judging, and
+  compose generation.
+- Added the names-only env controls `ENABLE_PUBLIC_DEMO`,
+  `AI_SPEND_KILL_SWITCH`, `AI_SPEND_LIMITS_REQUIRED`,
+  `AI_ANALYSIS_HOURLY_LIMIT`, and `AI_GENERATION_HOURLY_LIMIT` to
+  `.env.example`; Convex typed env metadata includes the AI spend controls.
+- Added shared AI spend-limit logic and an authenticated Convex
+  `spend.recordAiSpendAttempt` mutation. Non-demo AI attempts write only
+  user/kind/source/hour metadata to `aiSpendLedger`; no prompts, tweet text,
+  OAuth tokens, or secrets are stored. Demo users bypass the paid-token ledger.
+- Production missing-cap state fails closed by default for non-demo users unless
+  `AI_SPEND_LIMITS_REQUIRED=false` is explicitly configured. The operator kill
+  switch blocks all non-demo AI spend with user-facing copy.
+- AI-spending entry points now check the shared spend gate before model calls:
+  analysis continuation, initial reply/quote generation, generate-more,
+  rewrite, model eval, and compose generation. Existing fair-use checks remain
+  in place.
+- `aiSpendLedger` is indexed by user and user/hour/kind and is included in the
+  account export/delete inventory contract.
+- Convex generated bindings and the dev deployment `shiny-crow-162` were
+  updated after the new schema/API. No production deployment or production data
+  mutation performed.
+- Verification:
+  - `npm run typecheck` — passed.
+  - `npm run lint` — passed with the existing generated Convex
+    `eslint-disable` warnings and no errors.
+  - `npm test` — passed: 53 files passed, 1 skipped; 453 tests passed,
+    1 skipped.
+  - `npm run security:audit` — passed: 105 public Convex functions checked,
+    3 allow-listed.
+  - `npm run build` — passed with Next.js 16.2.10 / Turbopack.
+  - `NEXT_PUBLIC_CONVEX_URL=... npm run test:mobile` — passed: 12 tests across
+    4 viewport projects after pushing the dev Convex function update.
+- Focused tests added/updated:
+  - `tests/env.test.ts` covers production demo default-off, explicit override,
+    and local default-on/default-off behavior.
+  - `tests/spendLimits.test.ts` covers missing-cap fail-closed behavior,
+    hourly boundary blocking, uncapped local allowance, cap parsing, and UTC
+    hour-key reset boundaries.
+  - `tests/demoAiFallback.test.ts` covers forced demo zero-token fallbacks when
+    a model key exists.
+  - `tests/accountData.test.ts` now includes `aiSpendLedger` in the explicit
+    user-owned table order.
+- Dead ends / findings:
+  - The first Playwright rerun failed because the dev Convex deployment was
+    still serving the old `users.upsertAndCreateSession` validator; pushing
+    `npx convex dev --once` resolved the auth-validator drift.
+  - The next Playwright rerun exposed the expected S4 behavior change: fresh
+    isolated demo sessions started on onboarding concierge review instead of a
+    previously completed shared demo account. Demo login now completes only the
+    isolated demo account's onboarding so CI exercises the app flow
+    deterministically.
+  - The responsive matrix also exposed feed `Analyze & reply` actions below the
+    44px target at tablet/desktop breakpoints; row and detail actions now have
+    explicit 44px minimum heights, and the Playwright locator scopes to the
+    detail-pane handoff action.

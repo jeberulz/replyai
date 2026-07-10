@@ -150,14 +150,14 @@ export function OpportunityDetail({
           icon={<ArrowRight className="size-3.5" />}
           href={`/dashboard?url=${encodeURIComponent(opportunity.tweetUrl)}`}
           as={Link}
-          className="w-full sm:flex-1"
+          className="min-h-11 w-full sm:flex-1"
         />
         <Button
           variant="secondary"
           label="Dismiss"
           onClick={dismiss}
           isDisabled={pending}
-          className="w-full sm:w-auto"
+          className="min-h-11 w-full sm:w-auto"
         />
       </PaneActionBar>
     </Pane>

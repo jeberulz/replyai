@@ -53,7 +53,7 @@ dirty working tree.
     rejection, and Stripe-state separation.
   - Auth/security review required before checking the story.
 
-- [ ] **WP40-S4 — Isolate or disable production demo and cap AI spend**
+- [x] **WP40-S4 — Isolate or disable production demo and cap AI spend**
   - Public production demo is disabled by default and hidden from public CTA
     paths; a production request cannot fall into the shared `demo-user` row.
   - Local/CI zero-key demo still completes onboarding → analyze → generate →

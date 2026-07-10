@@ -38,6 +38,11 @@ export const env = {
   get authProvisionSecret(): string {
     return process.env.CONVEX_AUTH_PROVISION_SECRET ?? "";
   },
+  get publicDemoEnabled(): boolean {
+    if (process.env.ENABLE_PUBLIC_DEMO === "true") return true;
+    if (process.env.NODE_ENV === "production") return false;
+    return process.env.ENABLE_PUBLIC_DEMO !== "false";
+  },
 };
 
 export function hasXCredentials(): boolean {

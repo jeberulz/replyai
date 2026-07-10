@@ -150,7 +150,7 @@ test("feed detail stays responsive across critical widths", async ({ page }) => 
   await expect(page.getByRole("heading", { name: "Opportunity" })).toBeVisible();
   await expectNoHorizontalScroll(page, "feed detail");
 
-  const analyzeLink = page.getByRole("link", { name: /Analyze & reply/i });
+  const analyzeLink = page.getByRole("link", { name: /Analyze & reply/i }).last();
   await expectTargetSize(analyzeLink, "analyze opportunity action");
   await analyzeLink.click();
   await expect(page).toHaveURL(/\/dashboard\?url=/);

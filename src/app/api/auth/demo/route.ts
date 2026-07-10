@@ -13,19 +13,26 @@ import { newSessionToken, setSessionCookie } from "@/lib/session";
 export async function GET(request: NextRequest) {
   const blocked = guardAuthRoute(request, "demo");
   if (blocked) return blocked;
+  if (!env.publicDemoEnabled) {
+    return NextResponse.redirect(new URL("/?error=private_beta", request.url));
+  }
 
   try {
     const sessionToken = newSessionToken();
+    const demoId = `demo-${sessionToken.slice(0, 12).toLowerCase()}`;
     await convexServer().mutation(api.users.upsertAndCreateSession, {
       provisioningSecret: env.authProvisionSecret,
-      xUserId: "demo-user",
-      username: "demo_builder",
+      xUserId: demoId,
+      username: demoId.replace(/-/g, "_").slice(0, 15),
       displayName: "Demo Builder",
       isDemo: true,
       sessionToken,
     });
     await setSessionCookie(sessionToken);
     await ensureDefaults(sessionToken);
+    await convexServer().mutation(api.users.completeOnboarding, {
+      sessionToken,
+    });
     const destination = await postLoginPath(sessionToken);
     return NextResponse.redirect(new URL(destination, request.url));
   } catch (error) {

@@ -118,7 +118,7 @@ export function OpportunityRow({
             href={`/dashboard?url=${encodeURIComponent(opportunity.tweetUrl)}`}
             as={Link}
             onClick={(e) => e.stopPropagation()}
-            className="w-full sm:w-auto"
+            className="min-h-11 w-full sm:w-auto"
           />
           <Button
             size="sm"
@@ -126,7 +126,7 @@ export function OpportunityRow({
             label="Dismiss"
             icon={<X className="size-3.5" />}
             isDisabled={pending}
-            className="w-full sm:w-auto"
+            className="min-h-11 w-full sm:w-auto"
             onClick={(e) => {
               e.stopPropagation();
               startTransition(() => dismissOpportunityAction(opportunity._id));
