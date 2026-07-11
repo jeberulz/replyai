@@ -144,6 +144,7 @@ export const evalUsageSnapshot = v.object({
   reasoningTokens: v.optional(v.number()),
   cachedInputTokens: v.optional(v.number()),
   toolCallCount: v.optional(v.number()),
+  successfulToolCallCount: v.optional(v.number()),
 });
 
 export default defineSchema({
@@ -739,6 +740,15 @@ export default defineSchema({
       excluded: v.number(),
     }),
     spendUsd: v.number(),
+    runnerVersion: v.optional(v.string()),
+    seed: v.optional(v.string()),
+    promptVersion: v.optional(v.string()),
+    schemaVersion: v.optional(v.string()),
+    budgetUsdCap: v.optional(v.number()),
+    concurrency: v.optional(v.number()),
+    caseLimit: v.optional(v.number()),
+    maxRetries: v.optional(v.number()),
+    maxToolCalls: v.optional(v.number()),
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
     cancelledAt: v.optional(v.number()),
@@ -760,10 +770,18 @@ export default defineSchema({
     blindKey: v.string(),
     kind: evalKind,
     status: v.union(
+      v.literal("queued"),
+      v.literal("running"),
       v.literal("completed"),
       v.literal("failed"),
       v.literal("excluded")
     ),
+    attempt: v.optional(v.number()),
+    retryCount: v.optional(v.number()),
+    seed: v.optional(v.string()),
+    inputSnapshotJson: v.optional(v.string()),
+    candidateSnapshotJson: v.optional(v.string()),
+    stageSnapshotsJson: v.optional(v.string()),
     normalizedOutputJson: v.optional(v.string()),
     guardrailJson: v.optional(v.string()),
     citationsJson: v.optional(v.string()),
@@ -778,6 +796,7 @@ export default defineSchema({
     .index("by_experiment", ["experimentId"])
     .index("by_run", ["runId"])
     .index("by_run_and_case", ["runId", "caseId"])
+    .index("by_run_case_candidate", ["runId", "caseId", "candidateCatalogId"])
     .index("by_run_and_candidate", ["runId", "candidateCatalogId"])
     .index("by_case", ["caseId"]),
 
