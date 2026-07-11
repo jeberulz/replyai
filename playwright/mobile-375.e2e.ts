@@ -199,6 +199,9 @@ test("draft detail stays readable across critical widths", async ({ page }) => {
     .getByRole("button", { name: /^Schedule$/ });
   await expectTargetSize(confirmSchedule, "confirm schedule action");
   await confirmSchedule.click();
+  await expect(
+    page.getByText("Scheduled — it will publish at the chosen time")
+  ).toBeVisible({ timeout: 30_000 });
 
   await page.goto("/drafts");
   await expect(
