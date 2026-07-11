@@ -21,6 +21,7 @@ import type * as compose from "../compose.js";
 import type * as crons from "../crons.js";
 import type * as drafts from "../drafts.js";
 import type * as evalLab from "../evalLab.js";
+import type * as evalResults from "../evalResults.js";
 import type * as evalReview from "../evalReview.js";
 import type * as evalRunner from "../evalRunner.js";
 import type * as evalRunnerActions from "../evalRunnerActions.js";
@@ -80,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   drafts: typeof drafts;
   evalLab: typeof evalLab;
+  evalResults: typeof evalResults;
   evalReview: typeof evalReview;
   evalRunner: typeof evalRunner;
   evalRunnerActions: typeof evalRunnerActions;
