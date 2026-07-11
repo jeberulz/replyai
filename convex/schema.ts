@@ -118,6 +118,8 @@ export default defineSchema({
     unlimitedAccess: v.optional(v.boolean()),
     // Optional override for notification digest emails (falls back to account email when unset).
     notificationEmail: v.optional(v.string()),
+    // Internal-only Model Evaluation Lab access. Unset/false = no access.
+    evalOperator: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_x_user_id", ["xUserId"])

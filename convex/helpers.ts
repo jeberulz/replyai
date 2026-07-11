@@ -1,5 +1,6 @@
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { hasEvalOperatorAccess } from "../shared/evalAuth";
 
 export const SESSION_SLIDING_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 export const SESSION_ABSOLUTE_TTL_MS = 1000 * 60 * 60 * 24 * 90;
@@ -87,6 +88,15 @@ export async function requireUser(
 ): Promise<Doc<"users">> {
   const user = await userBySessionToken(ctx, token);
   if (!user) throw new Error("Not authenticated");
+  return user;
+}
+
+export async function requireEvalOperator(
+  ctx: QueryCtx | MutationCtx,
+  token: string
+): Promise<Doc<"users">> {
+  const user = await requireUser(ctx, token);
+  if (!hasEvalOperatorAccess(user)) throw new Error("Not found");
   return user;
 }
 
