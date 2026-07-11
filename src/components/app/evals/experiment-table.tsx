@@ -269,12 +269,20 @@ function ExperimentActions({
         Clone setup
       </Link>
       {experiment.run ? (
-        <Link
-          href={`/evals/${experiment.id}/review`}
-          className="inline-flex min-h-10 items-center rounded-md border border-border px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground md:min-h-9"
-        >
-          Review
-        </Link>
+        <>
+          <Link
+            href={`/evals/${experiment.id}`}
+            className="inline-flex min-h-10 items-center rounded-md border border-border px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground md:min-h-9"
+          >
+            Results
+          </Link>
+          <Link
+            href={`/evals/${experiment.id}/review`}
+            className="inline-flex min-h-10 items-center rounded-md border border-border px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground md:min-h-9"
+          >
+            Review
+          </Link>
+        </>
       ) : null}
       {canStart ? (
         <form action={startEvalExperimentAction}>
