@@ -66,6 +66,27 @@ export const createDataset = mutation({
   },
 });
 
+export const listDatasets = query({
+  args: { sessionToken: v.string(), kind: v.optional(evalKindValidator) },
+  handler: async (ctx, { sessionToken, kind }) => {
+    const operator = await requireEvalOperator(ctx, sessionToken);
+    if (kind) {
+      return await ctx.db
+        .query("evalDatasets")
+        .withIndex("by_user_kind", (q) =>
+          q.eq("userId", operator._id).eq("kind", kind)
+        )
+        .order("desc")
+        .take(100);
+    }
+    return await ctx.db
+      .query("evalDatasets")
+      .withIndex("by_user", (q) => q.eq("userId", operator._id))
+      .order("desc")
+      .take(100);
+  },
+});
+
 export const createExperiment = mutation({
   args: {
     sessionToken: v.string(),
