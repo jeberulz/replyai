@@ -156,6 +156,55 @@ async function countByUser(
         if (row._id) count += 1;
       }
       return count;
+    case "evalJudgments":
+      for await (const row of ctx.db
+        .query("evalJudgments")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
+    case "evalOutputs":
+      for await (const row of ctx.db
+        .query("evalOutputs")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
+    case "evalRuns":
+      for await (const row of ctx.db
+        .query("evalRuns")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
+    case "evalDecisions":
+      for await (const row of ctx.db
+        .query("evalDecisions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
+    case "evalExperiments":
+      for await (const row of ctx.db
+        .query("evalExperiments")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
+    case "evalCases":
+      for await (const row of ctx.db
+        .query("evalCases")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
+    case "evalDatasets":
+      for await (const row of ctx.db
+        .query("evalDatasets")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        if (row._id) count += 1;
+      }
+      return count;
     case "modelEvals":
       for await (const row of ctx.db
         .query("modelEvals")
@@ -356,6 +405,55 @@ async function listByUser(
         rows.push(row as unknown as Record<string, unknown>);
       }
       return rows;
+    case "evalJudgments":
+      for await (const row of ctx.db
+        .query("evalJudgments")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
+    case "evalOutputs":
+      for await (const row of ctx.db
+        .query("evalOutputs")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
+    case "evalRuns":
+      for await (const row of ctx.db
+        .query("evalRuns")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
+    case "evalDecisions":
+      for await (const row of ctx.db
+        .query("evalDecisions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
+    case "evalExperiments":
+      for await (const row of ctx.db
+        .query("evalExperiments")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
+    case "evalCases":
+      for await (const row of ctx.db
+        .query("evalCases")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
+    case "evalDatasets":
+      for await (const row of ctx.db
+        .query("evalDatasets")
+        .withIndex("by_user", (q) => q.eq("userId", userId))) {
+        rows.push(row as unknown as Record<string, unknown>);
+      }
+      return rows;
     case "modelEvals":
       for await (const row of ctx.db
         .query("modelEvals")
@@ -551,6 +649,55 @@ async function takeDeletionBatch(
       return (
         await ctx.db
           .query("generatedReplies")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "evalJudgments":
+      return (
+        await ctx.db
+          .query("evalJudgments")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "evalOutputs":
+      return (
+        await ctx.db
+          .query("evalOutputs")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "evalRuns":
+      return (
+        await ctx.db
+          .query("evalRuns")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "evalDecisions":
+      return (
+        await ctx.db
+          .query("evalDecisions")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "evalExperiments":
+      return (
+        await ctx.db
+          .query("evalExperiments")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "evalCases":
+      return (
+        await ctx.db
+          .query("evalCases")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .take(ACCOUNT_DELETION_BATCH_SIZE)
+      ).map((row) => row._id);
+    case "evalDatasets":
+      return (
+        await ctx.db
+          .query("evalDatasets")
           .withIndex("by_user", (q) => q.eq("userId", userId))
           .take(ACCOUNT_DELETION_BATCH_SIZE)
       ).map((row) => row._id);

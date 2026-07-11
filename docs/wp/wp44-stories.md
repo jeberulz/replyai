@@ -13,7 +13,16 @@ Branch: `feat/wp44-eval-domain-auth`
 
 ## Deferred from this first story
 
-- [ ] Persistent eval lab tables for datasets/cases/experiments/runs/outputs/judgments/decisions.
-- [ ] Account export/deletion inventory for persistent eval tables.
-- [ ] Public lab Convex queries/mutations and route/server-action wiring.
+- [x] Persistent eval lab tables for datasets/cases/experiments/runs/outputs/judgments/decisions.
+- [x] Account export/deletion inventory for persistent eval tables.
+- [x] Operator-only Convex domain functions for catalog, dataset creation, experiment creation, and experiment listing.
 - [ ] Runner, blind review, results, decisions, scanner/shadow integration, or UI.
+
+## S2 — additive persistence and account compatibility
+
+- [x] Add additive new tables only; no existing table is narrowed or backfilled.
+- [x] Give every new eval lab row a `userId` owner and `by_user` index for account inventory/deletion.
+- [x] Add domain indexes for dataset cases, experiment runs, candidate outputs, review queues, and decisions.
+- [x] Update `shared/accountData.ts` and `convex/account.ts` to export/delete eval lab rows before parent records.
+- [x] Update account inventory tests for the new table list, ownership isolation, export filtering, and counts.
+- [x] Preserve existing `modelEvals` schema/functions unchanged.

@@ -20,6 +20,7 @@ import type * as cache from "../cache.js";
 import type * as compose from "../compose.js";
 import type * as crons from "../crons.js";
 import type * as drafts from "../drafts.js";
+import type * as evalLab from "../evalLab.js";
 import type * as evals from "../evals.js";
 import type * as helpers from "../helpers.js";
 import type * as http from "../http.js";
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   compose: typeof compose;
   crons: typeof crons;
   drafts: typeof drafts;
+  evalLab: typeof evalLab;
   evals: typeof evals;
   helpers: typeof helpers;
   http: typeof http;

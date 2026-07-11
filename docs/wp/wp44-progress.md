@@ -21,5 +21,22 @@ Migration/account notes:
 
 Deferred work:
 
-- Full additive lab persistence tables are still pending: datasets, cases, experiments, runs, outputs, judgments, and decisions.
-- Public lab functions should call `requireEvalOperator()` and accept catalog IDs, not raw model IDs.
+- Runner execution, UI, blind-review screens, aggregation/statistics, Grok search, and scanner/shadow integration remain deferred to later WPs.
+
+## 2026-07-11 — S2 persistence and account compatibility
+
+Added the WP44 persistent domain skeleton:
+
+- New tables: `evalDatasets`, `evalCases`, `evalExperiments`, `evalRuns`, `evalOutputs`, `evalJudgments`, and `evalDecisions`.
+- Every new table is user-owned via `userId` with a `by_user` index so account export/deletion can include it.
+- Added domain indexes for dataset case lookup, experiment status, run attempts, run/case outputs, reviewer queues, and decisions.
+- Added `convex/evalLab.ts` with operator-only catalog, dataset creation, experiment creation, and experiment listing. It uses `requireEvalOperator()` and validates catalog IDs before freezing provider/model snapshots.
+- Updated `shared/accountData.ts` plus all three `convex/account.ts` switch surfaces: count, export/list, and deletion batch.
+- Updated `tests/accountData.test.ts` to lock the new inventory order, ownership isolation, counts, and export filtering.
+- Preserved historical `modelEvals` without schema, index, query, or mutation changes.
+
+Migration/account notes:
+
+- This is still widen-only: all persistence is in new tables, and the only existing-table change remains optional `users.evalOperator`.
+- No backfill or production data migration is required.
+- Deletion order removes judgments/outputs/runs/decisions/experiments/cases/datasets before `modelEvals`, `tweetAnalyses`, and the user row.

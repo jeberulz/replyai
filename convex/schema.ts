@@ -87,6 +87,65 @@ export const onboardingConciergeProposal = v.object({
   ),
 });
 
+export const evalKind = v.union(
+  v.literal("generation"),
+  v.literal("discovery"),
+  v.literal("pipeline")
+);
+
+export const evalDatasetSourcePolicy = v.union(
+  v.literal("synthetic"),
+  v.literal("product_team"),
+  v.literal("consented_user")
+);
+
+export const evalExperimentStatus = v.union(
+  v.literal("draft"),
+  v.literal("ready"),
+  v.literal("running"),
+  v.literal("completed"),
+  v.literal("cancelled"),
+  v.literal("failed")
+);
+
+export const evalRunStatus = v.union(
+  v.literal("queued"),
+  v.literal("running"),
+  v.literal("completed"),
+  v.literal("cancelled"),
+  v.literal("failed")
+);
+
+export const evalCandidateSnapshot = v.object({
+  catalogId: v.string(),
+  kind: evalKind,
+  label: v.string(),
+  stages: v.array(
+    v.object({
+      role: v.union(v.literal("generation"), v.literal("discovery")),
+      providerId: v.string(),
+      modelId: v.string(),
+      reasoningEffort: v.optional(v.string()),
+      capabilities: v.array(v.string()),
+      pricing: v.optional(
+        v.object({
+          inputPerMTok: v.number(),
+          outputPerMTok: v.number(),
+          cachedInputPerMTok: v.optional(v.number()),
+        })
+      ),
+    })
+  ),
+});
+
+export const evalUsageSnapshot = v.object({
+  inputTokens: v.optional(v.number()),
+  outputTokens: v.optional(v.number()),
+  reasoningTokens: v.optional(v.number()),
+  cachedInputTokens: v.optional(v.number()),
+  toolCallCount: v.optional(v.number()),
+});
+
 export default defineSchema({
   users: defineTable({
     xUserId: v.string(),
@@ -602,6 +661,183 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_analysis", ["analysisId"]),
+
+  evalDatasets: defineTable({
+    userId: v.id("users"),
+    creatorUserId: v.id("users"),
+    name: v.string(),
+    kind: evalKind,
+    version: v.string(),
+    sourcePolicy: evalDatasetSourcePolicy,
+    caseCount: v.number(),
+    datasetHash: v.string(),
+    description: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_kind", ["userId", "kind"])
+    .index("by_user_name_and_version", ["userId", "name", "version"])
+    .index("by_kind_and_version", ["kind", "version"]),
+
+  evalCases: defineTable({
+    userId: v.id("users"),
+    datasetId: v.id("evalDatasets"),
+    ordinal: v.number(),
+    kind: evalKind,
+    sourcePolicy: evalDatasetSourcePolicy,
+    caseHash: v.string(),
+    normalizedInputHash: v.string(),
+    // JSON string for the immutable normalized input/snapshot. Runner/UI
+    // packages define the stricter per-kind shape before writing rows.
+    snapshotJson: v.string(),
+    strataLabels: v.array(v.string()),
+    sourceAnalysisId: v.optional(v.id("tweetAnalyses")),
+    sourceTweetId: v.optional(v.string()),
+    consentRef: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_dataset", ["datasetId"])
+    .index("by_dataset_and_ordinal", ["datasetId", "ordinal"])
+    .index("by_user_and_dataset", ["userId", "datasetId"]),
+
+  evalExperiments: defineTable({
+    userId: v.id("users"),
+    creatorUserId: v.id("users"),
+    datasetId: v.id("evalDatasets"),
+    name: v.string(),
+    kind: evalKind,
+    status: evalExperimentStatus,
+    candidateCatalogIds: v.array(v.string()),
+    candidateSnapshots: v.array(evalCandidateSnapshot),
+    promptVersion: v.string(),
+    schemaVersion: v.string(),
+    seed: v.string(),
+    budgetUsd: v.number(),
+    concurrency: v.number(),
+    caseLimit: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_dataset", ["datasetId"])
+    .index("by_kind_and_status", ["kind", "status"]),
+
+  evalRuns: defineTable({
+    userId: v.id("users"),
+    experimentId: v.id("evalExperiments"),
+    attempt: v.number(),
+    status: evalRunStatus,
+    counts: v.object({
+      total: v.number(),
+      queued: v.number(),
+      running: v.number(),
+      completed: v.number(),
+      failed: v.number(),
+      excluded: v.number(),
+    }),
+    spendUsd: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_experiment", ["experimentId"])
+    .index("by_experiment_and_attempt", ["experimentId", "attempt"])
+    .index("by_status", ["status"]),
+
+  evalOutputs: defineTable({
+    userId: v.id("users"),
+    experimentId: v.id("evalExperiments"),
+    runId: v.id("evalRuns"),
+    caseId: v.id("evalCases"),
+    candidateCatalogId: v.string(),
+    blindKey: v.string(),
+    kind: evalKind,
+    status: v.union(
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("excluded")
+    ),
+    normalizedOutputJson: v.optional(v.string()),
+    guardrailJson: v.optional(v.string()),
+    citationsJson: v.optional(v.string()),
+    hydrationJson: v.optional(v.string()),
+    usage: v.optional(evalUsageSnapshot),
+    latencyMs: v.optional(v.number()),
+    costUsd: v.optional(v.number()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_experiment", ["experimentId"])
+    .index("by_run", ["runId"])
+    .index("by_run_and_case", ["runId", "caseId"])
+    .index("by_run_and_candidate", ["runId", "candidateCatalogId"])
+    .index("by_case", ["caseId"]),
+
+  evalJudgments: defineTable({
+    userId: v.id("users"),
+    experimentId: v.id("evalExperiments"),
+    runId: v.id("evalRuns"),
+    caseId: v.id("evalCases"),
+    reviewerUserId: v.id("users"),
+    kind: evalKind,
+    blindOrder: v.array(v.string()),
+    choice: v.union(
+      v.literal("a"),
+      v.literal("b"),
+      v.literal("tie"),
+      v.literal("neither"),
+      v.literal("relevant"),
+      v.literal("not_relevant")
+    ),
+    reasonCodes: v.array(v.string()),
+    labels: v.optional(
+      v.object({
+        actionable: v.optional(v.boolean()),
+        novel: v.optional(v.boolean()),
+        unsafe: v.optional(v.boolean()),
+        stale: v.optional(v.boolean()),
+        duplicate: v.optional(v.boolean()),
+      })
+    ),
+    editedDraft: v.optional(v.string()),
+    revision: v.number(),
+    submittedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_experiment", ["experimentId"])
+    .index("by_run", ["runId"])
+    .index("by_run_and_case", ["runId", "caseId"])
+    .index("by_reviewer", ["reviewerUserId"])
+    .index("by_case_and_reviewer", ["caseId", "reviewerUserId"]),
+
+  evalDecisions: defineTable({
+    userId: v.id("users"),
+    experimentId: v.id("evalExperiments"),
+    runId: v.optional(v.id("evalRuns")),
+    decision: v.union(
+      v.literal("promote_to_shadow"),
+      v.literal("promote_to_assisted"),
+      v.literal("retest"),
+      v.literal("reject")
+    ),
+    rationale: v.string(),
+    sampleSize: v.number(),
+    evidenceHash: v.string(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_experiment", ["experimentId"])
+    .index("by_user_and_decision", ["userId", "decision"]),
 
   cachedResponses: defineTable({
     key: v.string(),

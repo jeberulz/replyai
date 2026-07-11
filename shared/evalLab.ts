@@ -161,21 +161,34 @@ export function freezeEvalCandidateSnapshot(
     stages: candidate.stages.map((stage) => {
       const model = modelInfo(stage.modelId);
       const pricing = modelPricing(stage.modelId);
-      return {
+      const snapshot: {
+        role: "generation" | "discovery";
+        providerId: AiProviderId;
+        modelId: string;
+        reasoningEffort?: ReasoningEffort;
+        capabilities: string[];
+        pricing?: {
+          inputPerMTok: number;
+          outputPerMTok: number;
+          cachedInputPerMTok?: number;
+        };
+      } = {
         role: stage.role,
         providerId: stage.providerId,
         modelId: stage.modelId,
-        reasoningEffort: stage.reasoningEffort,
-        capabilities: model?.capabilities ?? [],
-        pricing:
-          pricing === undefined
-            ? undefined
-            : {
-                inputPerMTok: pricing.inputPerMTok,
-                outputPerMTok: pricing.outputPerMTok,
-                cachedInputPerMTok: pricing.cachedInputPerMTok,
-              },
+        capabilities: [...(model?.capabilities ?? [])],
       };
+      if (stage.reasoningEffort) snapshot.reasoningEffort = stage.reasoningEffort;
+      if (pricing) {
+        snapshot.pricing = {
+          inputPerMTok: pricing.inputPerMTok,
+          outputPerMTok: pricing.outputPerMTok,
+        };
+        if (pricing.cachedInputPerMTok !== undefined) {
+          snapshot.pricing.cachedInputPerMTok = pricing.cachedInputPerMTok;
+        }
+      }
+      return snapshot;
     }),
   };
 }
