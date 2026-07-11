@@ -35,3 +35,21 @@ Append-only implementation log.
   Claude as the default production generation provider, `off`/`shadow` default,
   operator-only lab, historical `modelEvals`, key-free deterministic CI/demo,
   no global assisted enablement, and no publish automation.
+
+## 2026-07-11 — WP41-S2 — Program brief
+
+- Added `docs/wp/WP41-GROK-EVAL-PROGRAM.md` with the merge dependency graph,
+  eight implementation wave gates, explicit high-collision ownership/order,
+  per-package risk-based routing recommendations, rollout/owner gates, and a
+  reusable worker handoff checklist.
+- Kept schema/account-data changes sequential (WP44 → WP49 → WP51), scanner
+  changes sequential (WP49 → WP50), and route/component ownership separated
+  across WP46–WP48. WP46 and WP49 may run in parallel only after the runner
+  gate because their named files are disjoint.
+- Recorded routing honestly: this runtime cannot select or enforce a different
+  model or reasoning effort for a subagent. Recommendations are planning data;
+  every worker inherits the current runtime unless an orchestrator has an
+  independently available routing control and records its actual use.
+- Preserved the unresolved owner inputs from the approved lab PRD as gates for
+  WP51 rather than inventing consent, reviewer-count, spend, export, or retention
+  policy.

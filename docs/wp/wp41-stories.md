@@ -10,7 +10,7 @@ not implement, enable, or route any production model behavior.
     a verifiable Definition of Done.
   - Preserve the approved provider, rollout, authorization, demo, publishing,
     and eval compatibility decisions.
-- [ ] **WP41-S2 — Publish the implementation program brief.**
+- [x] **WP41-S2 — Publish the implementation program brief.**
   - Add one program brief under `docs/wp/` covering the dependency graph,
     collision matrix, routing ledger, owner/rollout gates, and wave gates.
   - Make package ownership and merge order explicit enough for independent
