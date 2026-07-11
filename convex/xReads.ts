@@ -19,6 +19,7 @@ const sourceValidator = v.union(
   v.literal("scanner_list"),
   v.literal("scanner_watched"),
   v.literal("scanner_search"),
+  v.literal("scanner_grok_shadow"),
   v.literal("research"),
   v.literal("voice_refresh"),
   v.literal("reply_back"),

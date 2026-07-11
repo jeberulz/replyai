@@ -147,6 +147,49 @@ export const evalUsageSnapshot = v.object({
   successfulToolCallCount: v.optional(v.number()),
 });
 
+export const shadowGrokMode = v.union(
+  v.literal("off"),
+  v.literal("shadow")
+);
+
+export const shadowGrokRunStatus = v.union(
+  v.literal("skipped"),
+  v.literal("blocked"),
+  v.literal("succeeded"),
+  v.literal("failed")
+);
+
+export const shadowGrokAvailability = v.union(
+  v.literal("off"),
+  v.literal("not_sampled"),
+  v.literal("no_query"),
+  v.literal("spend_blocked"),
+  v.literal("circuit_open"),
+  v.literal("provider_unavailable"),
+  v.literal("hydration_failed"),
+  v.literal("succeeded"),
+  v.literal("failed")
+);
+
+export const shadowGrokCandidateProvenance = v.object({
+  tweetId: v.string(),
+  canonicalUrl: v.string(),
+  authorHandle: v.string(),
+  relevanceReason: v.string(),
+  missingAngle: v.string(),
+  searchIntent: v.string(),
+  citations: v.array(v.string()),
+  mediaInfluenced: v.boolean(),
+  hydrated: v.boolean(),
+  hydratedAuthorHandle: v.optional(v.string()),
+  postedAt: v.optional(v.number()),
+});
+
+export const shadowGrokHydrationFailure = v.object({
+  tweetId: v.string(),
+  reason: v.string(),
+});
+
 export default defineSchema({
   users: defineTable({
     xUserId: v.string(),
@@ -470,7 +513,11 @@ export default defineSchema({
 
   aiSpendLedger: defineTable({
     userId: v.id("users"),
-    kind: v.union(v.literal("analysis"), v.literal("generation")),
+    kind: v.union(
+      v.literal("analysis"),
+      v.literal("generation"),
+      v.literal("discovery")
+    ),
     source: v.string(),
     hourKey: v.string(), // UTC "YYYY-MM-DDTHH"
     createdAt: v.number(),
@@ -488,6 +535,7 @@ export default defineSchema({
       v.literal("scanner_list"),
       v.literal("scanner_watched"),
       v.literal("scanner_search"),
+      v.literal("scanner_grok_shadow"),
       v.literal("research"),
       v.literal("voice_refresh"),
       v.literal("reply_back"),
@@ -629,7 +677,59 @@ export default defineSchema({
     // fake ML % in the UI. Set/cleared alongside rankingWeights.
     rankingChangelog: v.optional(v.string()),
     rankingChangelogAt: v.optional(v.number()),
+    // WP49 — operator-controlled Grok discovery shadow mode. Unset = off.
+    grokDiscoveryMode: v.optional(shadowGrokMode),
+    grokDiscoverySampleRatePercent: v.optional(v.number()),
+    grokDiscoveryEvalRunId: v.optional(v.id("evalRuns")),
+    lastGrokDiscoveryShadowAt: v.optional(v.number()),
+    lastGrokDiscoveryShadowStatus: v.optional(shadowGrokRunStatus),
+    lastGrokDiscoveryShadowError: v.optional(v.string()),
   }).index("by_user", ["userId"]),
+
+  shadowGrokDiscoveryRuns: defineTable({
+    userId: v.id("users"),
+    scanStartedAt: v.number(),
+    mode: shadowGrokMode,
+    sampleRatePercent: v.number(),
+    sampled: v.boolean(),
+    sampleKey: v.string(),
+    version: v.string(),
+    status: shadowGrokRunStatus,
+    availability: shadowGrokAvailability,
+    reason: v.optional(v.string()),
+    query: v.optional(v.string()),
+    requestJson: v.optional(v.string()),
+    providerId: v.optional(v.string()),
+    modelId: v.optional(v.string()),
+    reasoningEffort: v.optional(v.string()),
+    evalRunId: v.optional(v.id("evalRuns")),
+    evalExperimentId: v.optional(v.id("evalExperiments")),
+    rawProviderResponseId: v.optional(v.string()),
+    citations: v.array(v.string()),
+    hydrationFailures: v.array(shadowGrokHydrationFailure),
+    candidates: v.array(shadowGrokCandidateProvenance),
+    usage: v.optional(evalUsageSnapshot),
+    costUsd: v.optional(v.number()),
+    errorCode: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_scan", ["userId", "scanStartedAt"])
+    .index("by_status", ["status"])
+    .index("by_eval_run", ["evalRunId"]),
+
+  providerCircuitBreakers: defineTable({
+    providerId: v.string(),
+    operation: v.string(),
+    failureCount: v.number(),
+    openedUntil: v.optional(v.number()),
+    lastFailureAt: v.optional(v.number()),
+    lastSuccessAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_provider_operation", ["providerId", "operation"]),
 
   // Side-by-side model comparisons: the same generation run across several
   // models against one analysis, judged by a stronger model. Powers the
