@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 
 const TOKEN_CIPHER_PREFIX = "v1";
@@ -24,7 +25,14 @@ function hexToBytes(hex: string): Uint8Array {
 
 async function tokenEncryptionKey(): Promise<CryptoKey> {
   const secret = process.env[TOKEN_KEY_ENV]?.trim();
-  if (!secret) throw new Error(`${TOKEN_KEY_ENV} is not configured.`);
+  if (!secret) {
+    // ConvexError keeps the code visible to the Next auth route in prod, where
+    // plain Error messages are redacted to "Server Error".
+    throw new ConvexError({
+      code: "token_encryption_key_missing",
+      message: `${TOKEN_KEY_ENV} is not configured.`,
+    });
+  }
   const material = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(secret)

@@ -255,6 +255,39 @@ export default async function LandingPage({
                 terminal (keep it running), then try again.
               </p>
             )}
+            {error === "provisioning" && (
+              <p className="max-w-[44ch] rounded-md border border-destructive/50 px-4 py-3 text-sm text-destructive">
+                X sign-in is disabled by server config:{" "}
+                <code className="font-mono">CONVEX_AUTH_PROVISION_SECRET</code>{" "}
+                is missing or mismatched. Set the same random value in the
+                Next.js env and via{" "}
+                <code className="font-mono">
+                  npx convex env set CONVEX_AUTH_PROVISION_SECRET
+                </code>{" "}
+                (add <code className="font-mono">--prod</code> for production).
+              </p>
+            )}
+            {error === "token_key" && (
+              <p className="max-w-[44ch] rounded-md border border-destructive/50 px-4 py-3 text-sm text-destructive">
+                X accepted the sign-in, but the backend could not store the
+                connection:{" "}
+                <code className="font-mono">X_TOKEN_ENCRYPTION_KEY</code> is not
+                set on the Convex deployment. Set it via{" "}
+                <code className="font-mono">
+                  npx convex env set X_TOKEN_ENCRYPTION_KEY
+                </code>{" "}
+                (add <code className="font-mono">--prod</code> for production).
+              </p>
+            )}
+            {error === "beta_config" && (
+              <p className="max-w-[44ch] rounded-md border border-destructive/50 px-4 py-3 text-sm text-destructive">
+                Private beta allowlist mode is active but no invites are
+                configured, so every sign-in is denied. Set{" "}
+                <code className="font-mono">BETA_ALLOWED_X_HANDLES</code> (or{" "}
+                <code className="font-mono">BETA_ACCESS_MODE=open</code>) in the
+                Next.js env.
+              </p>
+            )}
             {error === "private_beta" && (
               <p className="max-w-[44ch] rounded-md border border-destructive/50 px-4 py-3 text-sm text-destructive">
                 ReplyPilot is in private beta. This X account is not on the

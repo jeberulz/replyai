@@ -7,6 +7,7 @@ import { env } from "@/lib/env";
 import { convexServer } from "@/lib/convex";
 import { ensureDefaults, postLoginPath } from "@/lib/onboarding";
 import {
+  authConfigErrorSlug,
   formatAuthError,
   isConvexDeploymentError,
   oauthCallbackUrl,
@@ -40,7 +41,10 @@ export async function GET(request: NextRequest) {
     const xUser = await fetchAuthenticatedUser(token.accessToken);
     const betaAccess = betaAccessDecisionFromEnv(xUser.username);
     if (!betaAccess.allowed) {
-      const response = redirectHome(request, "private_beta");
+      const response = redirectHome(
+        request,
+        betaAccess.reason === "config" ? "beta_config" : "private_beta"
+      );
       response.cookies.delete("rp_oauth_state");
       response.cookies.delete("rp_oauth_verifier");
       return response;
@@ -83,6 +87,11 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error("X OAuth callback failed:", formatAuthError(error), error);
+
+    const configSlug = authConfigErrorSlug(error);
+    if (configSlug) {
+      return redirectHome(request, configSlug);
+    }
 
     if (isConvexDeploymentError(error)) {
       return redirectHome(request, "convex");

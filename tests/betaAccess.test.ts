@@ -37,7 +37,9 @@ describe("beta access", () => {
       nodeEnv: "production",
     });
 
-    expect(decideBetaAccess({ handle: "stranger", config }).allowed).toBe(false);
+    const decision = decideBetaAccess({ handle: "stranger", config });
+    expect(decision.allowed).toBe(false);
+    expect(decision.reason).toBe("not_invited");
   });
 
   it("fails closed when production allowlist mode has no valid handles", () => {
@@ -50,6 +52,7 @@ describe("beta access", () => {
     const decision = decideBetaAccess({ handle: "approved", config });
     expect(config.configError).toContain("allowlist");
     expect(decision.allowed).toBe(false);
+    expect(decision.reason).toBe("config");
   });
 
   it("keeps local default mode open without minting beta entitlement", () => {
