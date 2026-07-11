@@ -69,3 +69,85 @@ customer-identifying data.
   WP23 stories/progress, WP40 brief/stories/progress, `design.md`,
   `convex/_generated/ai/guidelines.md`, and relevant local Next docs under
   `node_modules/next/dist/docs/`.
+
+## 2026-07-11 - Registration PR current state and implementation audit
+
+- Current fetched `origin/main`: `01eff2911db69325696b00e213f12cdb67777356`
+  (`Merge pull request #61 from jeberulz/docs/wp41-grok-eval-program`).
+- PR #61 is now merged; WP41-WP51 are on `origin/main`.
+- WP52 registration PR #62 is open, draft, mergeable, and targets `main`.
+  Head: `af105840fd0275e090e22865e170926c1e3f9365`.
+- The main checkout remains pre-existing dirty and behind `origin/main`, so all
+  further work must continue in isolated worktrees.
+- Sequencing status:
+  - The playbook/PRD path still requires this WP52 registration to land before
+    the implementation branch exists.
+  - No implementation worker has been spawned and no product code has been
+    edited for WP52.
+  - Next official branch after #62 lands:
+    `feat/wp52-compose-activation-evidence` from clean latest `main`.
+
+Read-only implementation audit against the current code:
+
+- `shared/compose.ts`
+  - `isWinningReply` already captures the locked WP23 semantics:
+    responded, non-empty reply text, reject `major_edit`, accept legacy missing
+    edit bucket.
+  - Worker should reuse/extract this pure predicate for availability rather
+    than duplicating the rules.
+- `convex/compose.ts`
+  - `listClusters` currently authorizes with `requireUser`, scans recent
+    trackers, hydrates drafts/replies/analyses/opportunities, and returns full
+    reply text. This is too expensive and too revealing for nav availability.
+  - No lightweight `hasRealSource` availability query exists.
+  - Demo fallback is expressed as `demo: true` plus returned demo clusters.
+- `src/app/actions.ts`
+  - `startComposeAction` re-queries clusters but persists/generates from the
+    client-supplied `TopicCluster` object. WP52 must instead accept a stable
+    cluster ID and resolve authorized prompt context server-side.
+  - The action records fair-use and AI spend before generation. Preview/direct
+    deterministic generation must bypass paid-model tokens and generation
+    allowance per the PRD.
+  - `generateComposeOptions` returns `{ demo: boolean }`, but `completeRun`
+    does not persist actual generation provenance.
+- `convex/schema.ts`
+  - `composeRuns.demo` is required and currently conflates source material and
+    generation result.
+  - WP52 schema work should be additive/optional-first, e.g. separate source and
+    generation provenance fields while keeping legacy rows readable.
+- `src/components/app/compose-ladder.tsx`
+  - Direct `/compose` already remains authenticated and reachable.
+  - Current UI labels only `Demo clusters`; it does not clearly separate
+    example source material from deterministic/fallback generation.
+  - Standalone CTA currently says `Publish standalone`; success toast says
+    `Publishing... confirm in Drafts`. WP52-S6 must change this to immediate
+    queued semantics (`Post now`; Drafts shows status).
+- Navigation
+  - `src/components/app/sidebar/nav-links.ts` statically includes Compose as
+    the second primary nav item.
+  - `SidebarNav` and `CommandMenu` both consume `navLinks`, so the worker should
+    implement a single explicit availability filter/capability and apply it to
+    both consumers. Loading/error states must hide Compose.
+- Analytics
+  - The typed catalog has the main funnel only; no Compose open/generation/
+    option-action event family exists.
+  - Existing adapters no-op safely with no keys and should be reused.
+  - Successful Compose save/publish option events should be emitted only after
+    the relevant mutation succeeds; queued standalone publish is not the
+    existing authoritative `published` event.
+- Tests/docs
+  - Existing focused files: `tests/compose.test.ts`,
+    `tests/compose-demo.test.ts`, `tests/analytics.test.ts`, `tests/publish.test.ts`,
+    and `playwright/mobile-375.e2e.ts`.
+  - `docs/observability.md` does not yet define a Compose evidence funnel.
+
+Implementation worker handoff once registration lands:
+
+1. Create isolated worktree/branch `feat/wp52-compose-activation-evidence` from
+   clean latest `main`.
+2. Re-run collision check for navigation, analytics catalog, `src/lib/ai.ts`,
+   `convex/schema.ts`, `convex/compose.ts`, and `shared/compose.ts`.
+3. Record the new base SHA and initial full-check status in this file.
+4. Execute S1-S6 sequentially, one commit per story after the story checks pass.
+5. Do not edit `docs/PRODUCT_STRATEGY.md` on the implementation branch unless
+   an owner ruling changes the registered package.

@@ -14,10 +14,9 @@ three-option guardrails, and full checks remain green.
 **Depends on:** WP7 reply-back tracking, WP20 edit-distance buckets, WP23
 reply-to-post ladder, and WP40 private-beta foundation on `main`.
 
-**Registration dependency:** WP41-WP51 are registered by PR #61
-(`docs/wp41-grok-eval-program`). This WP52 registration is intentionally stacked
-on that docs branch until #61 lands or the owner authorizes a different
-sequence.
+**Registration state:** WP41-WP51 were registered by PR #61. This WP52
+registration is PR #62 and must land, or receive an explicit owner sequencing
+ruling, before the implementation worker starts product-code edits.
 
 ## File boundary
 
