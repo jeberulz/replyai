@@ -53,3 +53,31 @@ Append-only implementation log.
 - Preserved the unresolved owner inputs from the approved lab PRD as gates for
   WP51 rather than inventing consent, reviewer-count, spend, export, or retention
   policy.
+
+## 2026-07-11 — WP41-S3 — Docs reconciliation and verification
+
+- Identifier audit parsed only §14 table rows: there are no duplicate WP row
+  identifiers, the new sequence is exactly WP41–WP51, and it contains 11 rows.
+  The historical WP34 gap remains untouched.
+- Dependency check confirmed the strategy rows and brief both encode the
+  required chain: WP41 → WP42; WP42 → WP43/WP44; WP43+WP44 → WP45;
+  WP44+WP45 → WP46; WP44+WP45+WP46 → WP47; WP45+WP47 → WP48;
+  WP43+WP44+WP45 → WP49; evidence from WP48+WP49 plus owner approval → WP50;
+  and WP7+WP20+WP44–WP50 plus privacy/budget approval → WP51.
+- Collision review confirmed the sequential owners for provider adapters,
+  eval-domain/runner functions, schema/account-data files, eval routes, and
+  scanner/opportunity integration match those dependencies.
+- Content checks found all five required brief sections and WP41–WP51 package
+  coverage. The routing ledger explicitly says per-subagent model/effort routing
+  is not supported or enforced and workers inherit the current runtime.
+- `git diff --check b61b500..HEAD` passed. The diff contains only the four owned
+  documentation files: `docs/PRODUCT_STRATEGY.md`, the WP41 program brief, and
+  the WP41 stories/progress artifacts.
+- The full package-manager suite was not run: this PR is documentation-only,
+  the orchestrator explicitly requested identifier/dependency checks plus
+  `git diff --check`, and no install or product build surface changed.
+- Remaining owner gates are deliberately unresolved, not implementation
+  blockers for WP41: real xAI entitlement/secrets; experiment and daily spend,
+  tool, concurrency, sample and circuit-breaker caps; assisted promotion
+  evidence/approval; and WP51 consent, reviewer-count, export, retention, and
+  privacy policy.

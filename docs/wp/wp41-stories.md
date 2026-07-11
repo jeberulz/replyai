@@ -17,7 +17,7 @@ not implement, enable, or route any production model behavior.
     implementation workers.
   - Record honestly that this runtime cannot enforce subagent model/effort
     routing and that all workers inherit the current runtime.
-- [ ] **WP41-S3 — Reconcile and verify the docs package.**
+- [x] **WP41-S3 — Reconcile and verify the docs package.**
   - Verify WP identifiers are unique and WP41–WP51 dependencies agree between
     §14 and the program brief.
   - Review the owned-file diff for scope, collision, and product-decision

@@ -1,8 +1,10 @@
 # WP41 — Grok + Model Evaluation Lab implementation program
 
-**Status:** registered; implementation not started  
-**Strategy package:** WP41  
-**Implementation packages:** WP42–WP51  
+**Status:** registered; implementation not started
+
+**Strategy package:** WP41
+
+**Implementation packages:** WP42–WP51
 **Source decisions:** `PRD.md`, `docs/PRODUCT_STRATEGY.md` §4/§14,
 `tasks/prd-grok-assisted-x-discovery.md`,
 `tasks/prd-model-evaluation-lab.md`, and `docs/wp/RULINGS.md`
@@ -209,4 +211,3 @@ Each worker assignment must copy its complete §14 row and add:
 
 No worker merges its own PR. The orchestrator reviews DoD evidence and collision
 scope, then a fresh post-merge gate verifies the wave on current `main`.
-
