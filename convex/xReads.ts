@@ -66,6 +66,7 @@ async function recordAttemptForUser(
   args: {
     userId: Id<"users">;
     isDemo: boolean;
+    unlimitedAccess?: boolean;
     source: XReadSource;
     endpoint: string;
     priority: "high" | "low";
@@ -84,6 +85,7 @@ async function recordAttemptForUser(
     priority: args.priority,
     userRequestsToday,
     globalRequestsToday,
+    unlimitedAccess: args.unlimitedAccess ?? false,
     ...readCaps(),
   });
   if (!decision.allowed) {
@@ -124,6 +126,7 @@ export const recordAttempt = mutation({
     return recordAttemptForUser(ctx, {
       userId: user._id,
       isDemo: user.isDemo,
+      unlimitedAccess: user.unlimitedAccess ?? false,
       source: args.source,
       endpoint: args.endpoint,
       priority: args.priority,
@@ -135,6 +138,7 @@ export const recordAttemptForUserInternal = internalMutation({
   args: {
     userId: v.id("users"),
     isDemo: v.boolean(),
+    unlimitedAccess: v.optional(v.boolean()),
     source: sourceValidator,
     endpoint: v.string(),
     priority: priorityValidator,

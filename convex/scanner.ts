@@ -236,6 +236,7 @@ export const scanContext = internalQuery({
     return {
       xUserId: user.xUserId,
       isDemo: user.isDemo,
+      unlimitedAccess: user.unlimitedAccess ?? false,
       plan: user.plan,
       goal: user.goal,
       keywords: settingsRow?.keywords ?? [],

@@ -7,11 +7,19 @@ export type BetaAccessConfig = {
   configError: string | null;
 };
 
+export type BetaAccessDenialReason =
+  | "invalid_handle"
+  | "config"
+  | "disabled"
+  | "not_invited";
+
 export type BetaAccessDecision = {
   allowed: boolean;
   normalizedHandle: string | null;
   message: string | null;
   betaAccessExpiresAt?: number;
+  /** Set only when denied — lets callers separate operator config gaps from real invite denials. */
+  reason?: BetaAccessDenialReason;
 };
 
 const DEFAULT_BETA_ACCESS_DAYS = 45;
@@ -76,6 +84,7 @@ export function decideBetaAccess(input: {
       allowed: false,
       normalizedHandle: null,
       message: "We could not read a valid X handle for this beta invite.",
+      reason: "invalid_handle",
     };
   }
   if (input.config.configError) {
@@ -84,6 +93,7 @@ export function decideBetaAccess(input: {
       normalizedHandle,
       message:
         "ReplyPilot private beta access is not configured yet. Please contact the operator for an invite.",
+      reason: "config",
     };
   }
   if (input.config.mode === "disabled") {
@@ -91,6 +101,7 @@ export function decideBetaAccess(input: {
       allowed: false,
       normalizedHandle,
       message: "ReplyPilot private beta access is currently closed.",
+      reason: "disabled",
     };
   }
   if (
@@ -102,6 +113,7 @@ export function decideBetaAccess(input: {
       normalizedHandle,
       message:
         "ReplyPilot is in private beta. This X account is not on the invite list yet.",
+      reason: "not_invited",
     };
   }
 

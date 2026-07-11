@@ -6,6 +6,8 @@ export type AiSpendLimitInput = {
   hourlyLimit?: number | null;
   killSwitch?: boolean;
   limitsRequired?: boolean;
+  /** Designated test account (users.unlimitedAccess) — bypasses caps, not the kill switch. */
+  unlimitedAccess?: boolean;
 };
 
 export type AiSpendLimitDecision = {
@@ -28,6 +30,13 @@ export function evaluateAiSpendLimit(
       message:
         "AI generation is temporarily paused while we protect the beta budget.",
     };
+  }
+
+  // A designated end-to-end test account exercises the real Anthropic pipeline
+  // without the beta budget guardrails: it clears the missing-caps fail-closed
+  // and the hourly caps. The operator kill switch above still stops it.
+  if (input.unlimitedAccess) {
+    return { allowed: true };
   }
 
   const limit =

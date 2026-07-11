@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import {
@@ -35,7 +35,17 @@ function requireAuthProvisioningSecret(secret: string | undefined, isDemo: boole
     provided: secret,
     requireWhenMissing: !isDemo,
   });
-  if (!decision.ok) throw new Error("Unauthorized");
+  if (!decision.ok) {
+    // ConvexError so the auth route can tell an operator config gap apart from
+    // a real OAuth failure even in prod (plain Error messages get redacted).
+    // The reason never includes secret material and reveals nothing usable:
+    // when the expected secret is missing, no caller can provision anyway.
+    throw new ConvexError({
+      code: "auth_provisioning_misconfigured",
+      reason: decision.reason,
+      message: `${AUTH_PROVISION_SECRET_ENV} check failed (${decision.reason}).`,
+    });
+  }
 }
 
 /**

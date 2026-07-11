@@ -45,6 +45,36 @@ describe("spend limits", () => {
     ).toBe(true);
   });
 
+  it("lets an unlimited-access test account bypass missing and hourly caps", () => {
+    expect(
+      evaluateAiSpendLimit({
+        kind: "generation",
+        usedThisHour: 0,
+        limitsRequired: true,
+        unlimitedAccess: true,
+      }).allowed
+    ).toBe(true);
+    expect(
+      evaluateAiSpendLimit({
+        kind: "analysis",
+        usedThisHour: 999,
+        hourlyLimit: 3,
+        unlimitedAccess: true,
+      }).allowed
+    ).toBe(true);
+  });
+
+  it("still pauses an unlimited-access account under the kill switch", () => {
+    const decision = evaluateAiSpendLimit({
+      kind: "generation",
+      usedThisHour: 0,
+      killSwitch: true,
+      unlimitedAccess: true,
+    });
+    expect(decision.allowed).toBe(false);
+    expect(decision.message).toContain("paused");
+  });
+
   it("parses only positive integer caps", () => {
     expect(parseOptionalPositiveInt("12")).toBe(12);
     expect(parseOptionalPositiveInt("0")).toBeNull();
