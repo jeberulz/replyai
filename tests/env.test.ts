@@ -55,3 +55,25 @@ describe("env.publicDemoEnabled", () => {
     expect(env.publicDemoEnabled).toBe(false);
   });
 });
+
+describe("env.xaiDiscoveryModel", () => {
+  it("defaults to the pinned Grok discovery model", () => {
+    vi.stubEnv("XAI_DISCOVERY_MODEL", undefined);
+    vi.stubEnv("XAI_DISCOVERY_REASONING_EFFORT", undefined);
+    vi.stubEnv("XAI_BASE_URL", undefined);
+
+    expect(env.xaiDiscoveryModel).toBe("grok-4.3");
+    expect(env.xaiDiscoveryReasoningEffort).toBe("low");
+    expect(env.xaiBaseUrl).toBe("https://api.x.ai/v1");
+  });
+
+  it("honors server-side xAI overrides and trims trailing base URL slashes", () => {
+    vi.stubEnv("XAI_DISCOVERY_MODEL", "grok-4.3");
+    vi.stubEnv("XAI_DISCOVERY_REASONING_EFFORT", "medium");
+    vi.stubEnv("XAI_BASE_URL", "https://api.x.ai/v1/");
+
+    expect(env.xaiDiscoveryModel).toBe("grok-4.3");
+    expect(env.xaiDiscoveryReasoningEffort).toBe("medium");
+    expect(env.xaiBaseUrl).toBe("https://api.x.ai/v1");
+  });
+});

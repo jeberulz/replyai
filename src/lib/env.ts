@@ -34,6 +34,18 @@ export const env = {
       "claude-sonnet-5"
     );
   },
+  get xaiApiKey(): string {
+    return process.env.XAI_API_KEY ?? "";
+  },
+  get xaiBaseUrl(): string {
+    return (process.env.XAI_BASE_URL ?? "https://api.x.ai/v1").replace(/\/+$/, "");
+  },
+  get xaiDiscoveryModel(): string {
+    return process.env.XAI_DISCOVERY_MODEL ?? "grok-4.3";
+  },
+  get xaiDiscoveryReasoningEffort(): string {
+    return process.env.XAI_DISCOVERY_REASONING_EFFORT ?? "low";
+  },
   get xClientId(): string {
     return process.env.X_CLIENT_ID ?? "";
   },
@@ -66,6 +78,10 @@ export function hasXCredentials(): boolean {
 
 export function hasAnthropicKey(): boolean {
   return Boolean(env.anthropicApiKey);
+}
+
+export function hasXaiKey(): boolean {
+  return Boolean(env.xaiApiKey);
 }
 
 export function requireConvexUrl(): string {
