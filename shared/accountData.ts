@@ -91,6 +91,13 @@ export const ACCOUNT_USER_TABLES = [
     deletionOrder: 41,
   },
   {
+    table: "shadowGrokDiscoveryRuns",
+    ownershipField: "userId",
+    indexName: "by_user",
+    relationshipFields: ["userId", "evalRunId", "evalExperimentId"],
+    deletionOrder: 41.5,
+  },
+  {
     table: "xReadLedger",
     ownershipField: "userId",
     indexName: "by_user",

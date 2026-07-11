@@ -5,6 +5,7 @@ export type XReadSource =
   | "scanner_list"
   | "scanner_watched"
   | "scanner_search"
+  | "scanner_grok_shadow"
   | "research"
   | "voice_refresh"
   | "reply_back"

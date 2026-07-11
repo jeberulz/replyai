@@ -256,6 +256,10 @@ export const scanContext = internalQuery({
         ? settingsRow.enabledSources
         : ["following"]) as EnabledSource[],
       rankingWeights: settingsRow?.rankingWeights ?? null,
+      grokDiscoveryMode: settingsRow?.grokDiscoveryMode,
+      grokDiscoverySampleRatePercent:
+        settingsRow?.grokDiscoverySampleRatePercent,
+      grokDiscoveryEvalRunId: settingsRow?.grokDiscoveryEvalRunId,
     };
   },
 });

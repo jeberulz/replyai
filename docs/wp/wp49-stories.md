@@ -6,7 +6,7 @@ spend controls and a provider circuit breaker; default is `off` or `shadow`;
 shadow output never changes feed ordering, surfaced content, or notifications;
 fallback/availability are observable.
 
-- [ ] **WP49-S1 — Shadow configuration, sampling, and non-interference**
+- [x] **WP49-S1 — Shadow configuration, sampling, and non-interference**
   - Acceptance: Grok discovery is disabled by default unless an operator/env or
     additive setting enables `shadow`.
   - Acceptance: sampling is deterministic from a stable scan key and capped to
@@ -15,7 +15,7 @@ fallback/availability are observable.
     feed pipeline; shadow candidates are never merged into ranking, surfaced
     content, or notification paths.
 
-- [ ] **WP49-S2 — Provenance persistence and eval linkage**
+- [x] **WP49-S2 — Provenance persistence and eval linkage**
   - Acceptance: every sampled/blocked shadow attempt records a run row with
     mode, sample key, provider/model, citations, hydration failures, candidate
     provenance, usage, cost, and availability/failure reason.
@@ -24,7 +24,7 @@ fallback/availability are observable.
   - Acceptance: account export/deletion inventory includes user-owned shadow
     provenance rows.
 
-- [ ] **WP49-S3 — Spend controls, circuit breaker, and observability**
+- [x] **WP49-S3 — Spend controls, circuit breaker, and observability**
   - Acceptance: paid Grok sampling is preflighted through the existing AI-spend
     ledger/kill-switch/fail-closed path, extended narrowly for discovery.
   - Acceptance: provider failures update an `xai/discovery` circuit breaker;
@@ -33,7 +33,7 @@ fallback/availability are observable.
   - Acceptance: typed analytics/Sentry capture shadow availability/failure
     without throwing or changing scanner success.
 
-- [ ] **WP49-S4 — Verification and handoff**
+- [x] **WP49-S4 — Verification and handoff**
   - Acceptance: focused tests cover default off/shadow non-interference, spend
     cap blocking, provenance persistence shape, and circuit/fallback
     observability.

@@ -1,4 +1,4 @@
-export type AiSpendKind = "analysis" | "generation";
+export type AiSpendKind = "analysis" | "generation" | "discovery";
 
 export type AiSpendLimitInput = {
   kind: AiSpendKind;
@@ -60,6 +60,8 @@ export function evaluateAiSpendLimit(
       message:
         input.kind === "analysis"
           ? "Hourly analysis capacity is full. Try again in a little while."
+          : input.kind === "discovery"
+            ? "Hourly discovery capacity is full. Try again in a little while."
           : "Hourly generation capacity is full. Try again in a little while.",
     };
   }
