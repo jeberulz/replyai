@@ -25,10 +25,11 @@ export type XaiDiscoveryConfig = ProviderRuntimeConfig & {
   pricing: ReturnType<typeof modelPricing>;
 };
 
-function parseReasoningEffort(value: string): ReasoningEffort {
+function parseReasoningEffort(value: string | undefined): ReasoningEffort | null {
+  if (!value) return null;
   return REASONING_EFFORTS.find((effort) => effort === value)
     ? (value as ReasoningEffort)
-    : DEFAULT_DISCOVERY_REASONING_EFFORT;
+    : null;
 }
 
 export function anthropicProviderConfig(): ProviderRuntimeConfig {
@@ -44,6 +45,9 @@ export function xaiDiscoveryConfig(): XaiDiscoveryConfig {
   const modelId = env.xaiDiscoveryModel || DEFAULT_DISCOVERY_MODEL_ID;
   const baseUrl = env.xaiBaseUrl;
   const model = modelInfo(modelId);
+  const configuredReasoningEffort = parseReasoningEffort(
+    process.env.XAI_DISCOVERY_REASONING_EFFORT
+  );
   return {
     providerId: "xai",
     apiKey: env.xaiApiKey,
@@ -51,8 +55,9 @@ export function xaiDiscoveryConfig(): XaiDiscoveryConfig {
     enabled: hasXaiKey(),
     modelId,
     reasoningEffort:
+      configuredReasoningEffort ??
       model?.defaultReasoningEffort ??
-      parseReasoningEffort(env.xaiDiscoveryReasoningEffort),
+      DEFAULT_DISCOVERY_REASONING_EFFORT,
     modelsUrl: `${baseUrl}/models`,
     pricing: modelPricing(modelId),
   };

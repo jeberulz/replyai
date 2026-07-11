@@ -24,7 +24,13 @@ describe("xaiDiscoveryConfig", () => {
     expect(config.modelsUrl).toBe("https://api.x.ai/v1/models");
   });
 
-  it("keeps invalid reasoning env values fail-closed to low", () => {
+  it("honors a valid reasoning env override over the catalog default", () => {
+    vi.stubEnv("XAI_DISCOVERY_REASONING_EFFORT", "medium");
+
+    expect(xaiDiscoveryConfig().reasoningEffort).toBe("medium");
+  });
+
+  it("keeps invalid reasoning env values fail-closed to the catalog default", () => {
     vi.stubEnv("XAI_DISCOVERY_REASONING_EFFORT", "extreme");
 
     expect(xaiDiscoveryConfig().reasoningEffort).toBe("low");
