@@ -53,3 +53,16 @@
 - Build: `npm run build` — passed; `/evals/[experimentId]/review` is dynamic
   in the route output.
 - Whitespace: `git diff --check` — passed.
+
+## 2026-07-11 — Review fix: blind queue payload
+
+- Removed the top-level `judgments` array from `convex/evalReview.queue`.
+  Queue still reads judgment rows internally to compute per-item
+  `judgmentCount`, `reviewerRevisionCount`, and the current reviewer’s latest
+  metadata, but it no longer returns peer choices, labels, reason codes, or
+  reviewer IDs in the blind review payload.
+- Added a regression assertion to `tests/evalReview.test.ts` so the queue source
+  cannot reintroduce the peer judgment mapping.
+- Focused verification: `npx vitest run tests/evalReview.test.ts tests/securityAudit.test.ts` — passed, 2 files / 6 tests.
+- Typecheck: `npm run typecheck` — passed.
+- Whitespace: `git diff --check` — passed.

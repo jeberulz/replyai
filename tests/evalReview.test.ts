@@ -205,5 +205,17 @@ describe("WP47 review route source contracts", () => {
     expect(convex).toContain("requireEvalOperator");
     expect(convex).toContain("ctx.db.insert(\"evalJudgments\"");
     expect(convex).not.toContain("ctx.db.patch(judgment");
+
+    const queueSource = convex.slice(
+      convex.indexOf("export const queue"),
+      convex.indexOf("export const submit")
+    );
+    expect(queueSource).toContain("judgmentCount");
+    expect(queueSource).toContain("reviewerRevisionCount");
+    expect(queueSource).toContain("latestReviewerChoice");
+    expect(queueSource).not.toContain("judgments: judgments.map");
+    expect(queueSource).not.toContain("reviewerUserId: judgment.reviewerUserId");
+    expect(queueSource).not.toContain("reasonCodes: judgment.reasonCodes");
+    expect(queueSource).not.toContain("labels: judgment.labels");
   });
 });

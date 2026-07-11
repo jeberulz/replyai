@@ -51,7 +51,6 @@ export const queue = query({
         experiment: publicExperiment(experiment),
         run: null,
         items: [],
-        judgments: [],
       };
     }
 
@@ -107,18 +106,6 @@ export const queue = query({
           latestReviewerSubmittedAt: reviewerJudgments[0]?.submittedAt,
         };
       }),
-      judgments: judgments.map((judgment) => ({
-        _id: judgment._id,
-        caseId: judgment.caseId,
-        reviewerUserId: judgment.reviewerUserId,
-        kind: judgment.kind,
-        blindOrder: judgment.blindOrder,
-        choice: judgment.choice,
-        reasonCodes: judgment.reasonCodes,
-        labels: judgment.labels,
-        revision: judgment.revision,
-        submittedAt: judgment.submittedAt,
-      })),
     };
   },
 });
