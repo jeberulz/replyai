@@ -59,6 +59,42 @@ describe("X read limits", () => {
     ).toBe("kill_switch");
   });
 
+  it("lets an unlimited-access test account bypass missing and numeric caps", () => {
+    // Missing caps would normally fail closed.
+    expect(
+      evaluateXReadBudget({
+        priority: "low",
+        userRequestsToday: 0,
+        globalRequestsToday: 0,
+        limitsRequired: true,
+        unlimitedAccess: true,
+      }).allowed
+    ).toBe(true);
+    // Numeric caps are already exceeded, but unlimited access clears them.
+    expect(
+      evaluateXReadBudget({
+        priority: "low",
+        userRequestsToday: 500,
+        globalRequestsToday: 500,
+        userDailyLimit: 5,
+        globalDailyLimit: 10,
+        unlimitedAccess: true,
+      }).allowed
+    ).toBe(true);
+  });
+
+  it("still stops an unlimited-access account at the operator kill switch", () => {
+    expect(
+      evaluateXReadBudget({
+        priority: "low",
+        userRequestsToday: 0,
+        globalRequestsToday: 0,
+        killSwitch: true,
+        unlimitedAccess: true,
+      }).reason
+    ).toBe("kill_switch");
+  });
+
   it("parses non-negative integer caps and UTC day keys", () => {
     expect(parseOptionalNonNegativeInt("0")).toBe(0);
     expect(parseOptionalNonNegativeInt("42")).toBe(42);

@@ -48,6 +48,7 @@ export const recordAiSpendAttempt = mutation({
       hourlyLimit: limit,
       killSwitch: process.env.AI_SPEND_KILL_SWITCH === "true",
       limitsRequired: process.env.AI_SPEND_LIMITS_REQUIRED !== "false",
+      unlimitedAccess: user.unlimitedAccess ?? false,
     });
 
     if (!decision.allowed) {

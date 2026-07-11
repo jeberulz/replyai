@@ -20,6 +20,8 @@ export type XReadBudgetInput = {
   globalDailyLimit?: number | null;
   killSwitch?: boolean;
   limitsRequired?: boolean;
+  /** Designated test account (users.unlimitedAccess) — bypasses caps, not the kill switch. */
+  unlimitedAccess?: boolean;
 };
 
 export type XReadBudgetDecision = {
@@ -50,6 +52,14 @@ export function evaluateXReadBudget(
       message:
         "X reads are temporarily paused. Stored drafts and saved analyses still work.",
     };
+  }
+
+  // A designated end-to-end test account exercises the real X pipeline without
+  // the beta budget guardrails: it clears the missing-caps fail-closed and the
+  // numeric daily caps. The operator kill switch above still stops it, so an
+  // emergency pause is never overridden.
+  if (input.unlimitedAccess) {
+    return { allowed: true };
   }
 
   const userLimit =

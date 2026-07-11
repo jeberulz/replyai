@@ -97,6 +97,7 @@ async function beginXRead(
   args: {
     userId: Id<"users">;
     isDemo: boolean;
+    unlimitedAccess: boolean;
     source: XReadSource;
     endpoint: string;
   }
@@ -104,6 +105,7 @@ async function beginXRead(
   return await ctx.runMutation(internal.xReads.recordAttemptForUserInternal, {
     userId: args.userId,
     isDemo: args.isDemo,
+    unlimitedAccess: args.unlimitedAccess,
     source: args.source,
     endpoint: args.endpoint,
     priority: "low",
@@ -134,6 +136,7 @@ async function finishXRead(
 type ScanContext = {
   xUserId: string;
   isDemo: boolean;
+  unlimitedAccess: boolean;
   plan: string;
   keywords: string[];
   searchKeywords: string[];
@@ -643,6 +646,7 @@ async function collectCandidates(
     const readAttempt = await beginXRead(ctx, {
       userId,
       isDemo: context.isDemo,
+      unlimitedAccess: context.unlimitedAccess,
       source: "scanner_following",
       endpoint: "users/:id/timelines/reverse_chronological",
     });
@@ -669,6 +673,7 @@ async function collectCandidates(
       const readAttempt = await beginXRead(ctx, {
         userId,
         isDemo: context.isDemo,
+        unlimitedAccess: context.unlimitedAccess,
         source: "scanner_list",
         endpoint: "lists/:id/tweets",
       });
@@ -697,6 +702,7 @@ async function collectCandidates(
       const readAttempt = await beginXRead(ctx, {
         userId,
         isDemo: context.isDemo,
+        unlimitedAccess: context.unlimitedAccess,
         source: "scanner_watched",
         endpoint: "tweets/search/recent",
       });
@@ -724,6 +730,7 @@ async function collectCandidates(
       const readAttempt = await beginXRead(ctx, {
         userId,
         isDemo: context.isDemo,
+        unlimitedAccess: context.unlimitedAccess,
         source: "scanner_search",
         endpoint: "tweets/search/recent",
       });
