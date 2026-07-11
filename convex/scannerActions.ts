@@ -731,6 +731,34 @@ async function runShadowGrokDiscoverySample(
       return;
     }
 
+    const spend = await ctx.runMutation(
+      internal.spend.recordAiSpendAttemptForUserInternal,
+      {
+        userId,
+        isDemo: context.isDemo,
+        unlimitedAccess: context.unlimitedAccess,
+        kind: "discovery",
+        source: "scanner_grok_shadow",
+      }
+    );
+    if (!spend.allowed) {
+      await recordShadowAvailability(ctx, {
+        userId,
+        scanStartedAt,
+        mode,
+        sampleRatePercent,
+        sampled,
+        sampleKey,
+        status: "blocked",
+        availability: "spend_blocked",
+        reason: spend.message,
+        query: request.query,
+        requestJson: JSON.stringify(request),
+        circuitOpen: false,
+      });
+      return;
+    }
+
     const xReadAttempt = await beginXRead(ctx, {
       userId,
       isDemo: context.isDemo,
@@ -749,40 +777,6 @@ async function runShadowGrokDiscoverySample(
         status: "blocked",
         availability: "provider_unavailable",
         reason: xReadAttempt.message ?? "X read budget blocked shadow hydration.",
-        query: request.query,
-        requestJson: JSON.stringify(request),
-        circuitOpen: false,
-      });
-      return;
-    }
-
-    const spend = await ctx.runMutation(
-      internal.spend.recordAiSpendAttemptForUserInternal,
-      {
-        userId,
-        isDemo: context.isDemo,
-        unlimitedAccess: context.unlimitedAccess,
-        kind: "discovery",
-        source: "scanner_grok_shadow",
-      }
-    );
-    if (!spend.allowed) {
-      await finishXRead(ctx, {
-        userId,
-        attempt: xReadAttempt,
-        tweets: [],
-        status: "failed",
-      });
-      await recordShadowAvailability(ctx, {
-        userId,
-        scanStartedAt,
-        mode,
-        sampleRatePercent,
-        sampled,
-        sampleKey,
-        status: "blocked",
-        availability: "spend_blocked",
-        reason: spend.message,
         query: request.query,
         requestJson: JSON.stringify(request),
         circuitOpen: false,

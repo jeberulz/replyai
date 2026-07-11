@@ -77,3 +77,19 @@
   `GROK_DISCOVERY_CIRCUIT_COOLDOWN_MS`.
   `AI_DISCOVERY_HOURLY_LIMIT` is the specific discovery cap; the existing
   `AI_SPEND_LIMITS_REQUIRED` fail-closed rule still applies.
+
+## 2026-07-11 — Review fix: spend before X-read ledger
+
+- Fixed review finding: `runShadowGrokDiscoverySample` now checks
+  `internal.spend.recordAiSpendAttemptForUserInternal` before `beginXRead`.
+  If AI discovery spend blocks, the path records the existing
+  `spend_blocked` availability and returns without creating/completing an
+  X-read ledger row.
+- Added a focused source-order regression assertion in
+  `tests/shadowGrokDiscovery.test.ts`.
+- Focused verification:
+  `npm test -- --run tests/shadowGrokDiscovery.test.ts tests/spendLimits.test.ts tests/xReadLimits.test.ts tests/scannerActions.test.ts`
+  — passed, 4 files / 32 tests.
+- `npm run typecheck` — passed.
+- `npm run lint` — passed with the existing 4 generated Convex unused
+  `eslint-disable` warnings only.

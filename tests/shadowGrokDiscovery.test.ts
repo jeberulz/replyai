@@ -115,6 +115,29 @@ describe("shadow Grok discovery integration guardrails", () => {
     expect(decision.message).toContain("discovery");
   });
 
+  it("checks AI discovery spend before opening a shadow X-read ledger", () => {
+    const source = readFileSync("convex/scannerActions.ts", "utf8");
+    const shadowFunction = source.slice(
+      source.indexOf("async function runShadowGrokDiscoverySample")
+    );
+    const spendCheck = shadowFunction.indexOf(
+      "internal.spend.recordAiSpendAttemptForUserInternal"
+    );
+    const beginShadowXRead = shadowFunction.indexOf(
+      "const xReadAttempt = await beginXRead(ctx"
+    );
+    const spendBlocked = shadowFunction.indexOf('availability: "spend_blocked"');
+    const xReadFailedCompletionBeforeSpendBlocked = shadowFunction
+      .slice(0, spendBlocked)
+      .includes("finishXRead(ctx");
+
+    expect(spendCheck).toBeGreaterThan(-1);
+    expect(beginShadowXRead).toBeGreaterThan(-1);
+    expect(spendCheck).toBeLessThan(beginShadowXRead);
+    expect(spendBlocked).toBeGreaterThan(spendCheck);
+    expect(xReadFailedCompletionBeforeSpendBlocked).toBe(false);
+  });
+
   it("declares provenance, hydration, cost, eval linkage, and circuit persistence", () => {
     const schema = readFileSync("convex/schema.ts", "utf8");
     const shadowModule = readFileSync("convex/shadowDiscovery.ts", "utf8");
