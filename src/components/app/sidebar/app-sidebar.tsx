@@ -24,6 +24,7 @@ function SidebarBody({
     displayName: string;
     avatar?: string;
     isDemo: boolean;
+    evalOperator?: boolean;
   };
   showCollapse?: boolean;
 }) {
@@ -31,7 +32,7 @@ function SidebarBody({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <SidebarHeader showCollapse={showCollapse} />
-      <SidebarNav />
+      <SidebarNav evalOperator={user.evalOperator === true} />
       <SidebarProjects />
       <SidebarProjectsCollapsed />
       <SidebarHistory />
@@ -50,6 +51,7 @@ export function AppSidebar({
     displayName: string;
     avatar?: string;
     isDemo: boolean;
+    evalOperator?: boolean;
   };
 }) {
   const { collapsed, mobileOpen, setMobileOpen } = useSidebar();

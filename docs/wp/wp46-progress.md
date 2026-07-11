@@ -57,3 +57,19 @@
   tests passed, 1 skipped.
 - Build: `npm run build` — passed; `/evals` and `/evals/new` are dynamic routes
   in the build output.
+
+## 2026-07-11 — Review fix: nav visibility
+
+- Review found `/evals` was present in the static signed-in nav for every user.
+  Kept all route/action `requireEvalOperator` boundaries intact and added UI
+  visibility gating instead.
+- `convex/users.me` now returns a safe boolean `evalOperator` field, which is
+  carried through `src/lib/session.ts` into the app shell.
+- Sidebar and command-palette page navigation both use `visibleNavLinks()` so
+  regular signed-in users do not see `/evals`; eval operators do.
+- Added `tests/evalNavVisibility.test.ts`.
+- Focused verification: `npx vitest run tests/evalNavVisibility.test.ts tests/evalLabUi.test.ts tests/evalAuth.test.ts` — passed, 3 files / 8 tests.
+- Typecheck: `npm run typecheck` — passed.
+- Lint: `npm run lint` — passed with existing generated-file unused
+  `eslint-disable` warnings only.
+- `package-lock.json` has no diff.

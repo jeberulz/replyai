@@ -17,6 +17,8 @@ export type NavLink = {
   icon: LucideIcon;
   /** Extra path prefixes that should mark this link active */
   matchPrefixes?: string[];
+  /** Internal-only pages that should be absent for regular signed-in users */
+  requiresEvalOperator?: boolean;
 };
 
 // The chat-first home owns /dashboard; /analysis/* routes light up their
@@ -28,10 +30,21 @@ export const navLinks: NavLink[] = [
   { href: "/feed", label: "Feed scanner", icon: Radar },
   { href: "/briefing", label: "Briefing", icon: Newspaper },
   { href: "/research", label: "Research", icon: Search },
-  { href: "/evals", label: "Evals", icon: FlaskConical },
+  {
+    href: "/evals",
+    label: "Evals",
+    icon: FlaskConical,
+    requiresEvalOperator: true,
+  },
   { href: "/voice", label: "Voice", icon: Mic2 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
+
+export function visibleNavLinks(args: { evalOperator?: boolean }): NavLink[] {
+  return navLinks.filter(
+    (link) => !link.requiresEvalOperator || args.evalOperator === true
+  );
+}
 
 export function isNavActive(
   pathname: string,
