@@ -3,7 +3,7 @@
 WP41 is documentation-only. It registers the implementation packages; it does
 not implement, enable, or route any production model behavior.
 
-- [ ] **WP41-S1 — Register the official package rows.**
+- [x] **WP41-S1 — Register the official package rows.**
   - Audit `docs/PRODUCT_STRATEGY.md` §14 and confirm WP41 is the next
     never-used identifier after WP40.
   - Add WP41–WP51 rows with phase, explicit key files/areas, dependencies, and
@@ -24,4 +24,3 @@ not implement, enable, or route any production model behavior.
     consistency; run `git diff --check`.
   - Record exact verification evidence and any remaining owner gates or
     UNKNOWNs in `docs/wp/wp41-progress.md`.
-

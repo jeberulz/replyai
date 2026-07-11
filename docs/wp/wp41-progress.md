@@ -21,3 +21,17 @@ Append-only implementation log.
   a fixed docs-only decomposition, but this runtime cannot select or enforce a
   different model or effort per worker. All workers inherit the current runtime;
   no stronger routing claim will be made.
+
+## 2026-07-11 — WP41-S1 — Official package rows
+
+- Registered WP41 as the docs-only strategy package and WP42–WP51 as the ten
+  implementation packages in `docs/PRODUCT_STRATEGY.md` §14.
+- Added an explicit dependency column rather than leaving sequencing implicit.
+  The implementation chain keeps provider search separate from scanner writes,
+  keeps the domain/runner/UI surfaces reviewable, and places assisted routing
+  behind both experiment evidence and a recorded owner approval.
+- Preserved the approved operating constraints in the rows: pinned
+  `grok-4.3`, low discovery effort, authenticated `/v1/models` entitlement,
+  Claude as the default production generation provider, `off`/`shadow` default,
+  operator-only lab, historical `modelEvals`, key-free deterministic CI/demo,
+  no global assisted enablement, and no publish automation.
