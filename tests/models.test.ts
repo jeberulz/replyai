@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  ALL_MODELS,
   DEFAULT_MODEL_ID,
+  DISCOVERY_MODELS,
   estimateCostUsd,
   formatUsd,
+  isKnownCatalogModel,
   isKnownModel,
   MODELS,
   modelLabel,
+  modelsForCapability,
+  XAI_DISCOVERY_MODEL_ID,
 } from "../shared/models";
 
 describe("model catalog", () => {
@@ -15,11 +20,23 @@ describe("model catalog", () => {
 
   it("rejects unknown model ids", () => {
     expect(isKnownModel("gpt-4")).toBe(false);
+    expect(isKnownModel(XAI_DISCOVERY_MODEL_ID)).toBe(false);
     expect(isKnownModel("")).toBe(false);
+  });
+
+  it("keeps Grok discovery internal and out of generation pickers", () => {
+    expect(isKnownCatalogModel(XAI_DISCOVERY_MODEL_ID)).toBe(true);
+    expect(DISCOVERY_MODELS).toHaveLength(1);
+    expect(MODELS.every((model) => model.providerId === "anthropic")).toBe(true);
+    expect(ALL_MODELS.some((model) => model.providerId === "xai")).toBe(true);
+    expect(modelsForCapability("x_search").map((model) => model.id)).toEqual([
+      XAI_DISCOVERY_MODEL_ID,
+    ]);
   });
 
   it("labels known models and falls back to the raw id", () => {
     expect(modelLabel("claude-sonnet-5")).toBe("Sonnet 5");
+    expect(modelLabel(XAI_DISCOVERY_MODEL_ID)).toBe("Grok 4.3");
     expect(modelLabel("mystery-model")).toBe("mystery-model");
   });
 
