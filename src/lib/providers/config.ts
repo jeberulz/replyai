@@ -22,6 +22,8 @@ export type XaiDiscoveryConfig = ProviderRuntimeConfig & {
   modelId: string;
   reasoningEffort: ReasoningEffort;
   modelsUrl: string;
+  responsesUrl: string;
+  timeoutMs: number;
   pricing: ReturnType<typeof modelPricing>;
 };
 
@@ -59,6 +61,8 @@ export function xaiDiscoveryConfig(): XaiDiscoveryConfig {
       model?.defaultReasoningEffort ??
       DEFAULT_DISCOVERY_REASONING_EFFORT,
     modelsUrl: `${baseUrl}/models`,
+    responsesUrl: `${baseUrl}/responses`,
+    timeoutMs: 20_000,
     pricing: modelPricing(modelId),
   };
 }

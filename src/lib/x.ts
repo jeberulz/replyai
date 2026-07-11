@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { env, hasXCredentials } from "./env";
 import { demoTweetForId, DEMO_TWEETS, DEMO_LISTS } from "../../shared/demoData";
+import type { XDiscoveryCandidate } from "../../shared/xDiscovery";
 import { refreshAccessToken as refreshXAccessToken } from "../../shared/xOAuth";
 
 export { refreshXAccessToken as refreshAccessToken };
@@ -160,6 +161,25 @@ export type TweetBundle = {
   replySettings?: string;
 };
 
+export type HydratedXDiscoveryCandidate = XDiscoveryCandidate & {
+  hydratedAt: number;
+  bundle: TweetBundle;
+};
+
+export type XDiscoveryHydrationFailure = {
+  tweetId: string;
+  reason:
+    | "missing_x_credentials"
+    | "authoritative_hydration_failed"
+    | "tweet_id_mismatch"
+    | "author_handle_mismatch";
+};
+
+export type XDiscoveryHydrationResult = {
+  hydrated: HydratedXDiscoveryCandidate[];
+  failures: XDiscoveryHydrationFailure[];
+};
+
 /**
  * Fetch a tweet with author profile, engagement metrics, and top replies.
  * Falls back to deterministic demo data when no X app credentials are
@@ -255,6 +275,54 @@ export async function fetchTweetBundle(
     isDemoData: false,
     replySettings: json.data.reply_settings,
   };
+}
+
+export async function hydrateXDiscoveryCandidates(args: {
+  candidates: XDiscoveryCandidate[];
+  accessToken: string | null;
+  fetchBundle?: typeof fetchTweetBundle;
+}): Promise<XDiscoveryHydrationResult> {
+  const fetchBundle = args.fetchBundle ?? fetchTweetBundle;
+  const hydrated: HydratedXDiscoveryCandidate[] = [];
+  const failures: XDiscoveryHydrationFailure[] = [];
+
+  if (!args.accessToken || !hasXCredentials()) {
+    return {
+      hydrated,
+      failures: args.candidates.map((candidate) => ({
+        tweetId: candidate.tweetId,
+        reason: "missing_x_credentials",
+      })),
+    };
+  }
+
+  for (const candidate of args.candidates) {
+    const bundle = await fetchBundle(candidate.tweetId, args.accessToken);
+    if (bundle.isDemoData) {
+      failures.push({
+        tweetId: candidate.tweetId,
+        reason: "authoritative_hydration_failed",
+      });
+      continue;
+    }
+    if (bundle.tweetId !== candidate.tweetId) {
+      failures.push({ tweetId: candidate.tweetId, reason: "tweet_id_mismatch" });
+      continue;
+    }
+    if (
+      candidate.authorHandle &&
+      bundle.authorHandle.toLowerCase() !== candidate.authorHandle.toLowerCase()
+    ) {
+      failures.push({
+        tweetId: candidate.tweetId,
+        reason: "author_handle_mismatch",
+      });
+      continue;
+    }
+    hydrated.push({ ...candidate, bundle, hydratedAt: Date.now() });
+  }
+
+  return { hydrated, failures };
 }
 
 /** Lightweight lookup of reply_settings for paste-text + URL analyze path. */
