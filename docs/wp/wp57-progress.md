@@ -31,3 +31,17 @@ content, or customer-identifying data.
 - Initial `npx convex insights --details`: healthy over the last 72 hours; this
   confirms a workload-amplification problem rather than an execution-limit or
   OCC incident.
+
+## 2026-07-15 - S2 dual-write implementation
+
+- Added optional `scannerSettings.backgroundEnabled` with the
+  `by_background_enabled` storage index. The existing `enabled` field remains
+  the user-visible toggle.
+- Added one pure scheduling rule: background work requires `enabled` and a
+  non-demo identity. Demo users retain explicit `scanNow` access through the
+  existing Pro/demo entitlement path.
+- Updated every scanner-settings insert path to write an explicit false
+  background flag for disabled defaults; `updateSettings` computes the flag
+  from live/demo identity; X disconnect clears both flags.
+- Focused verification: scanner scheduling + X disconnect tests passed (2
+  files / 5 tests); `npm run typecheck` passed.

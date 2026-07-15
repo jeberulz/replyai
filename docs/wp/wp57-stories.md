@@ -28,7 +28,7 @@ checks are green.
   - Register WP57 and freeze file boundaries before product-code edits.
   - Preserve the unrelated dirty main checkout in an isolated worktree.
 
-- [ ] **WP57-S2 - Add explicit background eligibility and dual writes**
+- [x] **WP57-S2 - Add explicit background eligibility and dual writes**
   - Add an optional indexed `scannerSettings.backgroundEnabled` field.
   - Every scanner-setting writer stores an explicit background eligibility
     value; demo rows store `false` even when their visible scanner toggle is on.

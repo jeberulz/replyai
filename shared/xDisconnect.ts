@@ -4,6 +4,7 @@ export const X_DISCONNECT_DRAFT_ERROR =
 export type XDisconnectCascade = {
   scannerPatch: {
     enabled: false;
+    backgroundEnabled: false;
     enabledSources: [];
     engageListIds: [];
     engageListNames: [];
@@ -27,6 +28,7 @@ export function buildXDisconnectCascade(nowMs = Date.now()): XDisconnectCascade 
   return {
     scannerPatch: {
       enabled: false,
+      backgroundEnabled: false,
       enabledSources: [],
       engageListIds: [],
       engageListNames: [],

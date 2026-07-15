@@ -8,6 +8,7 @@ import {
 } from "./_generated/server";
 import { requireUser } from "./helpers";
 import { hasProAccess, paidFeatureGateMessage } from "../shared/billing";
+import { backgroundScannerEnabled } from "../shared/scannerScheduling";
 import { readStoredXTokens } from "./tokenSecurity";
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
@@ -92,6 +93,10 @@ export const updateSettings = mutation({
 
     const patch = {
       enabled,
+      backgroundEnabled: backgroundScannerEnabled({
+        enabled,
+        isDemo: user.isDemo,
+      }),
       keywords,
       ...(normalizedSearch !== undefined ? { searchKeywords: normalizedSearch } : {}),
       ...(engageListIds !== undefined ? { engageListIds } : {}),
@@ -150,6 +155,7 @@ export const importEngageLists = mutation({
       await ctx.db.insert("scannerSettings", {
         userId: user._id,
         enabled: false,
+        backgroundEnabled: false,
         keywords: [],
         engageListIds,
         engageListNames,
@@ -179,6 +185,7 @@ export const updateWatchedHandles = mutation({
       await ctx.db.insert("scannerSettings", {
         userId: user._id,
         enabled: false,
+        backgroundEnabled: false,
         keywords: [],
         watchedHandles: normalized,
       });

@@ -621,6 +621,10 @@ export default defineSchema({
   scannerSettings: defineTable({
     userId: v.id("users"),
     enabled: v.boolean(),
+    // User-visible scanner state is separate from recurring cron eligibility.
+    // Demo accounts may stay visibly enabled for deterministic on-demand use,
+    // but backgroundEnabled is always false for them.
+    backgroundEnabled: v.optional(v.boolean()),
     keywords: v.array(v.string()),
     lastScanAt: v.optional(v.number()),
     lastScanError: v.optional(v.string()),
@@ -684,7 +688,9 @@ export default defineSchema({
     lastGrokDiscoveryShadowAt: v.optional(v.number()),
     lastGrokDiscoveryShadowStatus: v.optional(shadowGrokRunStatus),
     lastGrokDiscoveryShadowError: v.optional(v.string()),
-  }).index("by_user", ["userId"]),
+  })
+    .index("by_user", ["userId"])
+    .index("by_background_enabled", ["backgroundEnabled"]),
 
   shadowGrokDiscoveryRuns: defineTable({
     userId: v.id("users"),
