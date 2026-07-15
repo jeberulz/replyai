@@ -45,3 +45,16 @@ content, or customer-identifying data.
   from live/demo identity; X disconnect clears both flags.
 - Focused verification: scanner scheduling + X disconnect tests passed (2
   files / 5 tests); `npm run typecheck` passed.
+
+## 2026-07-15 - S3 indexed cron cutover
+
+- Replaced the unindexed full-table filter with two indexed reads: explicit
+  `backgroundEnabled = true` rows plus legacy missing-field rows during the
+  rollout window.
+- The legacy branch preserves existing real eligible scanners until backfill,
+  while the shared dispatch rule rejects demo identities even though demo users
+  retain feature access for explicit on-demand scans.
+- Explicit false, disabled, demo, and access-expired rows cannot reach the
+  `scanAll` fan-out.
+- Focused verification: scanner scheduling, cadence, and billing tests passed
+  (3 files / 26 tests); `npm run typecheck` and `git diff --check` passed.

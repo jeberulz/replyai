@@ -35,7 +35,7 @@ checks are green.
   - X disconnect clears both visible and background scanner state.
   - Focused unit tests cover demo, disabled, live, and disconnect behavior.
 
-- [ ] **WP57-S3 - Cut the cron read/fan-out hot path safely**
+- [x] **WP57-S3 - Cut the cron read/fan-out hot path safely**
   - `enabledSettings` reads explicit eligible rows through the storage index.
   - Legacy missing-field rows remain readable during rollout and are filtered
     with the same demo/access guard, so no real eligible user is dropped.

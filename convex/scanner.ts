@@ -8,7 +8,10 @@ import {
 } from "./_generated/server";
 import { requireUser } from "./helpers";
 import { hasProAccess, paidFeatureGateMessage } from "../shared/billing";
-import { backgroundScannerEnabled } from "../shared/scannerScheduling";
+import {
+  backgroundScannerDispatchEligible,
+  backgroundScannerEnabled,
+} from "../shared/scannerScheduling";
 import { readStoredXTokens } from "./tokenSecurity";
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
@@ -210,12 +213,40 @@ export const scanNow = mutation({
 export const enabledSettings = internalQuery({
   args: {},
   handler: async (ctx) => {
-    const all = await ctx.db.query("scannerSettings").collect();
-    const enabled = all.filter((s) => s.enabled);
-    const users = await Promise.all(enabled.map((s) => ctx.db.get(s.userId)));
-    return enabled.flatMap((settings, index) => {
+    const [backgroundEnabled, legacy] = await Promise.all([
+      ctx.db
+        .query("scannerSettings")
+        .withIndex("by_background_enabled", (q) =>
+          q.eq("backgroundEnabled", true)
+        )
+        .collect(),
+      ctx.db
+        .query("scannerSettings")
+        .withIndex("by_background_enabled", (q) =>
+          q.eq("backgroundEnabled", undefined)
+        )
+        .collect(),
+    ]);
+    const candidates = [
+      ...backgroundEnabled,
+      ...legacy.filter((settings) => settings.enabled),
+    ];
+    const users = await Promise.all(
+      candidates.map((settings) => ctx.db.get(settings.userId))
+    );
+    return candidates.flatMap((settings, index) => {
       const user = users[index];
-      if (!user || !hasProAccess(user)) return [];
+      if (
+        !user ||
+        !backgroundScannerDispatchEligible({
+          enabled: settings.enabled,
+          backgroundEnabled: settings.backgroundEnabled,
+          isDemo: user.isDemo,
+          hasAccess: hasProAccess(user),
+        })
+      ) {
+        return [];
+      }
       return [{
         userId: settings.userId,
         plan: user.plan,
