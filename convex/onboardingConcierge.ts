@@ -214,6 +214,7 @@ export const acceptProposal = mutation({
       await ctx.db.insert("scannerSettings", {
         userId: user._id,
         enabled: false,
+        backgroundEnabled: false,
         keywords: cleaned,
       });
     }
@@ -293,6 +294,7 @@ export const acceptWatch = mutation({
       await ctx.db.insert("scannerSettings", {
         userId: user._id,
         enabled: false,
+        backgroundEnabled: false,
         keywords: [],
         watchedHandles: nextHandles,
         enabledSources: ["following", "watched"],

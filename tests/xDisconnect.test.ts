@@ -11,6 +11,7 @@ describe("X disconnect cascade", () => {
 
     expect(cascade.scannerPatch).toEqual({
       enabled: false,
+      backgroundEnabled: false,
       enabledSources: [],
       engageListIds: [],
       engageListNames: [],
