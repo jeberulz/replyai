@@ -15,6 +15,7 @@ import {
 import { readStoredXTokens } from "./tokenSecurity";
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
+const BACKGROUND_SCANNER_BACKFILL_LIMIT = 1_000;
 
 const enabledSourceValidator = v.union(
   v.literal("following"),
@@ -254,6 +255,59 @@ export const enabledSettings = internalQuery({
         lastScanCount: settings.lastScanCount,
       }];
     });
+  },
+});
+
+/**
+ * One-time widen/backfill helper for the small scannerSettings table.
+ * Keep this idempotent so operators can dry-run, apply, and verify safely.
+ */
+export const backfillBackgroundEnabled = internalMutation({
+  args: { dryRun: v.boolean() },
+  handler: async (ctx, { dryRun }) => {
+    const rows = await ctx.db
+      .query("scannerSettings")
+      .take(BACKGROUND_SCANNER_BACKFILL_LIMIT + 1);
+    if (rows.length > BACKGROUND_SCANNER_BACKFILL_LIMIT) {
+      throw new Error(
+        `scannerSettings exceeds the ${BACKGROUND_SCANNER_BACKFILL_LIMIT}-row small-table backfill limit`
+      );
+    }
+
+    let wouldWrite = 0;
+    let wouldEnable = 0;
+    let wouldDisable = 0;
+    let missingUsers = 0;
+    for (const row of rows) {
+      const user = await ctx.db.get(row.userId);
+      if (!user) missingUsers += 1;
+      const nextBackgroundEnabled = backgroundScannerEnabled({
+        enabled: row.enabled,
+        isDemo: user?.isDemo ?? true,
+      });
+      if (row.backgroundEnabled === nextBackgroundEnabled) continue;
+
+      wouldWrite += 1;
+      if (nextBackgroundEnabled) {
+        wouldEnable += 1;
+      } else {
+        wouldDisable += 1;
+      }
+      if (!dryRun) {
+        await ctx.db.patch(row._id, {
+          backgroundEnabled: nextBackgroundEnabled,
+        });
+      }
+    }
+
+    return {
+      scanned: rows.length,
+      wouldWrite,
+      wouldEnable,
+      wouldDisable,
+      missingUsers,
+      applied: !dryRun,
+    };
   },
 });
 

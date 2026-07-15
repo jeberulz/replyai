@@ -42,7 +42,7 @@ checks are green.
   - Demo users remain eligible for explicit `scanNow` deterministic behavior
     but are never returned to `scanAll`.
 
-- [ ] **WP57-S4 - Backfill and verify the active dev deployment**
+- [x] **WP57-S4 - Backfill and verify the active dev deployment**
   - Add a bounded, idempotent dry-run/apply migration for the measured small
     `scannerSettings` table.
   - Deploy to dev, record the dry-run inventory, apply only the approved rows,

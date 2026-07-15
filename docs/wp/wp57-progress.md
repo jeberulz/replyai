@@ -58,3 +58,19 @@ content, or customer-identifying data.
   `scanAll` fan-out.
 - Focused verification: scanner scheduling, cadence, and billing tests passed
   (3 files / 26 tests); `npm run typecheck` and `git diff --check` passed.
+
+## 2026-07-15 - S4 controlled dev backfill
+
+- Deployed the additive schema/index, dual-read cron guard, and bounded
+  migration helper to `shiny-crow-162` while the deployment was paused.
+- Set `SCANNER_MIN_CADENCE_MINUTES=1440` on dev as a reversible once-daily
+  safety floor for any future live eligible account.
+- Used a controlled resume window for the approved migration only. Dry run:
+  503 rows scanned, 503 pending writes, 503 disabled, 0 enabled, 0 missing
+  users. The apply produced the same counts.
+- Verification dry run reported 503 rows scanned and 0 pending writes;
+  `scanner.enabledSettings` returned an empty list, so the recurring cron has
+  no demo or legacy row to fan out to.
+- Re-paused the deployment immediately after verification. No user, scanner
+  setting, or product data was deleted, and all 502 user-visible enabled
+  toggles remain unchanged.
