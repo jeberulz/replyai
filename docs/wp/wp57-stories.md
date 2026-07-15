@@ -49,7 +49,7 @@ checks are green.
     and verify no legacy rows or demo background-eligible rows remain.
   - Set the existing dev cadence floor to daily as a reversible safety net.
 
-- [ ] **WP57-S5 - Full gate and handoff**
+- [x] **WP57-S5 - Full gate and handoff**
   - Update README architecture/operations guidance.
   - Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`.
   - Re-query live dev state and record verification plus docs status.

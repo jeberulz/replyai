@@ -74,3 +74,21 @@ content, or customer-identifying data.
 - Re-paused the deployment immediately after verification. No user, scanner
   setting, or product data was deleted, and all 502 user-visible enabled
   toggles remain unchanged.
+
+## 2026-07-15 - S5 gate and handoff
+
+- Updated README product and architecture guidance: the 15-minute dispatcher
+  uses indexed background eligibility, demo scans are on-demand only, and
+  `SCANNER_MIN_CADENCE_MINUTES=1440` is the documented idle-project safety
+  floor.
+- Full gate passed:
+  - `npm run typecheck`
+  - `npm run lint` (0 errors; 4 pre-existing generated-file warnings)
+  - `npm test` (71 files passed, 1 skipped; 566 tests passed, 1 skipped)
+  - `npm run build`
+- The first build attempt exposed only a local worktree setup issue: Turbopack
+  rejects a `node_modules` symlink that leaves its filesystem root. Replacing
+  the temporary symlink with a local copy allowed the unchanged production
+  build to pass.
+- Docs status: `README.md`, `docs/PRODUCT_STRATEGY.md`, and WP57 story/progress
+  records updated. No PRD or design-system change was needed.
