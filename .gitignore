@@ -16,6 +16,9 @@
 /coverage
 /output/
 
+# private build-in-public recording packages
+/outputs/build-in-public/
+
 # next.js
 /.next/
 /out/

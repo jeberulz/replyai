@@ -2,6 +2,37 @@
 
 Append-only ledger for scope and product rulings that unblock work packages.
 
+## 2026-07-12 - WP49-WP56 - AI Experience Layer Program
+
+Question: How should agents build Vercel AI SDK and X MCP into ReplyPilot
+without replacing the existing X API integration or violating the routing
+policy?
+
+Ruling:
+
+1. **WP49-WP56 are official Section 14 packages.** Execute them via the
+   Program/Migration lane with an audit-first manifest before implementation.
+2. **Direct X API remains the deterministic production integration** for OAuth,
+   tweet reads used by core analysis, publishing, scheduling, token refresh,
+   dashboards, analytics, and outcome tracking.
+3. **Vercel AI SDK is the preferred AI experience layer** for migrated/new
+   structured generation, streaming, tool calling, telemetry, and provider
+   abstraction. Migrate incrementally; no big-bang rewrite.
+4. **X MCP is read-only research only.** No MCP tool may publish, schedule, DM,
+   bookmark, create Articles, mutate X state, or automate X's composer without
+   a later owner ruling.
+5. **X Docs MCP is developer productivity only** and must not become a runtime
+   product dependency.
+6. **AI Gateway is a decision gate, not a default dependency.** WP56 must record
+   evidence and a go/no-go recommendation before production routing changes.
+7. **Sub-agent routing follows `.agentic-workflow.yml`.** Orchestrator and
+   AI/prompt/tool/MCP/security WPs use high/top model routing; standard UI/docs
+   work may use mid/low routing; workers may not make product rulings.
+8. **All permanent guardrails remain inherited:** 3 options, concrete reasons,
+   no fake scores, no auto-publish, explicit human send, authenticated Convex
+   functions, deterministic demo mode, and untrusted external content
+   boundaries.
+
 ## 2026-07-08 - WP16 - Scope boundary
 
 Question: WP16's original file boundary listed only `src/lib/ai.ts`, `convex/analyses.ts`, and `convex/publish.ts`, but the §14 definition of done requires thread-ancestor persistence and a scheduled stale-pipeline sweep, which need files outside that boundary.

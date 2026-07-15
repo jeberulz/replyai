@@ -899,10 +899,20 @@ npm test && npm run build`), Convex guidelines
 | WP29 | Voice Studio onto Astryx `ds/` | P0 | `src/components/app/voice-studio.tsx` | Voice tab uses ds Card/Badge/Button/TextInput/TextArea; Dialog stays ui/; train/CRUD/default unchanged; checks green |
 | WP30 | Settings onto Astryx `ds/` | P0 | `settings/page.tsx`, `account-data-controls.tsx`, `default-model-card.tsx` | Settings sections on ds primitives; Dialog stays ui/ for delete confirm; billing/export/delete/model default unchanged |
 | WP40 | First-10 beta launch gate | Launch | private access + demo isolation; X/AI spend controls; wedge-quality fixes; legal/settings/accessibility; observability + notifications; production gate | Ten allow-listed design partners can use the real X workflow without shared demo data or uncapped spend; production telemetry and hot-window delivery are live; legal/support copy and critical accessibility gaps are corrected; security/full/mobile checks and the real-X launch runbook are green |
+| WP49 | AI SDK foundation and provider boundary | AI Experience P0 | AI SDK deps, `src/lib/ai/provider.ts`, `src/lib/ai.ts`, `shared/models.ts`, env/docs | Minimal Vercel AI SDK dependency surface; existing Anthropic behavior wrapped behind task-level functions; no user-facing behavior change; demo fallbacks and full checks green |
+| WP50 | Structured output migration for core generation | AI Experience P0 | `src/lib/ai.ts`, eval fixtures, `shared/evals.ts`, generation tests | Analysis, reply/quote, rewrite, and compose generation use AI SDK structured-output/provider wrapper; schemas, repair/reject behavior, 3-option guardrails, fake-score bans, and prompt-injection boundaries stay green |
+| WP51 | Streaming reply workbench | AI Experience P1 | AI route handlers/server actions, `src/components/app/chat/**`, option/workbench surfaces | Analysis and options stream progressively; final persisted state matches existing Convex records; desktop/mobile workbench verified; demo staged progress works; no auto-publish path |
+| WP52 | Typed AI tool runtime and audit log | AI Experience P1 | `src/lib/ai/tools/**`, `shared/aiTools.ts`, Convex audit table/functions | Allow-listed server-side tools can read/score/draft/save reviewable artifacts; tools cannot publish/schedule/DM/bookmark/mutate X; tool calls are audited and export/delete-safe |
+| WP53 | Read-only X MCP research adapter | AI Experience P2 | `src/lib/xMcp.ts`/`xResearch.ts`, `shared/xResearch.ts`, demo data, env/docs | X MCP read capabilities normalize into internal research contracts; no write-like MCP actions; spend/rate-limit posture documented or wired; zero-key deterministic fallback works |
+| WP54 | User-facing Research Mode | AI Experience P2 | chat/research UI, `convex/research*`, opportunities, scoring, analytics | User research prompts return ranked reply opportunities with reason, missing angle, and analyze/draft/pass actions; existing scoring used; raw MCP content treated as untrusted; no MCP write path |
+| WP55 | Trend radar and briefing upgrade | AI Experience P3 | `shared/trends.ts`, `shared/briefings.ts`, Convex trend/briefing actions, trend/briefing UI | Trend clusters and briefings can include normalized scanner/X API/X MCP research candidates; copy explains why now without fake percentages; notification caps and demo mode preserved |
+| WP56 | AI observability, eval routing, and gateway decision gate | AI Experience P4 | analytics catalog/adapters, `convex/evals.ts`, `shared/models.ts`, observability docs | AI task telemetry records route/model/provider/latency/usage/error/artifact; eval/operator report compares quality and cost; go/no-go recommendation for AI Gateway recorded with evidence |
 
 Program briefs: `docs/wp/WP24-ASTRYX-ADOPTION-PLAN.md` and
-`docs/wp/WP40-FIRST-10-BETA-LAUNCH-GATE.md`. Rulings:
-`docs/wp/RULINGS.md` (2026-07-10).
+`docs/wp/WP40-FIRST-10-BETA-LAUNCH-GATE.md`. AI Experience briefs:
+`docs/AI_EXPERIENCE_PRD.md` and `docs/AI_EXPERIENCE_PRODUCT_STRATEGY.md`.
+Rulings:
+`docs/wp/RULINGS.md` (latest: 2026-07-12).
 
 ---
 

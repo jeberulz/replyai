@@ -30,6 +30,8 @@ type Env = {
   readonly AI_SPEND_KILL_SWITCH: string | undefined;
   readonly AI_SPEND_LIMITS_REQUIRED: string | undefined;
   readonly CONVEX_AUTH_PROVISION_SECRET: string | undefined;
+  readonly SCANNER_MIN_CADENCE_MINUTES: string | undefined;
+  readonly SCANNER_SEMANTIC_BATCH_LIMIT: string | undefined;
   readonly STRIPE_PRO_PRICE_ID: string | undefined;
   readonly STRIPE_SECRET_KEY: string | undefined;
   readonly STRIPE_WEBHOOK_SECRET: string | undefined;
