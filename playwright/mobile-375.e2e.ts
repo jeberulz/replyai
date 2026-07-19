@@ -90,8 +90,9 @@ async function ensureFeedHasOpportunity(page: Page) {
     await searchSwitch.click();
   }
 
+  await page.getByRole("tab", { name: /Topics/i }).click();
   await page.locator("#search-keywords").fill("ai");
-  const searchSaveButton = page.getByRole("button", { name: "Save" }).nth(1);
+  const searchSaveButton = page.getByRole("button", { name: /Save search/i });
   if (await searchSaveButton.isEnabled()) {
     await searchSaveButton.click();
   }

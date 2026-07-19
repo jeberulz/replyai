@@ -1,0 +1,23 @@
+---
+description: Agentic delivery workflow for scoped coding work packages
+alwaysApply: true
+---
+
+# Agentic Delivery Workflow
+
+Before coding in this repository, read:
+
+- `AGENTS.workflow.md`
+- `.agentic-workflow.yml`
+- `docs/wp/RULINGS.md`
+
+Follow the lane decision before editing files:
+
+- Program/Migration: audit first, freeze `docs/wp/program-manifest.md`, sequence by risk, gate every wave, and require backup/dry-run/approval for irreversible work.
+- Work Package: branch first, story/progress files, scoped implementation, verification.
+- Small Fix: only tiny low-risk changes within the configured limits.
+- Gate: verification only; report failures and assign scoped fixes.
+
+Worktrees are allowed only under `.worktrees/`. Never create sibling project folders for work packages.
+
+Use one agent by default. Use sub-agents only for parallel work packages, independent review, gate runs, or context isolation. Route stronger models to orchestration, architecture, security/auth/payments/publishing, production data, migrations, AI/prompt behavior, and final review; use cheaper models for scaffolding, inventories, docs cleanup, running checks, and mechanical lint fixes.
