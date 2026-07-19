@@ -26,10 +26,12 @@ always.
   through the selected profile.
 - **Rewrite** — shorter, funnier, more controversial, more educational,
   stronger hook, simpler, more human.
-- **Feed scanner** — a Convex cron scans your feed every 30 minutes and
-  surfaces scored opportunities with author, reply count, velocity, and a
-  suggested angle. Suggestions only: publishing always requires an explicit
-  click on that specific text.
+- **Feed scanner** — a lightweight Convex dispatcher checks indexed background
+  eligibility every 15 minutes, then applies the configured per-user cadence
+  before scanning live accounts. Demo accounts scan only when requested, so
+  sample data cannot consume recurring backend usage. Results include author,
+  reply count, velocity, and a suggested angle. Suggestions only: publishing
+  always requires an explicit click on that specific text.
 - **Hot-window notifications (Pro)** — capped web push + optional email digest
   when young opportunities cross your threshold, including a golden-15 lane for
   watched/list authors. Quiet hours (default 22:00–08:00 UTC) and a 5/day cap.
@@ -78,6 +80,9 @@ The app is fully testable without any external keys:
 Convex is the only hard requirement (`npx convex dev` is free and local to your
 account). Add real keys to `.env.local` and the same flows switch to live X
 data and Claude-generated analysis with no code changes.
+
+Demo scanner results are deterministic and on-demand. Demo identities are
+never eligible for the recurring background scanner cron.
 
 ### Real integrations
 
@@ -128,6 +133,11 @@ data and Claude-generated analysis with no code changes.
 - **Reactivity** — the dashboard, feed, voice, and results screens subscribe
   via `useQuery`; scanner results and scheduled-publish status updates stream
   in live. No polling layer.
+- **Scanner cost control** — the user-visible scanner toggle is separate from
+  indexed background eligibility. Demo identities are always excluded from
+  background fan-out. Operators can raise the live-account cadence floor
+  without a redeploy by setting `SCANNER_MIN_CADENCE_MINUTES` in Convex; use
+  `1440` for a once-daily safety floor on idle side-project deployments.
 - **Shared logic** — `shared/scoring.ts` (worth-replying heuristic, URL
   parsing) and `shared/voice.ts` (voice measurement) are imported by both the
   Next.js app and Convex functions, and unit-tested in `tests/`.

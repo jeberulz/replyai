@@ -43,6 +43,7 @@ export type SessionUser = {
   onboardingCompletedAt?: number;
   setupDismissedAt?: number;
   isDemo: boolean;
+  evalOperator: boolean;
   createdAt: number;
   xConnected: boolean;
 };

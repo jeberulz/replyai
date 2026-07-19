@@ -16,7 +16,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { navLinks } from "@/components/app/sidebar/nav-links";
+import { visibleNavLinks } from "@/components/app/sidebar/nav-links";
 import { useSidebar } from "@/components/app/sidebar/sidebar-provider";
 import {
   buildAnalyzeDeepLink,
@@ -25,7 +25,11 @@ import {
   filterOpportunitiesForPalette,
 } from "@/lib/commandPalette";
 
-export function CommandMenu() {
+export function CommandMenu({
+  evalOperator = false,
+}: {
+  evalOperator?: boolean;
+}) {
   const router = useRouter();
   const sessionToken = useSessionToken();
   const {
@@ -94,6 +98,10 @@ export function CommandMenu() {
 
   const defaultVoice =
     voiceProfiles?.find((p) => p.isDefault) ?? voiceProfiles?.[0];
+  const pageLinks = useMemo(
+    () => visibleNavLinks({ evalOperator }),
+    [evalOperator]
+  );
 
   function navigate(href: string) {
     setCommandOpen(false);
@@ -255,7 +263,7 @@ export function CommandMenu() {
 
         <CommandSeparator />
         <CommandGroup heading="Pages">
-          {navLinks.map((link) => (
+          {pageLinks.map((link) => (
             <CommandItem
               key={link.href}
               value={link.label}

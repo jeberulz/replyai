@@ -262,6 +262,7 @@ export const watchProfile = mutation({
       await ctx.db.insert("scannerSettings", {
         userId: user._id,
         enabled: false,
+        backgroundEnabled: false,
         keywords: nextKeywords,
         watchedHandles: nextHandles,
         enabledSources: ["following", "watched"],

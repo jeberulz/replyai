@@ -35,6 +35,16 @@ export type GenerationTrigger = "initial" | "more" | "compose";
 
 export type NotificationAlertChannel = "push" | "digest";
 export type NotificationAlertTier = "golden15" | "hot";
+export type ShadowGrokAvailability =
+  | "off"
+  | "not_sampled"
+  | "no_query"
+  | "spend_blocked"
+  | "circuit_open"
+  | "provider_unavailable"
+  | "hydration_failed"
+  | "succeeded"
+  | "failed";
 
 export type AnalyticsEventProperties = {
   /** Fired once per user per scan run when new opportunities were inserted. */
@@ -99,6 +109,15 @@ export type AnalyticsEventProperties = {
     opportunityId: string;
     tier: NotificationAlertTier;
     draftId?: string;
+  };
+  /** Fired by the scanner's shadow-only Grok discovery path; never user-facing. */
+  shadow_grok_discovery_sampled: {
+    availability: ShadowGrokAvailability;
+    sampled: boolean;
+    candidateCount: number;
+    costUsd: number;
+    circuitOpen: boolean;
+    evalRunId?: string;
   };
 };
 

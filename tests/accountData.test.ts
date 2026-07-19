@@ -26,12 +26,20 @@ describe("account data inventory contract", () => {
       "authors",
       "usage",
       "aiSpendLedger",
+      "shadowGrokDiscoveryRuns",
       "xReadLedger",
       "opportunities",
       "savedDrafts",
       "variantGroups",
       "composeRuns",
       "generatedReplies",
+      "evalJudgments",
+      "evalOutputs",
+      "evalRuns",
+      "evalDecisions",
+      "evalExperiments",
+      "evalCases",
+      "evalDatasets",
       "modelEvals",
       "tweetAnalyses",
       "voiceDriftRuns",
@@ -55,6 +63,22 @@ describe("account data inventory contract", () => {
         { _id: "reply-1", userId: "user-1", analysisId: "analysis-1" },
         { _id: "reply-2", userId: "user-2", analysisId: "analysis-2" },
       ],
+      evalOutputs: [
+        {
+          _id: "eval-output-1",
+          userId: "user-1",
+          experimentId: "experiment-1",
+          runId: "run-1",
+          caseId: "case-1",
+        },
+        {
+          _id: "eval-output-2",
+          userId: "user-2",
+          experimentId: "experiment-2",
+          runId: "run-2",
+          caseId: "case-2",
+        },
+      ],
       researchProfiles: [
         { _id: "profile-1", userId: "user-1", runId: "run-1" },
         { _id: "profile-2", userId: "user-2", runId: "run-2" },
@@ -69,6 +93,7 @@ describe("account data inventory contract", () => {
 
     expect(counts.sessions).toBe(1);
     expect(counts.generatedReplies).toBe(1);
+    expect(counts.evalOutputs).toBe(1);
     expect(counts.researchProfiles).toBe(1);
     expect(counts.users).toBe(1);
   });
@@ -78,6 +103,18 @@ describe("account data inventory contract", () => {
       tableBelongsToAccount(
         "generatedReplies",
         { _id: "reply-1", userId: "user-2", analysisId: "owned-analysis" },
+        "user-1"
+      )
+    ).toBe(false);
+    expect(
+      tableBelongsToAccount(
+        "evalJudgments",
+        {
+          _id: "judgment-1",
+          userId: "user-2",
+          reviewerUserId: "user-1",
+          caseId: "owned-case",
+        },
         "user-1"
       )
     ).toBe(false);
@@ -178,11 +215,25 @@ describe("account data inventory contract", () => {
           { _id: "draft-1", userId: "user-1", text: "hello" },
           { _id: "draft-2", userId: "user-2", text: "nope" },
         ],
+        evalDatasets: [
+          {
+            _id: "dataset-1",
+            userId: "user-1",
+            creatorUserId: "user-1",
+            name: "Synthetic generation v1",
+          },
+          {
+            _id: "dataset-2",
+            userId: "user-2",
+            creatorUserId: "user-2",
+            name: "Other dataset",
+          },
+        ],
       },
     });
 
     expect(payload.schemaVersion).toBe(1);
-    expect(payload.inventory.totalRows).toBe(3);
+    expect(payload.inventory.totalRows).toBe(4);
     expect(payload.tables.users).toEqual([{ _id: "user-1", username: "owner" }]);
     expect(payload.tables.xTokens).toEqual([
       {
@@ -198,6 +249,14 @@ describe("account data inventory contract", () => {
     expect(JSON.stringify(payload)).not.toContain("secret");
     expect(payload.tables.savedDrafts).toEqual([
       { _id: "draft-1", userId: "user-1", text: "hello" },
+    ]);
+    expect(payload.tables.evalDatasets).toEqual([
+      {
+        _id: "dataset-1",
+        userId: "user-1",
+        creatorUserId: "user-1",
+        name: "Synthetic generation v1",
+      },
     ]);
   });
 

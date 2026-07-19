@@ -189,6 +189,7 @@ export const me = query({
       onboardingCompletedAt: user.onboardingCompletedAt,
       setupDismissedAt: user.setupDismissedAt,
       isDemo: user.isDemo,
+      evalOperator: user.evalOperator === true,
       createdAt: user.createdAt,
       xConnected: xToken !== null && xToken.expiresAt > Date.now(),
     };

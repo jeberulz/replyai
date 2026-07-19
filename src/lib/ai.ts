@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { env, hasAnthropicKey } from "./env";
+import { legacyAnthropicUsage } from "./providers/usage";
 import type { TweetBundle } from "./x";
 import {
   applyVoiceLabelRefinement,
@@ -31,6 +32,7 @@ import {
   type ComposeFormat,
   type TopicCluster,
 } from "../../shared/compose";
+import type { LegacyTokenUsage } from "../../shared/providers";
 
 let anthropic: Anthropic | null = null;
 function client(): Anthropic {
@@ -38,7 +40,7 @@ function client(): Anthropic {
   return anthropic;
 }
 
-export type Usage = { tokensIn: number; tokensOut: number };
+export type Usage = LegacyTokenUsage;
 
 // Generation categories live in shared/onboarding.ts (goal biases are
 // validated against them); re-exported here for existing importers.
@@ -209,10 +211,11 @@ Return only a better tone label. Do not change sentence length, formatting, emoj
     });
     return {
       style: applyVoiceLabelRefinement(args.style, response.parsed_output),
-      usage: {
-        tokensIn: response.usage.input_tokens,
-        tokensOut: response.usage.output_tokens,
-      },
+      usage: legacyAnthropicUsage({
+        modelId: args.model ?? env.anthropicAnalyzeModel,
+        operation: "analysis",
+        usage: response.usage,
+      }),
     };
   } catch (error) {
     console.warn("Voice label refinement failed; using measured style", error);
@@ -275,10 +278,11 @@ export async function analyzeTweet(
   if (!analysis) throw new Error("Analysis parsing failed");
   return {
     analysis,
-    usage: {
-      tokensIn: response.usage.input_tokens,
-      tokensOut: response.usage.output_tokens,
-    },
+    usage: legacyAnthropicUsage({
+      modelId: env.anthropicAnalyzeModel,
+      operation: "analysis",
+      usage: response.usage,
+    }),
   };
 }
 
@@ -453,10 +457,11 @@ Requirements:
   if (!parsed) throw new Error("Generation repair parsing failed");
   return {
     options: parsed.options,
-    usage: {
-      tokensIn: response.usage.input_tokens,
-      tokensOut: response.usage.output_tokens,
-    },
+    usage: legacyAnthropicUsage({
+      modelId: args.model,
+      operation: "generation",
+      usage: response.usage,
+    }),
   };
 }
 
@@ -560,8 +565,18 @@ Generate exactly ${count} ${args.kind === "quote" ? "quote tweets" : "replies"},
   return {
     options,
     usage: {
-      tokensIn: response.usage.input_tokens + repairUsage.tokensIn,
-      tokensOut: response.usage.output_tokens + repairUsage.tokensOut,
+      tokensIn:
+        legacyAnthropicUsage({
+          modelId: args.model ?? env.anthropicGenerateModel,
+          operation: "generation",
+          usage: response.usage,
+        }).tokensIn + repairUsage.tokensIn,
+      tokensOut:
+        legacyAnthropicUsage({
+          modelId: args.model ?? env.anthropicGenerateModel,
+          operation: "generation",
+          usage: response.usage,
+        }).tokensOut + repairUsage.tokensOut,
     },
   };
 }
@@ -641,10 +656,11 @@ Draft:
   if (!parsed) throw new Error("Rewrite parsing failed");
   return {
     text: parsed.text,
-    usage: {
-      tokensIn: response.usage.input_tokens,
-      tokensOut: response.usage.output_tokens,
-    },
+    usage: legacyAnthropicUsage({
+      modelId: args.model ?? env.anthropicGenerateModel,
+      operation: "rewrite",
+      usage: response.usage,
+    }),
   };
 }
 
@@ -762,10 +778,11 @@ ${candidateBlock}`,
   };
   return {
     verdict,
-    usage: {
-      tokensIn: response.usage.input_tokens,
-      tokensOut: response.usage.output_tokens,
-    },
+    usage: legacyAnthropicUsage({
+      modelId: judgeModel,
+      operation: "judge",
+      usage: response.usage,
+    }),
     judgeModel,
   };
 }
@@ -1131,10 +1148,11 @@ Generate exactly ${COMPOSE_OPTION_COUNT} standalone short posts (aim ~71–100 c
       bundle.longform = demo.longform;
       return {
         bundle,
-        usage: {
-          tokensIn: response.usage.input_tokens,
-          tokensOut: response.usage.output_tokens,
-        },
+        usage: legacyAnthropicUsage({
+          modelId: model,
+          operation: "compose",
+          usage: response.usage,
+        }),
         demo: false,
       };
     }
@@ -1167,10 +1185,11 @@ Generate exactly ${COMPOSE_OPTION_COUNT} threads. Each thread must have ${THREAD
       bundle.longform = demo.longform;
       return {
         bundle,
-        usage: {
-          tokensIn: response.usage.input_tokens,
-          tokensOut: response.usage.output_tokens,
-        },
+        usage: legacyAnthropicUsage({
+          modelId: model,
+          operation: "compose",
+          usage: response.usage,
+        }),
         demo: false,
       };
     }
@@ -1202,10 +1221,11 @@ Generate exactly ${COMPOSE_OPTION_COUNT} long-form / Article drafts (markdown ok
     bundle.thread = demo.thread;
     return {
       bundle,
-      usage: {
-        tokensIn: response.usage.input_tokens,
-        tokensOut: response.usage.output_tokens,
-      },
+      usage: legacyAnthropicUsage({
+        modelId: model,
+        operation: "compose",
+        usage: response.usage,
+      }),
       demo: false,
     };
   } catch (error) {

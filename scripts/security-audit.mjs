@@ -68,11 +68,21 @@ function auditRequireUser() {
     const hasOwnedAnalysisWrapper =
       fn.body.includes("requireOwnedAnalysis(") &&
       /function\s+requireOwnedAnalysis[\s\S]*requireUser\(/.test(fn.source);
+    const hasEvalOperatorWrapper =
+      fn.body.includes("requireEvalOperator(") &&
+      ((/function\s+requireEvalOperator[\s\S]*requireUser\(/.test(fn.source)) ||
+        (/import\s+\{\s*[^}]*requireEvalOperator[^}]*\}\s+from\s+["']\.\/helpers["'];/.test(
+          fn.source
+        ) &&
+          /export\s+async\s+function\s+requireEvalOperator[\s\S]*requireUser\(/.test(
+            read("convex/helpers.ts")
+          )));
     if (
       fn.body.includes("requireUser(") ||
       fn.body.includes("userBySessionToken(") ||
       fn.body.includes("sessionByToken(") ||
-      hasOwnedAnalysisWrapper
+      hasOwnedAnalysisWrapper ||
+      hasEvalOperatorWrapper
     ) {
       continue;
     }

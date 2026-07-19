@@ -32,6 +32,15 @@ import {
   type SemanticScore,
 } from "../shared/semanticRelevance";
 import {
+  buildShadowDiscoveryRequest,
+  parseShadowGrokMode,
+  parseShadowSampleRatePercent,
+  shouldSampleShadowGrok,
+  stableShadowSampleKey,
+  SHADOW_GROK_DISCOVERY_VERSION,
+  type ShadowGrokAvailability,
+} from "../shared/shadowGrokDiscovery";
+import {
   DEMO_TWEETS,
   DEMO_WATCHED_HANDLES,
   demoListTweets,
@@ -47,6 +56,8 @@ const MAX_WATCHED_HANDLES_PER_SCAN = 15;
 /** Cap on merged/deduped candidates before scoring, to bound per-scan cost. */
 const MAX_CANDIDATES = 150;
 const CURATED_SOURCE_RANKING_BONUS = 10;
+const SHADOW_GROK_PROVIDER_ID = "xai";
+const SHADOW_GROK_OPERATION = "discovery";
 
 /**
  * Operator cost dials for the beta (set in Convex env; unset = default
@@ -62,6 +73,24 @@ function scannerMinCadenceMinutes(): number {
 function scannerSemanticBatchLimit(): number {
   const raw = Number(process.env.SCANNER_SEMANTIC_BATCH_LIMIT);
   return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : SEMANTIC_BATCH_LIMIT;
+}
+
+function shadowGrokEnvMode() {
+  return parseShadowGrokMode(process.env.GROK_DISCOVERY_SHADOW_MODE);
+}
+
+function shadowGrokEnvSampleRate() {
+  return parseShadowSampleRatePercent(process.env.GROK_DISCOVERY_SAMPLE_RATE_PERCENT);
+}
+
+function shadowGrokCircuitFailureThreshold(): number {
+  const raw = Number(process.env.GROK_DISCOVERY_CIRCUIT_FAILURE_THRESHOLD);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 3;
+}
+
+function shadowGrokCircuitCooldownMs(): number {
+  const raw = Number(process.env.GROK_DISCOVERY_CIRCUIT_COOLDOWN_MS);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 30 * 60_000;
 }
 
 type EnabledSource = "following" | "lists" | "watched" | "search";
@@ -150,6 +179,11 @@ type ScanContext = {
   lastScanAt?: number;
   lastScanCount?: number;
   enabledSources: EnabledSource[];
+  goal?: string | null;
+  rankingWeights?: unknown;
+  grokDiscoveryMode?: "off" | "shadow";
+  grokDiscoverySampleRatePercent?: number;
+  grokDiscoveryEvalRunId?: Id<"evalRuns">;
 };
 
 type ScanDispatchContext = Pick<ScanContext, "plan" | "lastScanAt" | "lastScanCount">;
@@ -555,6 +589,7 @@ export const scanUser = internalAction({
         userId,
         resultCount: worthSurfacing.length,
       });
+      await runShadowGrokDiscoverySample(ctx, userId, context, now);
     } catch (error) {
       console.error("scanUser failed", { userId, error });
       await captureConvexException(error, { action: "scanUser", userId });
@@ -569,6 +604,445 @@ export const scanUser = internalAction({
     }
   },
 });
+
+async function runShadowGrokDiscoverySample(
+  ctx: ActionCtx,
+  userId: Id<"users">,
+  context: ScanContext,
+  scanStartedAt: number
+): Promise<void> {
+  try {
+    const mode = parseShadowGrokMode(
+      context.grokDiscoveryMode ?? shadowGrokEnvMode()
+    );
+    const sampleRatePercent = parseShadowSampleRatePercent(
+      context.grokDiscoverySampleRatePercent ?? shadowGrokEnvSampleRate()
+    );
+    const sampleKey = stableShadowSampleKey({
+      userId,
+      scanStartedAt,
+      keywords: context.keywords,
+      searchKeywords: context.searchKeywords,
+      watchedHandles: context.watchedHandles,
+    });
+    const sampled = shouldSampleShadowGrok({
+      mode,
+      sampleRatePercent,
+      sampleKey,
+    });
+
+    if (mode === "off") return;
+    if (!sampled) {
+      await recordShadowAvailability(ctx, {
+        userId,
+        scanStartedAt,
+        mode,
+        sampleRatePercent,
+        sampled,
+        sampleKey,
+        status: "skipped",
+        availability: "not_sampled",
+        circuitOpen: false,
+      });
+      return;
+    }
+
+    const request = buildShadowDiscoveryRequest({
+      nowMs: scanStartedAt,
+      keywords: context.keywords,
+      searchKeywords: context.searchKeywords,
+      watchedHandles: context.watchedHandles,
+      goal: context.goal,
+    });
+    if (!request) {
+      await recordShadowAvailability(ctx, {
+        userId,
+        scanStartedAt,
+        mode,
+        sampleRatePercent,
+        sampled,
+        sampleKey,
+        status: "skipped",
+        availability: "no_query",
+        reason: "No scanner keywords or discovery terms available for shadow query.",
+        circuitOpen: false,
+      });
+      return;
+    }
+
+    const circuit = await ctx.runQuery(internal.shadowDiscovery.circuitState, {
+      providerId: SHADOW_GROK_PROVIDER_ID,
+      operation: SHADOW_GROK_OPERATION,
+      now: scanStartedAt,
+    });
+    if (circuit.open) {
+      await recordShadowAvailability(ctx, {
+        userId,
+        scanStartedAt,
+        mode,
+        sampleRatePercent,
+        sampled,
+        sampleKey,
+        status: "blocked",
+        availability: "circuit_open",
+        reason: `xAI discovery circuit open until ${circuit.openedUntil ?? "unknown"}`,
+        query: request.query,
+        requestJson: JSON.stringify(request),
+        circuitOpen: true,
+      });
+      return;
+    }
+
+    const resolved = await resolveAccessToken(ctx, userId, context);
+    if (!resolved.accessToken) {
+      await recordShadowAvailability(ctx, {
+        userId,
+        scanStartedAt,
+        mode,
+        sampleRatePercent,
+        sampled,
+        sampleKey,
+        status: "blocked",
+        availability: "provider_unavailable",
+        reason: resolved.error ?? "Missing X access token for authoritative hydration.",
+        query: request.query,
+        requestJson: JSON.stringify(request),
+        circuitOpen: false,
+      });
+      return;
+    }
+
+    const { hasXCredentials } = await import("../src/lib/env");
+    if (!hasXCredentials()) {
+      await recordShadowAvailability(ctx, {
+        userId,
+        scanStartedAt,
+        mode,
+        sampleRatePercent,
+        sampled,
+        sampleKey,
+        status: "blocked",
+        availability: "provider_unavailable",
+        reason: "Missing X app credentials for authoritative hydration.",
+        query: request.query,
+        requestJson: JSON.stringify(request),
+        circuitOpen: false,
+      });
+      return;
+    }
+
+    const spend = await ctx.runMutation(
+      internal.spend.recordAiSpendAttemptForUserInternal,
+      {
+        userId,
+        isDemo: context.isDemo,
+        unlimitedAccess: context.unlimitedAccess,
+        kind: "discovery",
+        source: "scanner_grok_shadow",
+      }
+    );
+    if (!spend.allowed) {
+      await recordShadowAvailability(ctx, {
+        userId,
+        scanStartedAt,
+        mode,
+        sampleRatePercent,
+        sampled,
+        sampleKey,
+        status: "blocked",
+        availability: "spend_blocked",
+        reason: spend.message,
+        query: request.query,
+        requestJson: JSON.stringify(request),
+        circuitOpen: false,
+      });
+      return;
+    }
+
+    const xReadAttempt = await beginXRead(ctx, {
+      userId,
+      isDemo: context.isDemo,
+      unlimitedAccess: context.unlimitedAccess,
+      source: "scanner_grok_shadow",
+      endpoint: "tweets/:id",
+    });
+    if (!xReadAttempt.allowed) {
+      await recordShadowAvailability(ctx, {
+        userId,
+        scanStartedAt,
+        mode,
+        sampleRatePercent,
+        sampled,
+        sampleKey,
+        status: "blocked",
+        availability: "provider_unavailable",
+        reason: xReadAttempt.message ?? "X read budget blocked shadow hydration.",
+        query: request.query,
+        requestJson: JSON.stringify(request),
+        circuitOpen: false,
+      });
+      return;
+    }
+
+    const evalLink =
+      context.grokDiscoveryEvalRunId
+        ? { runId: context.grokDiscoveryEvalRunId, experimentId: undefined }
+        : await ctx.runQuery(internal.shadowDiscovery.latestPromotedShadowRun, {
+            userId,
+          });
+    const { runHydratedXaiXSearchDiscovery } = await import(
+      "../src/lib/providers/xai"
+    );
+    const result = await runHydratedXaiXSearchDiscovery({
+      request,
+      accessToken: resolved.accessToken,
+    });
+    const hydratedTweets = result.ok
+      ? result.candidates.map((candidate) => ({
+          tweetId: candidate.tweetId,
+          authorHandle: candidate.authorHandle,
+          authorName: candidate.bundle.authorName,
+          authorFollowers: candidate.bundle.authorFollowers,
+          text: candidate.bundle.text,
+          postedAt: candidate.bundle.postedAt,
+          likes: candidate.bundle.likes,
+          retweets: candidate.bundle.retweets,
+          replies: candidate.bundle.replies,
+          quotes: candidate.bundle.quotes,
+        }))
+      : [];
+    await finishXRead(ctx, {
+      userId,
+      attempt: xReadAttempt,
+      tweets: hydratedTweets,
+      status: result.ok ? "succeeded" : "failed",
+    });
+
+    await ctx.runMutation(internal.shadowDiscovery.recordCircuitResult, {
+      providerId: SHADOW_GROK_PROVIDER_ID,
+      operation: SHADOW_GROK_OPERATION,
+      success: result.ok,
+      failureThreshold: shadowGrokCircuitFailureThreshold(),
+      cooldownMs: shadowGrokCircuitCooldownMs(),
+      error: result.ok
+        ? undefined
+        : result.error?.redactedMessage ??
+          result.validationErrors?.join(", ") ??
+          result.reason,
+      now: Date.now(),
+    });
+
+    const availability: ShadowGrokAvailability = result.ok
+      ? "succeeded"
+      : result.hydrationFailures.length > 0
+        ? "hydration_failed"
+        : result.reason === "missing_api_key" || result.reason === "request_failed"
+          ? "provider_unavailable"
+          : "failed";
+    const status = result.ok ? "succeeded" : "failed";
+    await recordShadowAvailability(ctx, {
+      userId,
+      scanStartedAt,
+      mode,
+      sampleRatePercent,
+      sampled,
+      sampleKey,
+      status,
+      availability,
+      reason: result.ok ? undefined : result.reason,
+      query: request.query,
+      requestJson: JSON.stringify(request),
+      providerId: result.providerId,
+      modelId: result.modelId,
+      reasoningEffort: "low",
+      evalRunId: evalLink?.runId,
+      evalExperimentId: evalLink?.experimentId,
+      rawProviderResponseId: result.rawProviderResponseId,
+      citations: result.citations,
+      hydrationFailures: result.hydrationFailures.map((failure) => ({
+        tweetId: failure.tweetId,
+        reason: failure.reason,
+      })),
+      candidates: result.ok
+        ? result.candidates.map((candidate) => ({
+            tweetId: candidate.tweetId,
+            canonicalUrl: candidate.canonicalUrl,
+            authorHandle: candidate.authorHandle,
+            relevanceReason: candidate.relevanceReason,
+            missingAngle: candidate.missingAngle,
+            searchIntent: candidate.searchIntent,
+            citations: candidate.citations,
+            mediaInfluenced: candidate.mediaInfluenced,
+            hydrated: true,
+            hydratedAuthorHandle: candidate.bundle.authorHandle,
+            postedAt: candidate.bundle.postedAt,
+          }))
+        : [],
+      usage: {
+        inputTokens: result.usage.tokensIn,
+        outputTokens: result.usage.tokensOut,
+        reasoningTokens: result.usage.reasoningTokens,
+        cachedInputTokens: result.usage.cachedTokensIn,
+        toolCallCount: result.usage.toolCalls,
+        successfulToolCallCount: result.usage.successfulToolCalls,
+      },
+      costUsd: result.usage.costUsd,
+      errorCode: result.ok ? undefined : result.error?.code ?? result.reason,
+      errorMessage: result.ok
+        ? undefined
+        : result.error?.redactedMessage ?? result.validationErrors?.join(", "),
+      circuitOpen: false,
+    });
+    if (!result.ok) {
+      await captureConvexException(new Error(`Shadow Grok discovery ${result.reason}`), {
+        action: "runShadowGrokDiscoverySample",
+        userId,
+        availability,
+      });
+    }
+  } catch (error) {
+    console.error("shadow Grok discovery failed", { userId, error });
+    await captureConvexException(error, {
+      action: "runShadowGrokDiscoverySample",
+      userId,
+    });
+  }
+}
+
+async function recordShadowAvailability(
+  ctx: ActionCtx,
+  args: {
+    userId: Id<"users">;
+    scanStartedAt: number;
+    mode: "off" | "shadow";
+    sampleRatePercent: number;
+    sampled: boolean;
+    sampleKey: string;
+    status: "skipped" | "blocked" | "succeeded" | "failed";
+    availability: ShadowGrokAvailability;
+    reason?: string;
+    query?: string;
+    requestJson?: string;
+    providerId?: string;
+    modelId?: string;
+    reasoningEffort?: string;
+    evalRunId?: Id<"evalRuns">;
+    evalExperimentId?: Id<"evalExperiments">;
+    rawProviderResponseId?: string;
+    citations?: string[];
+    hydrationFailures?: Array<{ tweetId: string; reason: string }>;
+    candidates?: Array<{
+      tweetId: string;
+      canonicalUrl: string;
+      authorHandle: string;
+      relevanceReason: string;
+      missingAngle: string;
+      searchIntent: string;
+      citations: string[];
+      mediaInfluenced: boolean;
+      hydrated: boolean;
+      hydratedAuthorHandle?: string;
+      postedAt?: number;
+    }>;
+    usage?: {
+      inputTokens?: number;
+      outputTokens?: number;
+      reasoningTokens?: number;
+      cachedInputTokens?: number;
+      toolCallCount?: number;
+      successfulToolCallCount?: number;
+    };
+    costUsd?: number;
+    errorCode?: string;
+    errorMessage?: string;
+    circuitOpen: boolean;
+  }
+) {
+  const payload: {
+    userId: Id<"users">;
+    scanStartedAt: number;
+    mode: "off" | "shadow";
+    sampleRatePercent: number;
+    sampled: boolean;
+    sampleKey: string;
+    version: string;
+    status: "skipped" | "blocked" | "succeeded" | "failed";
+    availability: ShadowGrokAvailability;
+    reason?: string;
+    query?: string;
+    requestJson?: string;
+    providerId?: string;
+    modelId?: string;
+    reasoningEffort?: string;
+    evalRunId?: Id<"evalRuns">;
+    evalExperimentId?: Id<"evalExperiments">;
+    rawProviderResponseId?: string;
+    citations: string[];
+    hydrationFailures: Array<{ tweetId: string; reason: string }>;
+    candidates: Array<{
+      tweetId: string;
+      canonicalUrl: string;
+      authorHandle: string;
+      relevanceReason: string;
+      missingAngle: string;
+      searchIntent: string;
+      citations: string[];
+      mediaInfluenced: boolean;
+      hydrated: boolean;
+      hydratedAuthorHandle?: string;
+      postedAt?: number;
+    }>;
+    usage?: {
+      inputTokens?: number;
+      outputTokens?: number;
+      reasoningTokens?: number;
+      cachedInputTokens?: number;
+      toolCallCount?: number;
+      successfulToolCallCount?: number;
+    };
+    costUsd?: number;
+    errorCode?: string;
+    errorMessage?: string;
+  } = {
+    userId: args.userId,
+    scanStartedAt: args.scanStartedAt,
+    mode: args.mode,
+    sampleRatePercent: args.sampleRatePercent,
+    sampled: args.sampled,
+    sampleKey: args.sampleKey,
+    version: SHADOW_GROK_DISCOVERY_VERSION,
+    status: args.status,
+    availability: args.availability,
+    citations: args.citations ?? [],
+    hydrationFailures: args.hydrationFailures ?? [],
+    candidates: args.candidates ?? [],
+  };
+  if (args.reason !== undefined) payload.reason = args.reason;
+  if (args.query !== undefined) payload.query = args.query;
+  if (args.requestJson !== undefined) payload.requestJson = args.requestJson;
+  if (args.providerId !== undefined) payload.providerId = args.providerId;
+  if (args.modelId !== undefined) payload.modelId = args.modelId;
+  if (args.reasoningEffort !== undefined) payload.reasoningEffort = args.reasoningEffort;
+  if (args.evalRunId !== undefined) payload.evalRunId = args.evalRunId;
+  if (args.evalExperimentId !== undefined) payload.evalExperimentId = args.evalExperimentId;
+  if (args.rawProviderResponseId !== undefined) {
+    payload.rawProviderResponseId = args.rawProviderResponseId;
+  }
+  if (args.usage !== undefined) payload.usage = args.usage;
+  if (args.costUsd !== undefined) payload.costUsd = args.costUsd;
+  if (args.errorCode !== undefined) payload.errorCode = args.errorCode;
+  if (args.errorMessage !== undefined) payload.errorMessage = args.errorMessage;
+
+  await ctx.runMutation(internal.shadowDiscovery.recordRun, payload);
+  await trackConvexEvent("shadow_grok_discovery_sampled", args.userId, {
+    availability: args.availability,
+    sampled: args.sampled,
+    candidateCount: args.candidates?.length ?? 0,
+    costUsd: args.costUsd ?? 0,
+    circuitOpen: args.circuitOpen,
+    evalRunId: args.evalRunId,
+  });
+}
 
 /** Resolve a usable X access token for this user, refreshing it if expired. */
 async function resolveAccessToken(

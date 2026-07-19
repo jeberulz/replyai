@@ -4,16 +4,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Tooltip } from "@/components/ds/tooltip";
 import { cn } from "@/lib/utils";
-import { isNavActive, navLinks } from "./nav-links";
+import { isNavActive, visibleNavLinks } from "./nav-links";
 import { useSidebar } from "./sidebar-provider";
 
-export function SidebarNav() {
+export function SidebarNav({
+  evalOperator = false,
+}: {
+  evalOperator?: boolean;
+}) {
   const pathname = usePathname();
   const { collapsed, setMobileOpen } = useSidebar();
+  const links = visibleNavLinks({ evalOperator });
 
   return (
     <nav className="flex flex-col gap-0.5 px-2">
-      {navLinks.map((link) => {
+      {links.map((link) => {
         const active = isNavActive(pathname, link);
         const Icon = link.icon;
         const item = (

@@ -38,7 +38,7 @@ export default async function AppLayout({
               {children}
             </main>
           </div>
-          <CommandMenu />
+          <CommandMenu evalOperator={session.user.evalOperator} />
           <OfflineDraftSync />
         </SidebarProvider>
       </AstryxThemeProvider>
