@@ -6,11 +6,7 @@ import { CommandMenu } from "@/components/app/command-menu";
 import { OfflineDraftSync } from "@/components/app/offline-draft-sync";
 import { AppNav } from "@/components/app/nav";
 import { SidebarProvider } from "@/components/app/sidebar/sidebar-provider";
-import {
-  clearSessionCookie,
-  getSessionToken,
-  getSessionUser,
-} from "@/lib/session";
+import { getSessionToken, getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +17,11 @@ export default async function AppLayout({
 }) {
   const session = await getSessionUser();
   if (!session) {
-    // Cookie can outlive a Convex dev deployment reset — clear it so demo
-    // login doesn't keep sending a token the current deployment doesn't know.
-    if (await getSessionToken()) await clearSessionCookie();
+    // Cookie can outlive a Convex dev deployment reset — clear via a Route
+    // Handler (layouts cannot mutate cookies in the App Router).
+    if (await getSessionToken()) {
+      redirect("/api/auth/clear-session?next=/");
+    }
     redirect("/");
   }
 
