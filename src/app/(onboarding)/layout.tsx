@@ -1,11 +1,7 @@
 import { redirect } from "next/navigation";
 import { AstryxThemeProvider } from "@/components/app/astryx-theme-provider";
 import { ConvexClientProvider } from "@/components/app/convex-provider";
-import {
-  clearSessionCookie,
-  getSessionToken,
-  getSessionUser,
-} from "@/lib/session";
+import { getSessionToken, getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +17,10 @@ export default async function OnboardingLayout({
 }) {
   const session = await getSessionUser();
   if (!session) {
-    if (await getSessionToken()) await clearSessionCookie();
+    // Layouts cannot mutate cookies — clear via Route Handler.
+    if (await getSessionToken()) {
+      redirect("/api/auth/clear-session?next=/");
+    }
     redirect("/");
   }
 
