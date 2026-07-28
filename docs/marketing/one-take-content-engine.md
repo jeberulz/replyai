@@ -3,8 +3,8 @@
 **One recording session every two weeks → 18 reels, 1 YouTube long-form, 1 podcast, 6 LinkedIn posts, 1 newsletter.**
 
 Adapted from Eric Siu's (@ericosiu) clip-distribution model, restructured for a
-solo operator with a full-time job and no guest roster. Source analysis:
-`docs/marketing/ericosiu-teardown.md` (summary inline below).
+solo operator with a full-time job and no guest roster. The source teardown is
+in the appendix.
 
 ---
 
