@@ -17,7 +17,10 @@ import {
   limitPerAuthor,
   shouldExcludeCandidate,
 } from "../shared/feedFilters";
-import { applyRankingMultiplier, normalizeRankingWeights } from "../shared/rankingWeights";
+import {
+  applyRankingMultiplier,
+  normalizeRankingWeights,
+} from "../shared/rankingWeights";
 import {
   augmentScoreReason,
   combineTopicRelevance,
@@ -72,7 +75,9 @@ function scannerMinCadenceMinutes(): number {
 
 function scannerSemanticBatchLimit(): number {
   const raw = Number(process.env.SCANNER_SEMANTIC_BATCH_LIMIT);
-  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : SEMANTIC_BATCH_LIMIT;
+  return Number.isFinite(raw) && raw > 0
+    ? Math.floor(raw)
+    : SEMANTIC_BATCH_LIMIT;
 }
 
 function shadowGrokEnvMode() {
@@ -80,7 +85,9 @@ function shadowGrokEnvMode() {
 }
 
 function shadowGrokEnvSampleRate() {
-  return parseShadowSampleRatePercent(process.env.GROK_DISCOVERY_SAMPLE_RATE_PERCENT);
+  return parseShadowSampleRatePercent(
+    process.env.GROK_DISCOVERY_SAMPLE_RATE_PERCENT,
+  );
 }
 
 function shadowGrokCircuitFailureThreshold(): number {
@@ -129,7 +136,7 @@ async function beginXRead(
     unlimitedAccess: boolean;
     source: XReadSource;
     endpoint: string;
-  }
+  },
 ): Promise<XReadAttempt> {
   return await ctx.runMutation(internal.xReads.recordAttemptForUserInternal, {
     userId: args.userId,
@@ -148,7 +155,7 @@ async function finishXRead(
     attempt: XReadAttempt;
     tweets: TimelineTweet[];
     status?: "succeeded" | "failed";
-  }
+  },
 ) {
   if (!args.attempt.allowed) return;
   await ctx.runMutation(internal.xReads.completeAttemptInternal, {
@@ -156,7 +163,7 @@ async function finishXRead(
     ledgerId: args.attempt.ledgerId,
     rawResourceCount: args.tweets.length,
     resourceHashes: args.tweets.map((tweet) =>
-      hashXReadResource(`tweet:${tweet.tweetId}`)
+      hashXReadResource(`tweet:${tweet.tweetId}`),
     ),
     status: args.status ?? "succeeded",
   });
@@ -186,14 +193,17 @@ type ScanContext = {
   grokDiscoveryEvalRunId?: Id<"evalRuns">;
 };
 
-type ScanDispatchContext = Pick<ScanContext, "plan" | "lastScanAt" | "lastScanCount">;
+type ScanDispatchContext = Pick<
+  ScanContext,
+  "plan" | "lastScanAt" | "lastScanCount"
+>;
 type SearchBudget = {
   keywordLimit: number;
   resultsPerKeyword: number;
 };
 
 function internalCuratedSourceBonus(
-  source?: "following" | "list" | "watched" | "search"
+  source?: "following" | "list" | "watched" | "search",
 ): number {
   return source === "list" || source === "watched"
     ? CURATED_SOURCE_RANKING_BONUS
@@ -210,7 +220,9 @@ const PRIORITY_PLAN_NAMES = new Set([
   "empire",
 ]);
 
-export function normalizeScannerPlan(plan: string | null | undefined): "free" | "pro" | "priority" {
+export function normalizeScannerPlan(
+  plan: string | null | undefined,
+): "free" | "pro" | "priority" {
   const normalized = plan?.trim().toLowerCase() ?? "free";
   if (PRIORITY_PLAN_NAMES.has(normalized)) return "priority";
   if (normalized === "pro") return "pro";
@@ -219,7 +231,7 @@ export function normalizeScannerPlan(plan: string | null | undefined): "free" | 
 
 export function cadenceMinutesForScan(
   context: ScanDispatchContext,
-  minCadenceMinutes = 0
+  minCadenceMinutes = 0,
 ): number {
   const plan = normalizeScannerPlan(context.plan);
   const lastScanCount = context.lastScanCount ?? 0;
@@ -241,14 +253,16 @@ export function cadenceMinutesForScan(
 export function shouldEnqueueScan(
   now: number,
   context: ScanDispatchContext,
-  minCadenceMinutes = 0
+  minCadenceMinutes = 0,
 ): boolean {
   if (!context.lastScanAt) return true;
   const cadenceMs = cadenceMinutesForScan(context, minCadenceMinutes) * 60_000;
   return now - context.lastScanAt >= cadenceMs;
 }
 
-export function getSearchBudgetForPlan(plan: string | null | undefined): SearchBudget {
+export function getSearchBudgetForPlan(
+  plan: string | null | undefined,
+): SearchBudget {
   const normalizedPlan = normalizeScannerPlan(plan);
   if (normalizedPlan === "priority") {
     return { keywordLimit: 6, resultsPerKeyword: 25 };
@@ -292,7 +306,9 @@ function selectWatchedHandlesForScan(handles: string[]): string[] {
  * same tweet or same text fingerprint appears in more than one source
  * (watched > list > search > following), then cap at MAX_CANDIDATES total.
  */
-export function dedupeCandidates(bySourcePriority: TimelineTweet[][]): TimelineTweet[] {
+export function dedupeCandidates(
+  bySourcePriority: TimelineTweet[][],
+): TimelineTweet[] {
   const merged: TimelineTweet[] = [];
   const seenTweetIds = new Set<string>();
   const seenFingerprints = new Set<string>();
@@ -331,7 +347,7 @@ export const scanAll = internalAction({
         internal.scannerActions.scanUser,
         {
           userId: user.userId,
-        }
+        },
       );
       fanOutIndex += 1;
     }
@@ -345,7 +361,9 @@ export const scanAll = internalAction({
 export const scanUser = internalAction({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    const context = await ctx.runQuery(internal.scanner.scanContext, { userId });
+    const context = await ctx.runQuery(internal.scanner.scanContext, {
+      userId,
+    });
     if (!context) return;
 
     try {
@@ -359,19 +377,17 @@ export const scanUser = internalAction({
         return;
       }
 
-      const filterCtx = await ctx.runQuery(internal.opportunities.scanFilterContext, {
-        userId,
-      });
+      const filterCtx = await ctx.runQuery(
+        internal.opportunities.scanFilterContext,
+        {
+          userId,
+        },
+      );
       const feedFilterContext = {
         repliedTweetIds: new Set(filterCtx.repliedTweetIds),
         dismissedAuthors: filterCtx.dismissedAuthors,
         now: filterCtx.now,
       };
-
-      await ctx.runMutation(internal.opportunities.reconcileIrrelevant, {
-        userId,
-        keywords: context.keywords,
-      });
 
       let candidates: TimelineTweet[];
       if (context.isDemo) {
@@ -400,26 +416,32 @@ export const scanUser = internalAction({
               source: t.source,
               isReply: t.isReply,
             },
-            feedFilterContext
-          )
+            feedFilterContext,
+          ),
       );
 
       const now = Date.now();
 
-      const nicheContext = await ctx.runQuery(internal.scannerSemantic.nicheContext, {
-        userId,
-      });
+      const nicheContext = await ctx.runQuery(
+        internal.scannerSemantic.nicheContext,
+        {
+          userId,
+        },
+      );
       const semanticCache = await ctx.runQuery(
         internal.scannerSemantic.semanticCacheByTweetIds,
         {
           userId,
           tweetIds: eligible.map((t) => t.tweetId),
-        }
+        },
       );
 
       const candidateMeta = eligible.map((t) => {
         const ageMinutes = Math.max(1, (now - t.postedAt) / 60_000);
-        const keywordScore = topicRelevanceForKeywords(t.text, context.keywords);
+        const keywordScore = topicRelevanceForKeywords(
+          t.text,
+          context.keywords,
+        );
         return {
           tweet: t,
           ageMinutes,
@@ -437,7 +459,7 @@ export const scanUser = internalAction({
           velocity: m.velocity,
         })),
         undefined,
-        scannerSemanticBatchLimit()
+        scannerSemanticBatchLimit(),
       );
 
       const needFreshClassify = classifyTargets.filter((t) => {
@@ -498,63 +520,72 @@ export const scanUser = internalAction({
         }
       }
 
-      const items = candidateMeta.map(({ tweet: t, ageMinutes, keywordScore }) => {
-        const semantic = semanticByTweetId.get(t.tweetId);
-        const semanticScore = effectiveSemanticRelevance(semantic?.semantic);
-        const topicRelevance = combineTopicRelevance(keywordScore, semanticScore);
-        const score = scoreConversation({
-          followers: t.authorFollowers,
-          likes: t.likes,
-          retweets: t.retweets,
-          replies: t.replies,
-          quotes: t.quotes,
-          ageMinutes,
-          topicRelevance,
-          source: t.source,
-          goal: context.goal,
-          brandSafety: semantic?.semantic.brandSafety,
-        });
-        const rankingScore = applySaturatedThreadPenalty(
-          applyRankingMultiplier(
-            score.value + internalCuratedSourceBonus(t.source),
-            {
-              source: t.source,
-              authorFollowers: t.authorFollowers,
-            },
-            normalizeRankingWeights(context.rankingWeights)
-          ),
-          t.replies,
-          t.source
-        );
-        const fp = fingerprintText(t.text);
-        return {
-          tweetId: t.tweetId,
-          tweetUrl: `https://x.com/${t.authorHandle}/status/${t.tweetId}`,
-          authorHandle: t.authorHandle,
-          authorName: t.authorName,
-          authorFollowers: t.authorFollowers,
-          text: t.text,
-          score: score.value,
-          rankingScore,
-          reason: augmentScoreReason(score.reason, keywordScore, semanticScore),
-          suggestedAngle: resolveSuggestedAngle(
-            semantic?.semantic,
-            t.text,
-            nicheContext
-          ),
-          replyCount: t.replies,
-          velocity: velocityPerHour({ ...t, ageMinutes }),
-          postedAt: t.postedAt,
-          source: t.source,
-          sourceLabel: t.sourceLabel,
-          keywordRelevance: keywordScore,
-          semanticRelevance: semantic ? semanticScore : undefined,
-          semanticScreen: semantic?.semantic,
-          topicRelevance,
-          semanticClassifiedAt: semantic?.classifiedAt,
-          textFingerprint: semantic ? fp : undefined,
-        };
-      });
+      const items = candidateMeta.map(
+        ({ tweet: t, ageMinutes, keywordScore }) => {
+          const semantic = semanticByTweetId.get(t.tweetId);
+          const semanticScore = effectiveSemanticRelevance(semantic?.semantic);
+          const topicRelevance = combineTopicRelevance(
+            keywordScore,
+            semanticScore,
+          );
+          const score = scoreConversation({
+            followers: t.authorFollowers,
+            likes: t.likes,
+            retweets: t.retweets,
+            replies: t.replies,
+            quotes: t.quotes,
+            ageMinutes,
+            topicRelevance,
+            source: t.source,
+            goal: context.goal,
+            brandSafety: semantic?.semantic.brandSafety,
+          });
+          const rankingScore = applySaturatedThreadPenalty(
+            applyRankingMultiplier(
+              score.value + internalCuratedSourceBonus(t.source),
+              {
+                source: t.source,
+                authorFollowers: t.authorFollowers,
+              },
+              normalizeRankingWeights(context.rankingWeights),
+            ),
+            t.replies,
+            t.source,
+          );
+          const fp = fingerprintText(t.text);
+          return {
+            tweetId: t.tweetId,
+            tweetUrl: `https://x.com/${t.authorHandle}/status/${t.tweetId}`,
+            authorHandle: t.authorHandle,
+            authorName: t.authorName,
+            authorFollowers: t.authorFollowers,
+            text: t.text,
+            score: score.value,
+            rankingScore,
+            reason: augmentScoreReason(
+              score.reason,
+              keywordScore,
+              semanticScore,
+            ),
+            suggestedAngle: resolveSuggestedAngle(
+              semantic?.semantic,
+              t.text,
+              nicheContext,
+            ),
+            replyCount: t.replies,
+            velocity: velocityPerHour({ ...t, ageMinutes }),
+            postedAt: t.postedAt,
+            source: t.source,
+            sourceLabel: t.sourceLabel,
+            keywordRelevance: keywordScore,
+            semanticRelevance: semantic ? semanticScore : undefined,
+            semanticScreen: semantic?.semantic,
+            topicRelevance,
+            semanticClassifiedAt: semantic?.classifiedAt,
+            textFingerprint: semantic ? fp : undefined,
+          };
+        },
+      );
 
       const worthSurfacing = limitPerAuthor(
         items
@@ -565,30 +596,30 @@ export const scanUser = internalAction({
                 context.keywords,
                 i.keywordRelevance ?? 0,
                 i.semanticScreen,
-                i.source
-              ) && i.rankingScore >= MIN_OPPORTUNITY_SCORE
+                i.source,
+              ) && i.rankingScore >= MIN_OPPORTUNITY_SCORE,
           )
-          .sort((a, b) => b.rankingScore - a.rankingScore)
+          .sort((a, b) => b.rankingScore - a.rankingScore),
       );
 
-      const { inserted } = await ctx.runMutation(internal.opportunities.upsertMany, {
-        userId,
-        items: worthSurfacing.map((item) => {
-          const { rankingScore, semanticScreen, ...persisted } = item;
-          void rankingScore;
-          void semanticScreen;
-          return persisted;
-        }),
-      });
+      const { inserted } = await ctx.runMutation(
+        internal.opportunities.upsertMany,
+        {
+          userId,
+          resultCount: worthSurfacing.length,
+          items: worthSurfacing.map((item) => {
+            const { rankingScore, semanticScreen, ...persisted } = item;
+            void rankingScore;
+            void semanticScreen;
+            return persisted;
+          }),
+        },
+      );
       if (inserted > 0) {
-        await trackConvexEvent("opportunity_surfaced", userId, { count: inserted });
+        await trackConvexEvent("opportunity_surfaced", userId, {
+          count: inserted,
+        });
       }
-      await ctx.runMutation(internal.opportunities.pruneStale, { userId });
-
-      await ctx.runMutation(internal.scanner.recordScanResult, {
-        userId,
-        resultCount: worthSurfacing.length,
-      });
       await runShadowGrokDiscoverySample(ctx, userId, context, now);
     } catch (error) {
       console.error("scanUser failed", { userId, error });
@@ -609,14 +640,14 @@ async function runShadowGrokDiscoverySample(
   ctx: ActionCtx,
   userId: Id<"users">,
   context: ScanContext,
-  scanStartedAt: number
+  scanStartedAt: number,
 ): Promise<void> {
   try {
     const mode = parseShadowGrokMode(
-      context.grokDiscoveryMode ?? shadowGrokEnvMode()
+      context.grokDiscoveryMode ?? shadowGrokEnvMode(),
     );
     const sampleRatePercent = parseShadowSampleRatePercent(
-      context.grokDiscoverySampleRatePercent ?? shadowGrokEnvSampleRate()
+      context.grokDiscoverySampleRatePercent ?? shadowGrokEnvSampleRate(),
     );
     const sampleKey = stableShadowSampleKey({
       userId,
@@ -664,7 +695,8 @@ async function runShadowGrokDiscoverySample(
         sampleKey,
         status: "skipped",
         availability: "no_query",
-        reason: "No scanner keywords or discovery terms available for shadow query.",
+        reason:
+          "No scanner keywords or discovery terms available for shadow query.",
         circuitOpen: false,
       });
       return;
@@ -704,7 +736,9 @@ async function runShadowGrokDiscoverySample(
         sampleKey,
         status: "blocked",
         availability: "provider_unavailable",
-        reason: resolved.error ?? "Missing X access token for authoritative hydration.",
+        reason:
+          resolved.error ??
+          "Missing X access token for authoritative hydration.",
         query: request.query,
         requestJson: JSON.stringify(request),
         circuitOpen: false,
@@ -739,7 +773,7 @@ async function runShadowGrokDiscoverySample(
         unlimitedAccess: context.unlimitedAccess,
         kind: "discovery",
         source: "scanner_grok_shadow",
-      }
+      },
     );
     if (!spend.allowed) {
       await recordShadowAvailability(ctx, {
@@ -776,7 +810,8 @@ async function runShadowGrokDiscoverySample(
         sampleKey,
         status: "blocked",
         availability: "provider_unavailable",
-        reason: xReadAttempt.message ?? "X read budget blocked shadow hydration.",
+        reason:
+          xReadAttempt.message ?? "X read budget blocked shadow hydration.",
         query: request.query,
         requestJson: JSON.stringify(request),
         circuitOpen: false,
@@ -784,15 +819,13 @@ async function runShadowGrokDiscoverySample(
       return;
     }
 
-    const evalLink =
-      context.grokDiscoveryEvalRunId
-        ? { runId: context.grokDiscoveryEvalRunId, experimentId: undefined }
-        : await ctx.runQuery(internal.shadowDiscovery.latestPromotedShadowRun, {
-            userId,
-          });
-    const { runHydratedXaiXSearchDiscovery } = await import(
-      "../src/lib/providers/xai"
-    );
+    const evalLink = context.grokDiscoveryEvalRunId
+      ? { runId: context.grokDiscoveryEvalRunId, experimentId: undefined }
+      : await ctx.runQuery(internal.shadowDiscovery.latestPromotedShadowRun, {
+          userId,
+        });
+    const { runHydratedXaiXSearchDiscovery } =
+      await import("../src/lib/providers/xai");
     const result = await runHydratedXaiXSearchDiscovery({
       request,
       accessToken: resolved.accessToken,
@@ -826,9 +859,9 @@ async function runShadowGrokDiscoverySample(
       cooldownMs: shadowGrokCircuitCooldownMs(),
       error: result.ok
         ? undefined
-        : result.error?.redactedMessage ??
+        : (result.error?.redactedMessage ??
           result.validationErrors?.join(", ") ??
-          result.reason,
+          result.reason),
       now: Date.now(),
     });
 
@@ -836,7 +869,8 @@ async function runShadowGrokDiscoverySample(
       ? "succeeded"
       : result.hydrationFailures.length > 0
         ? "hydration_failed"
-        : result.reason === "missing_api_key" || result.reason === "request_failed"
+        : result.reason === "missing_api_key" ||
+            result.reason === "request_failed"
           ? "provider_unavailable"
           : "failed";
     const status = result.ok ? "succeeded" : "failed";
@@ -887,18 +921,22 @@ async function runShadowGrokDiscoverySample(
         successfulToolCallCount: result.usage.successfulToolCalls,
       },
       costUsd: result.usage.costUsd,
-      errorCode: result.ok ? undefined : result.error?.code ?? result.reason,
+      errorCode: result.ok ? undefined : (result.error?.code ?? result.reason),
       errorMessage: result.ok
         ? undefined
-        : result.error?.redactedMessage ?? result.validationErrors?.join(", "),
+        : (result.error?.redactedMessage ??
+          result.validationErrors?.join(", ")),
       circuitOpen: false,
     });
     if (!result.ok) {
-      await captureConvexException(new Error(`Shadow Grok discovery ${result.reason}`), {
-        action: "runShadowGrokDiscoverySample",
-        userId,
-        availability,
-      });
+      await captureConvexException(
+        new Error(`Shadow Grok discovery ${result.reason}`),
+        {
+          action: "runShadowGrokDiscoverySample",
+          userId,
+          availability,
+        },
+      );
     }
   } catch (error) {
     console.error("shadow Grok discovery failed", { userId, error });
@@ -956,7 +994,7 @@ async function recordShadowAvailability(
     errorCode?: string;
     errorMessage?: string;
     circuitOpen: boolean;
-  }
+  },
 ) {
   const payload: {
     userId: Id<"users">;
@@ -1022,9 +1060,11 @@ async function recordShadowAvailability(
   if (args.requestJson !== undefined) payload.requestJson = args.requestJson;
   if (args.providerId !== undefined) payload.providerId = args.providerId;
   if (args.modelId !== undefined) payload.modelId = args.modelId;
-  if (args.reasoningEffort !== undefined) payload.reasoningEffort = args.reasoningEffort;
+  if (args.reasoningEffort !== undefined)
+    payload.reasoningEffort = args.reasoningEffort;
   if (args.evalRunId !== undefined) payload.evalRunId = args.evalRunId;
-  if (args.evalExperimentId !== undefined) payload.evalExperimentId = args.evalExperimentId;
+  if (args.evalExperimentId !== undefined)
+    payload.evalExperimentId = args.evalExperimentId;
   if (args.rawProviderResponseId !== undefined) {
     payload.rawProviderResponseId = args.rawProviderResponseId;
   }
@@ -1048,7 +1088,7 @@ async function recordShadowAvailability(
 async function resolveAccessToken(
   ctx: ActionCtx,
   userId: Id<"users">,
-  context: ScanContext
+  context: ScanContext,
 ): Promise<{ accessToken: string | null; error?: string }> {
   let accessToken = context.accessToken;
 
@@ -1094,7 +1134,7 @@ async function resolveAccessToken(
 async function collectCandidates(
   ctx: ActionCtx,
   userId: Id<"users">,
-  context: ScanContext
+  context: ScanContext,
 ): Promise<{ tweets: TimelineTweet[]; error?: string }> {
   const enabledSources = resolveEnabledSources(context.enabledSources);
   const searchBudget = getSearchBudgetForPlan(context.plan);
@@ -1103,7 +1143,9 @@ async function collectCandidates(
   if (!resolved.accessToken) {
     return {
       tweets: [],
-      error: resolved.error ?? "X session expired. Reconnect your account in Settings.",
+      error:
+        resolved.error ??
+        "X session expired. Reconnect your account in Settings.",
     };
   }
   const accessToken = resolved.accessToken;
@@ -1127,15 +1169,29 @@ async function collectCandidates(
     if (!readAttempt.allowed) {
       firstError = firstError ?? readAttempt.message;
     } else {
-    const fetched = await fetchXTimeline(context.xUserId, accessToken);
-    if (fetched.error) {
-      firstError = firstError ?? fetched.error;
-      await finishXRead(ctx, { userId, attempt: readAttempt, tweets: [], status: "failed" });
-    } else {
-      succeeded = true;
-      following.push(...fetched.tweets.map((t) => ({ ...t, source: "following" as const })));
-      await finishXRead(ctx, { userId, attempt: readAttempt, tweets: fetched.tweets });
-    }
+      const fetched = await fetchXTimeline(context.xUserId, accessToken);
+      if (fetched.error) {
+        firstError = firstError ?? fetched.error;
+        await finishXRead(ctx, {
+          userId,
+          attempt: readAttempt,
+          tweets: [],
+          status: "failed",
+        });
+      } else {
+        succeeded = true;
+        following.push(
+          ...fetched.tweets.map((t) => ({
+            ...t,
+            source: "following" as const,
+          })),
+        );
+        await finishXRead(ctx, {
+          userId,
+          attempt: readAttempt,
+          tweets: fetched.tweets,
+        });
+      }
     }
   }
 
@@ -1158,13 +1214,22 @@ async function collectCandidates(
       const fetched = await fetchListTweets(listId, accessToken);
       if (fetched.error) {
         firstError = firstError ?? fetched.error;
-        await finishXRead(ctx, { userId, attempt: readAttempt, tweets: [], status: "failed" });
+        await finishXRead(ctx, {
+          userId,
+          attempt: readAttempt,
+          tweets: [],
+          status: "failed",
+        });
       } else {
         succeeded = true;
         lists.push(
-          ...fetched.tweets.map((t) => ({ ...t, sourceLabel: listName }))
+          ...fetched.tweets.map((t) => ({ ...t, sourceLabel: listName })),
         );
-        await finishXRead(ctx, { userId, attempt: readAttempt, tweets: fetched.tweets });
+        await finishXRead(ctx, {
+          userId,
+          attempt: readAttempt,
+          tweets: fetched.tweets,
+        });
       }
     }
   }
@@ -1187,11 +1252,20 @@ async function collectCandidates(
       const fetched = await fetchHandleTweets(handle, accessToken);
       if (fetched.error) {
         firstError = firstError ?? fetched.error;
-        await finishXRead(ctx, { userId, attempt: readAttempt, tweets: [], status: "failed" });
+        await finishXRead(ctx, {
+          userId,
+          attempt: readAttempt,
+          tweets: [],
+          status: "failed",
+        });
       } else {
         succeeded = true;
         watched.push(...fetched.tweets);
-        await finishXRead(ctx, { userId, attempt: readAttempt, tweets: fetched.tweets });
+        await finishXRead(ctx, {
+          userId,
+          attempt: readAttempt,
+          tweets: fetched.tweets,
+        });
       }
     }
   }
@@ -1215,15 +1289,24 @@ async function collectCandidates(
       const fetched = await fetchSearchTweets(
         term,
         accessToken,
-        searchBudget.resultsPerKeyword
+        searchBudget.resultsPerKeyword,
       );
       if (fetched.error) {
         firstError = firstError ?? fetched.error;
-        await finishXRead(ctx, { userId, attempt: readAttempt, tweets: [], status: "failed" });
+        await finishXRead(ctx, {
+          userId,
+          attempt: readAttempt,
+          tweets: [],
+          status: "failed",
+        });
       } else {
         succeeded = true;
         search.push(...fetched.tweets);
-        await finishXRead(ctx, { userId, attempt: readAttempt, tweets: fetched.tweets });
+        await finishXRead(ctx, {
+          userId,
+          attempt: readAttempt,
+          tweets: fetched.tweets,
+        });
       }
     }
   }
@@ -1231,7 +1314,9 @@ async function collectCandidates(
   if (attempted && !succeeded) {
     return {
       tweets: [],
-      error: firstError ?? "Could not read your feed. Reconnect your account in Settings.",
+      error:
+        firstError ??
+        "Could not read your feed. Reconnect your account in Settings.",
     };
   }
 
@@ -1264,7 +1349,10 @@ function collectDemoCandidates(context: {
   });
 
   const following: TimelineTweet[] = enabledSources.includes("following")
-    ? DEMO_TWEETS.map((t) => ({ ...toTimelineTweet(t), source: "following" as const }))
+    ? DEMO_TWEETS.map((t) => ({
+        ...toTimelineTweet(t),
+        source: "following" as const,
+      }))
     : [];
 
   const lists: TimelineTweet[] = [];
@@ -1276,7 +1364,7 @@ function collectDemoCandidates(context: {
           ...toTimelineTweet(t),
           source: "list" as const,
           sourceLabel: listName,
-        }))
+        })),
       );
     }
   }
@@ -1286,7 +1374,7 @@ function collectDemoCandidates(context: {
         (context.watchedHandles.length > 0
           ? context.watchedHandles
           : DEMO_WATCHED_HANDLES
-        ).includes(t.authorHandle)
+        ).includes(t.authorHandle),
       ).map((t) => ({ ...toTimelineTweet(t), source: "watched" as const }))
     : [];
 
@@ -1303,7 +1391,7 @@ function collectDemoCandidates(context: {
           .map((t) => ({
             ...toTimelineTweet(t),
             source: "search" as const,
-          }))
+          })),
       );
     }
   }
@@ -1339,7 +1427,7 @@ type XTimelineResponse = {
 function setSharedTweetParams(url: URL): void {
   url.searchParams.set(
     "tweet.fields",
-    "public_metrics,created_at,author_id,referenced_tweets"
+    "public_metrics,created_at,author_id,referenced_tweets",
   );
   url.searchParams.set("expansions", "author_id");
   url.searchParams.set("user.fields", "public_metrics,username,name");
@@ -1357,9 +1445,11 @@ function isRetweetOrReply(t: {
   return { exclude: isReply, isReply };
 }
 
-function mapTweetsResponse(json: XTimelineResponse): Omit<TimelineTweet, "source" | "sourceLabel">[] {
+function mapTweetsResponse(
+  json: XTimelineResponse,
+): Omit<TimelineTweet, "source" | "sourceLabel">[] {
   const authors = new Map(
-    (json.includes?.users ?? []).map((u) => [u.id, u] as const)
+    (json.includes?.users ?? []).map((u) => [u.id, u] as const),
   );
   const mapped: Omit<TimelineTweet, "source" | "sourceLabel">[] = [];
   for (const t of json.data ?? []) {
@@ -1385,10 +1475,10 @@ function mapTweetsResponse(json: XTimelineResponse): Omit<TimelineTweet, "source
 
 async function fetchXTimeline(
   xUserId: string,
-  accessToken: string
+  accessToken: string,
 ): Promise<{ tweets: TimelineTweet[]; error?: string }> {
   const url = new URL(
-    `https://api.x.com/2/users/${xUserId}/timelines/reverse_chronological`
+    `https://api.x.com/2/users/${xUserId}/timelines/reverse_chronological`,
   );
   url.searchParams.set("max_results", "50");
   setSharedTweetParams(url);
@@ -1419,7 +1509,7 @@ async function fetchXTimeline(
 /** Tweets from a single X list the user has chosen to engage with. */
 async function fetchListTweets(
   listId: string,
-  accessToken: string
+  accessToken: string,
 ): Promise<{ tweets: TimelineTweet[]; error?: string }> {
   const url = new URL(`https://api.x.com/2/lists/${listId}/tweets`);
   url.searchParams.set("max_results", "50");
@@ -1431,11 +1521,16 @@ async function fetchListTweets(
 
   if (!res.ok) {
     const body = await res.text();
-    console.error("X list tweets fetch failed", { status: res.status, body, listId });
+    console.error("X list tweets fetch failed", {
+      status: res.status,
+      body,
+      listId,
+    });
     if (res.status === 401 || res.status === 403) {
       return {
         tweets: [],
-        error: "X denied list access. Reconnect your account in Settings to grant list permissions.",
+        error:
+          "X denied list access. Reconnect your account in Settings to grant list permissions.",
       };
     }
     return {
@@ -1446,14 +1541,17 @@ async function fetchListTweets(
 
   const json = (await res.json()) as XTimelineResponse;
   return {
-    tweets: mapTweetsResponse(json).map((t) => ({ ...t, source: "list" as const })),
+    tweets: mapTweetsResponse(json).map((t) => ({
+      ...t,
+      source: "list" as const,
+    })),
   };
 }
 
 /** Recent original tweets from a single watched handle. */
 async function fetchHandleTweets(
   handle: string,
-  accessToken: string
+  accessToken: string,
 ): Promise<{ tweets: TimelineTweet[]; error?: string }> {
   const url = new URL("https://api.x.com/2/tweets/search/recent");
   url.searchParams.set("query", `from:${handle} -is:retweet -is:reply`);
@@ -1466,7 +1564,11 @@ async function fetchHandleTweets(
 
   if (!res.ok) {
     const body = await res.text();
-    console.error("X handle search fetch failed", { status: res.status, body, handle });
+    console.error("X handle search fetch failed", {
+      status: res.status,
+      body,
+      handle,
+    });
     if (res.status === 401 || res.status === 403) {
       return {
         tweets: [],
@@ -1481,7 +1583,10 @@ async function fetchHandleTweets(
 
   const json = (await res.json()) as XTimelineResponse;
   return {
-    tweets: mapTweetsResponse(json).map((t) => ({ ...t, source: "watched" as const })),
+    tweets: mapTweetsResponse(json).map((t) => ({
+      ...t,
+      source: "watched" as const,
+    })),
   };
 }
 
@@ -1489,11 +1594,14 @@ async function fetchHandleTweets(
 async function fetchSearchTweets(
   keyword: string,
   accessToken: string,
-  maxResults: number
+  maxResults: number,
 ): Promise<{ tweets: TimelineTweet[]; error?: string }> {
   const url = new URL("https://api.x.com/2/tweets/search/recent");
   url.searchParams.set("query", `${keyword} -is:retweet -is:reply lang:en`);
-  url.searchParams.set("max_results", String(Math.min(100, Math.max(10, maxResults))));
+  url.searchParams.set(
+    "max_results",
+    String(Math.min(100, Math.max(10, maxResults))),
+  );
   setSharedTweetParams(url);
 
   const res = await fetch(url, {
@@ -1502,7 +1610,11 @@ async function fetchSearchTweets(
 
   if (!res.ok) {
     const body = await res.text();
-    console.error("X search fetch failed", { status: res.status, body, keyword });
+    console.error("X search fetch failed", {
+      status: res.status,
+      body,
+      keyword,
+    });
     if (res.status === 401 || res.status === 403) {
       return {
         tweets: [],
@@ -1517,6 +1629,9 @@ async function fetchSearchTweets(
 
   const json = (await res.json()) as XTimelineResponse;
   return {
-    tweets: mapTweetsResponse(json).map((t) => ({ ...t, source: "search" as const })),
+    tweets: mapTweetsResponse(json).map((t) => ({
+      ...t,
+      source: "search" as const,
+    })),
   };
 }

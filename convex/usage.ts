@@ -1,10 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { currentMonth, requireUser } from "./helpers";
-import {
-  assertFairUseAllowed,
-  getFairUseStatus,
-} from "./lib/fairUse";
+import { assertFairUseAllowed, getFairUseStatus } from "./lib/fairUse";
 import {
   opportunityToAnalyzeRate,
   type OpportunityFunnelRow,
@@ -15,6 +12,8 @@ import {
   countPacingPublishesOnLocalDay,
   isPacingPublishKind,
   isPublishedOnLocalDay,
+  localDayStartMs,
+  REPLY_PACING_HISTORY_LOOKBACK_MS,
   summarizeReplyPacing,
 } from "../shared/replyPacing";
 import { replyResponseStats } from "../shared/outcomes";
@@ -23,7 +22,10 @@ import {
   chooseObservedAngle,
   type ObservedAnalyticsRow,
 } from "../shared/personalAnalytics";
-import { assessDuplicateReplyRisk, DUPLICATE_REPLY_LOOKBACK_MS } from "../shared/duplicateReply";
+import {
+  assessDuplicateReplyRisk,
+  DUPLICATE_REPLY_LOOKBACK_MS,
+} from "../shared/duplicateReply";
 
 const PERSONAL_ANALYTICS_SCAN_LIMIT = 400;
 const PERSONAL_ANALYTICS_COMPLETED_LIMIT = 250;
@@ -36,7 +38,10 @@ export const record = mutation({
     analyses: v.number(),
     generations: v.number(),
   },
-  handler: async (ctx, { sessionToken, tokensIn, tokensOut, analyses, generations }) => {
+  handler: async (
+    ctx,
+    { sessionToken, tokensIn, tokensOut, analyses, generations },
+  ) => {
     const user = await requireUser(ctx, sessionToken);
     if (analyses > 0) {
       await assertFairUseAllowed(ctx, user, "run_analysis");
@@ -48,7 +53,7 @@ export const record = mutation({
     const row = await ctx.db
       .query("usage")
       .withIndex("by_user_month", (q) =>
-        q.eq("userId", user._id).eq("month", month)
+        q.eq("userId", user._id).eq("month", month),
       )
       .unique();
     if (row) {
@@ -80,8 +85,8 @@ export const fairUseStatus = query({
       v.union(
         v.literal("start_analysis"),
         v.literal("run_analysis"),
-        v.literal("generate")
-      )
+        v.literal("generate"),
+      ),
     ),
   },
   handler: async (ctx, { sessionToken, action }) => {
@@ -103,7 +108,7 @@ export const duplicateReplyCheck = query({
     const publishedDrafts = await ctx.db
       .query("savedDrafts")
       .withIndex("by_user_status", (q) =>
-        q.eq("userId", user._id).eq("status", "published")
+        q.eq("userId", user._id).eq("status", "published"),
       )
       .order("desc")
       .take(80);
@@ -116,7 +121,7 @@ export const duplicateReplyCheck = query({
           (draft) =>
             isPacingPublishKind(draft.kind) &&
             Boolean(draft.publishedAt) &&
-            draft.publishedAt! >= lookbackStart
+            draft.publishedAt! >= lookbackStart,
         )
         .map((draft) => ({
           text: draft.text,
@@ -131,21 +136,23 @@ export const duplicateReplyCheck = query({
  * replies that were used with no or minor edits.
  */
 export const stats = query({
-  args: { sessionToken: v.string() },
-  handler: async (ctx, { sessionToken }) => {
+  args: { sessionToken: v.string(), month: v.string() },
+  handler: async (ctx, { sessionToken, month }) => {
     const user = await requireUser(ctx, sessionToken);
-    const month = currentMonth();
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      throw new Error("Invalid month");
+    }
     const usage = await ctx.db
       .query("usage")
       .withIndex("by_user_month", (q) =>
-        q.eq("userId", user._id).eq("month", month)
+        q.eq("userId", user._id).eq("month", month),
       )
       .unique();
 
     const published = await ctx.db
       .query("savedDrafts")
       .withIndex("by_user_status", (q) =>
-        q.eq("userId", user._id).eq("status", "published")
+        q.eq("userId", user._id).eq("status", "published"),
       )
       .collect();
 
@@ -167,18 +174,22 @@ export const stats = query({
 
     const medianMs = median(publishDurationsMs);
 
-    const monthPrefix = month;
     const monthStart = Date.parse(`${month}-01T00:00:00.000Z`);
+    if (!Number.isFinite(monthStart)) {
+      throw new Error("Invalid month");
+    }
     const nextMonthStart = nextMonthStartMs(monthStart);
     const opportunities = await ctx.db
       .query("opportunities")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-    const monthOpportunities: OpportunityFunnelRow[] = opportunities
-      .filter((o) =>
-        new Date(o.scannedAt).toISOString().slice(0, 7) === monthPrefix
+      .withIndex("by_user_and_scannedAt", (q) =>
+        q
+          .eq("userId", user._id)
+          .gte("scannedAt", monthStart)
+          .lt("scannedAt", nextMonthStart),
       )
-      .map((o) => ({
+      .collect();
+    const monthOpportunities: OpportunityFunnelRow[] = opportunities.map(
+      (o) => ({
         source: o.source,
         authorFollowers: o.authorFollowers,
         score: o.score,
@@ -187,14 +198,15 @@ export const stats = query({
         // window closed unattended, same as a user-dismissed row.
         status: o.status === "archived" ? ("dismissed" as const) : o.status,
         outcome: o.outcome,
-      }));
+      }),
+    );
     const replyOutcomeRows = await ctx.db
       .query("replyOutcomeTrackers")
       .withIndex("by_user_and_publishedAt", (q) =>
         q
           .eq("userId", user._id)
           .gte("publishedAt", monthStart)
-          .lt("publishedAt", nextMonthStart)
+          .lt("publishedAt", nextMonthStart),
       )
       .collect();
     const replyBack = replyResponseStats(replyOutcomeRows);
@@ -226,54 +238,73 @@ export const pacingCoach = query({
   args: {
     sessionToken: v.string(),
     timezoneOffsetMinutes: v.number(),
+    nowMs: v.number(),
   },
-  handler: async (ctx, { sessionToken, timezoneOffsetMinutes }) => {
+  handler: async (ctx, { sessionToken, timezoneOffsetMinutes, nowMs }) => {
     const user = await requireUser(ctx, sessionToken);
-    const nowMs = Date.now();
+    const historyStart = nowMs - REPLY_PACING_HISTORY_LOOKBACK_MS;
+    const todayStart = localDayStartMs(nowMs, timezoneOffsetMinutes);
 
-    const [publishedDrafts, scheduledDrafts, recentTrackers] = await Promise.all([
-      ctx.db
-        .query("savedDrafts")
-        .withIndex("by_user_status", (q) =>
-          q.eq("userId", user._id).eq("status", "published")
-        )
-        .order("desc")
-        .take(200),
-      ctx.db
-        .query("savedDrafts")
-        .withIndex("by_user_status", (q) =>
-          q.eq("userId", user._id).eq("status", "scheduled")
-        )
-        .order("desc")
-        .take(50),
-      ctx.db
-        .query("replyOutcomeTrackers")
-        .withIndex("by_user_and_publishedAt", (q) => q.eq("userId", user._id))
-        .order("desc")
-        .take(100),
-    ]);
+    const [publishedDrafts, scheduledDrafts, recentTrackers] =
+      await Promise.all([
+        ctx.db
+          .query("savedDrafts")
+          .withIndex("by_user_and_status_and_publishedAt", (q) =>
+            q
+              .eq("userId", user._id)
+              .eq("status", "published")
+              .gte("publishedAt", historyStart),
+          )
+          .order("desc")
+          .take(200),
+        ctx.db
+          .query("savedDrafts")
+          .withIndex("by_user_and_status_and_scheduledFor", (q) =>
+            q
+              .eq("userId", user._id)
+              .eq("status", "scheduled")
+              .gte("scheduledFor", 0)
+              .lte("scheduledFor", nowMs),
+          )
+          .order("desc")
+          .take(50),
+        ctx.db
+          .query("replyOutcomeTrackers")
+          .withIndex("by_user_and_publishedAt", (q) =>
+            q.eq("userId", user._id).gte("publishedAt", historyStart),
+          )
+          .order("desc")
+          .take(100),
+      ]);
 
     const opportunities = await ctx.db
       .query("opportunities")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .withIndex("by_user_and_scannedAt", (q) =>
+        q
+          .eq("userId", user._id)
+          .gte("scannedAt", todayStart)
+          .lte("scannedAt", nowMs),
+      )
       .order("desc")
       .take(200);
 
-    const pacingDrafts = [...publishedDrafts, ...scheduledDrafts].map((draft) => ({
-      id: draft._id,
-      kind: draft.kind,
-      status: draft.status,
-      publishedAt: draft.publishedAt,
-      scheduledFor: draft.scheduledFor,
-      editBucket: draft.editBucket,
-    }));
+    const pacingDrafts = [...publishedDrafts, ...scheduledDrafts].map(
+      (draft) => ({
+        id: draft._id,
+        kind: draft.kind,
+        status: draft.status,
+        publishedAt: draft.publishedAt,
+        scheduledFor: draft.scheduledFor,
+        editBucket: draft.editBucket,
+      }),
+    );
 
     const publishedReplies = collectPacingPublishPoints(pacingDrafts, nowMs);
 
     const countedDraftIds = new Set(
       [...publishedDrafts, ...scheduledDrafts]
         .filter((draft) => isPacingPublishKind(draft.kind))
-        .map((draft) => draft._id)
+        .map((draft) => draft._id),
     );
     for (const tracker of recentTrackers) {
       if (!isPacingPublishKind(tracker.kind)) continue;
@@ -314,7 +345,7 @@ export const personalAnalytics = query({
       .filter(
         (tracker) =>
           isPacingPublishKind(tracker.kind) &&
-          (tracker.status === "responded" || tracker.status === "expired")
+          (tracker.status === "responded" || tracker.status === "expired"),
       )
       .slice(0, PERSONAL_ANALYTICS_COMPLETED_LIMIT);
 
@@ -324,7 +355,7 @@ export const personalAnalytics = query({
         .filter((tracker) => isPacingPublishKind(tracker.kind))
         .map((tracker) => tracker.publishedAt),
       nowMs,
-      timezoneOffsetMinutes
+      timezoneOffsetMinutes,
     );
     const awaitingOutcome = recentTrackers.filter(
       (tracker) =>
@@ -333,8 +364,8 @@ export const personalAnalytics = query({
         isPublishedOnLocalDay(
           tracker.publishedAt,
           nowMs,
-          timezoneOffsetMinutes
-        )
+          timezoneOffsetMinutes,
+        ),
     ).length;
 
     const rows: ObservedAnalyticsRow[] = [];
@@ -349,13 +380,14 @@ export const personalAnalytics = query({
 
       let suggestedAngle: string | undefined;
       if (tracker.opportunityId) {
-        suggestedAngle = (await ctx.db.get(tracker.opportunityId))?.suggestedAngle;
+        suggestedAngle = (await ctx.db.get(tracker.opportunityId))
+          ?.suggestedAngle;
       } else if (draft.targetTweetId) {
         suggestedAngle = (
           await ctx.db
             .query("opportunities")
             .withIndex("by_user_tweet", (q) =>
-              q.eq("userId", user._id).eq("tweetId", draft.targetTweetId!)
+              q.eq("userId", user._id).eq("tweetId", draft.targetTweetId!),
             )
             .unique()
         )?.suggestedAngle;

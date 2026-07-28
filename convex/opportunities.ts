@@ -31,14 +31,14 @@ export const list = query({
       .unique();
     const keywords = settings?.keywords ?? [];
     const dismissedAuthors = pruneExpiredDismissedAuthors(
-      settings?.dismissedAuthors ?? []
+      settings?.dismissedAuthors ?? [],
     );
     const repliedIds = await repliedTweetIdsForUser(ctx, user._id);
 
     const rows = await ctx.db
       .query("opportunities")
       .withIndex("by_user_status", (q) =>
-        q.eq("userId", user._id).eq("status", "new")
+        q.eq("userId", user._id).eq("status", "new"),
       )
       .collect();
     const now = Date.now();
@@ -51,8 +51,8 @@ export const list = query({
             opp.text,
             keywords,
             opp.source,
-            opp.topicRelevance
-          )
+            opp.topicRelevance,
+          ),
       )
       .map((opp) => ({
         ...opp,
@@ -82,7 +82,10 @@ export const dismiss = mutation({
 
     const now = Date.now();
     const handle = normalizeHandle(opp.authorHandle);
-    const pruned = pruneExpiredDismissedAuthors(settings.dismissedAuthors ?? [], now);
+    const pruned = pruneExpiredDismissedAuthors(
+      settings.dismissedAuthors ?? [],
+      now,
+    );
     const dismissedAuthors = [
       ...pruned.filter((a) => normalizeHandle(a.handle) !== handle),
       { handle, until: now + DISMISSED_AUTHOR_COOLDOWN_MS },
@@ -94,14 +97,16 @@ export const dismiss = mutation({
 /** Tweet IDs the user already published a reply/quote to. */
 async function repliedTweetIdsForUser(
   ctx: QueryCtx,
-  userId: Id<"users">
+  userId: Id<"users">,
 ): Promise<Set<string>> {
   const drafts = await ctx.db
     .query("savedDrafts")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .withIndex("by_user_status", (q) =>
+      q.eq("userId", userId).eq("status", "published"),
+    )
     .collect();
   const ids = drafts
-    .filter((d) => d.status === "published" && d.targetTweetId)
+    .filter((d) => d.targetTweetId)
     .map((d) => d.targetTweetId as string);
   return new Set(ids);
 }
@@ -116,7 +121,7 @@ export const scanFilterContext = internalQuery({
     const now = Date.now();
     const dismissedAuthors = pruneExpiredDismissedAuthors(
       settings?.dismissedAuthors ?? [],
-      now
+      now,
     );
     const repliedTweetIds = [...(await repliedTweetIdsForUser(ctx, userId))];
     return { dismissedAuthors, repliedTweetIds, now };
@@ -127,12 +132,12 @@ export const scanFilterContext = internalQuery({
 async function archiveExpiredForUserImpl(
   ctx: MutationCtx,
   userId: Id<"users">,
-  now: number
+  now: number,
 ): Promise<number> {
   const rows = await ctx.db
     .query("opportunities")
     .withIndex("by_user_status", (q) =>
-      q.eq("userId", userId).eq("status", "new")
+      q.eq("userId", userId).eq("status", "new"),
     )
     .collect();
   let archived = 0;
@@ -152,11 +157,10 @@ async function archiveExpiredForUserImpl(
 /**
  * Archive "new" opportunities whose reply window has expired
  * (`isOpportunityExpired`, shared/feedFreshness.ts). Called by the archive
- * cron (all users) and by `pruneStale` below (called from
- * `scannerActions.ts` right after each scan — much more frequent, so it
- * usually wins the race and archives the row before the 30-min cron sees
- * it). Both funnel through the same implementation so an expired row always
- * lands on `status: "archived"`, never a stale separate "dismissed" path.
+ * cron (all users), the standalone `pruneStale` entry point, and the
+ * successful `upsertMany` scan finalizer. All paths funnel through the same
+ * implementation so an expired row always lands on `status: "archived"`,
+ * never a stale separate "dismissed" path.
  */
 export const archiveExpiredForUser = internalMutation({
   args: { userId: v.id("users") },
@@ -174,7 +178,24 @@ export const archiveExpiredAll = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
-    const settings = await ctx.db.query("scannerSettings").collect();
+    const [backgroundEnabled, legacy] = await Promise.all([
+      ctx.db
+        .query("scannerSettings")
+        .withIndex("by_background_enabled", (q) =>
+          q.eq("backgroundEnabled", true),
+        )
+        .collect(),
+      ctx.db
+        .query("scannerSettings")
+        .withIndex("by_background_enabled", (q) =>
+          q.eq("backgroundEnabled", undefined),
+        )
+        .collect(),
+    ]);
+    const settings = [
+      ...backgroundEnabled,
+      ...legacy.filter((row) => row.enabled),
+    ];
     let archived = 0;
     for (const setting of settings) {
       if (!setting.enabled) continue;
@@ -194,7 +215,7 @@ export const reconcileIrrelevant = internalMutation({
     const rows = await ctx.db
       .query("opportunities")
       .withIndex("by_user_status", (q) =>
-        q.eq("userId", userId).eq("status", "new")
+        q.eq("userId", userId).eq("status", "new"),
       )
       .collect();
     for (const row of rows) {
@@ -203,10 +224,13 @@ export const reconcileIrrelevant = internalMutation({
           row.text,
           keywords,
           row.source,
-          row.topicRelevance
+          row.topicRelevance,
         )
       ) {
-        await ctx.db.patch(row._id, { status: "dismissed", outcome: "ignored" });
+        await ctx.db.patch(row._id, {
+          status: "dismissed",
+          outcome: "ignored",
+        });
       }
     }
   },
@@ -215,6 +239,7 @@ export const reconcileIrrelevant = internalMutation({
 export const upsertMany = internalMutation({
   args: {
     userId: v.id("users"),
+    resultCount: v.number(),
     items: v.array(
       v.object({
         tweetId: v.string(),
@@ -234,8 +259,8 @@ export const upsertMany = internalMutation({
             v.literal("following"),
             v.literal("list"),
             v.literal("watched"),
-            v.literal("search")
-          )
+            v.literal("search"),
+          ),
         ),
         sourceLabel: v.optional(v.string()),
         keywordRelevance: v.optional(v.number()),
@@ -243,10 +268,10 @@ export const upsertMany = internalMutation({
         topicRelevance: v.optional(v.number()),
         semanticClassifiedAt: v.optional(v.number()),
         textFingerprint: v.optional(v.string()),
-      })
+      }),
     ),
   },
-  handler: async (ctx, { userId, items }) => {
+  handler: async (ctx, { userId, resultCount, items }) => {
     const now = Date.now();
     let inserted = 0;
     const insertedIds: Id<"opportunities">[] = [];
@@ -254,7 +279,7 @@ export const upsertMany = internalMutation({
       const existing = await ctx.db
         .query("opportunities")
         .withIndex("by_user_tweet", (q) =>
-          q.eq("userId", userId).eq("tweetId", item.tweetId)
+          q.eq("userId", userId).eq("tweetId", item.tweetId),
         )
         .unique();
       if (existing) {
@@ -292,15 +317,31 @@ export const upsertMany = internalMutation({
       }
     }
     for (const opportunityId of insertedIds) {
-      await ctx.scheduler.runAfter(0, internal.notifications.evaluateOpportunity, {
-        userId,
-        opportunityId,
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.evaluateOpportunity,
+        {
+          userId,
+          opportunityId,
+        },
+      );
+    }
+    const archived = await archiveExpiredForUserImpl(ctx, userId, now);
+    const settings = await ctx.db
+      .query("scannerSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    if (settings) {
+      await ctx.db.patch(settings._id, {
+        lastScanAt: now,
+        lastScanCount: resultCount,
+        lastScanError: undefined,
       });
     }
     // Reported by the calling action as the opportunity_surfaced funnel
     // event (docs/observability.md) — this mutation itself can't call
     // fetch to capture it directly (Convex mutations have no network I/O).
-    return { inserted };
+    return { inserted, archived };
   },
 });
 
@@ -315,7 +356,7 @@ export const markSentByTweet = internalMutation({
     const opp = await ctx.db
       .query("opportunities")
       .withIndex("by_user_tweet", (q) =>
-        q.eq("userId", userId).eq("tweetId", tweetId)
+        q.eq("userId", userId).eq("tweetId", tweetId),
       )
       .unique();
     if (!opp) return;

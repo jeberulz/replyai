@@ -3,15 +3,16 @@ export const DAILY_REPLY_TARGET_MAX = 20;
 export const DAILY_REPLY_WATCH_THRESHOLD = 35;
 export const DAILY_REPLY_WARNING_THRESHOLD = 45;
 export const DAILY_REPLY_LIMIT_THRESHOLD = 50;
-const HISTORY_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000;
+export const REPLY_PACING_HISTORY_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000;
+export const REPLY_PACING_SNAPSHOT_MS = 5 * 60 * 1000;
 const DEFAULT_WINDOW_HOURS = [9, 12, 16] as const;
 
+export function replyPacingSnapshotTime(nowMs: number): number {
+  return Math.ceil(nowMs / REPLY_PACING_SNAPSHOT_MS) * REPLY_PACING_SNAPSHOT_MS;
+}
+
 export type ReplyEditBucket =
-  | "no_edit"
-  | "minor_edit"
-  | "major_edit"
-  | null
-  | undefined;
+  "no_edit" | "minor_edit" | "major_edit" | null | undefined;
 
 export type PublishedReplyPoint = {
   publishedAt: number;
@@ -38,7 +39,7 @@ export function isPacingPublishKind(kind: string): boolean {
  */
 export function collectPacingPublishPoints(
   drafts: PacingDraftInput[],
-  nowMs: number
+  nowMs: number,
 ): PublishedReplyPoint[] {
   const points: PublishedReplyPoint[] = [];
   const seen = new Set<string>();
@@ -126,7 +127,7 @@ export function summarizeReplyPacing({
   liveOpportunities: LiveOpportunityPoint[];
 }): ReplyPacingSummary {
   const sentRepliesToday = publishedReplies.filter((reply) =>
-    isSameLocalDay(reply.publishedAt, nowMs, timezoneOffsetMinutes)
+    isSameLocalDay(reply.publishedAt, nowMs, timezoneOffsetMinutes),
   ).length;
   const warningLevel = getReplyPacingWarningLevel(sentRepliesToday);
   const progress = getReplyPacingProgress(sentRepliesToday);
@@ -152,7 +153,7 @@ export function summarizeReplyPacing({
 }
 
 export function getReplyPacingWarningLevel(
-  sentRepliesToday: number
+  sentRepliesToday: number,
 ): ReplyPacingWarningLevel {
   if (sentRepliesToday >= DAILY_REPLY_LIMIT_THRESHOLD) return "limit";
   if (sentRepliesToday >= DAILY_REPLY_WARNING_THRESHOLD) return "warning";
@@ -161,7 +162,7 @@ export function getReplyPacingWarningLevel(
 }
 
 export function getReplyPacingProgress(
-  sentRepliesToday: number
+  sentRepliesToday: number,
 ): ReplyPacingProgress {
   if (sentRepliesToday < DAILY_REPLY_TARGET_MIN) return "starting";
   if (sentRepliesToday <= DAILY_REPLY_TARGET_MAX) return "target";
@@ -185,7 +186,7 @@ export function deriveBestReplyWindows({
   const statsByHour = new Map<number, HourStats>();
 
   for (const reply of publishedReplies) {
-    if (reply.publishedAt < nowMs - HISTORY_LOOKBACK_MS) continue;
+    if (reply.publishedAt < nowMs - REPLY_PACING_HISTORY_LOOKBACK_MS) continue;
     const hour = localHour(reply.publishedAt, timezoneOffsetMinutes);
     const stats = getHourStats(statsByHour, hour);
     stats.historyCount += 1;
@@ -195,13 +196,19 @@ export function deriveBestReplyWindows({
   for (const opportunity of liveOpportunities) {
     const dayTimestamp = opportunity.scannedAt || opportunity.postedAt;
     if (!isSameLocalDay(dayTimestamp, nowMs, timezoneOffsetMinutes)) continue;
-    if (opportunity.status === "dismissed" || opportunity.status === "archived") {
+    if (
+      opportunity.status === "dismissed" ||
+      opportunity.status === "archived"
+    ) {
       continue;
     }
     const hour = localHour(dayTimestamp, timezoneOffsetMinutes);
     const stats = getHourStats(statsByHour, hour);
     stats.opportunityCount += 1;
-    stats.topOpportunityScore = Math.max(stats.topOpportunityScore, opportunity.score);
+    stats.topOpportunityScore = Math.max(
+      stats.topOpportunityScore,
+      opportunity.score,
+    );
   }
 
   const candidateHours = new Set<number>([
@@ -211,7 +218,9 @@ export function deriveBestReplyWindows({
 
   const ranked = [...candidateHours]
     .map((hour) => buildWindow(hour, currentHour, statsByHour.get(hour)))
-    .sort((a, b) => b.rank - a.rank || a.distance - b.distance || a.hour - b.hour)
+    .sort(
+      (a, b) => b.rank - a.rank || a.distance - b.distance || a.hour - b.hour,
+    )
     .slice(0, maxWindows)
     .map((window) => ({
       hour: window.hour,
@@ -226,14 +235,14 @@ export function deriveBestReplyWindows({
   return ranked.length > 0
     ? ranked
     : DEFAULT_WINDOW_HOURS.slice(0, maxWindows).map((hour) =>
-        defaultWindow(hour)
+        defaultWindow(hour),
       );
 }
 
 function buildWindow(
   hour: number,
   currentHour: number,
-  stats?: HourStats
+  stats?: HourStats,
 ): BestReplyWindow & { rank: number; distance: number } {
   const historyCount = stats?.historyCount ?? 0;
   const opportunityCount = stats?.opportunityCount ?? 0;
@@ -251,10 +260,15 @@ function buildWindow(
   const liveScore =
     opportunityCount === 0
       ? 0
-      : Math.min(opportunityCount, 4) * 12 + Math.min(topOpportunityScore, 100) * 0.45;
+      : Math.min(opportunityCount, 4) * 12 +
+        Math.min(topOpportunityScore, 100) * 0.45;
   const distance = Math.abs(hour - currentHour);
   const timelinessBonus =
-    hour === currentHour ? 8 : hour > currentHour ? Math.max(0, 5 - distance) : -4 - distance;
+    hour === currentHour
+      ? 8
+      : hour > currentHour
+        ? Math.max(0, 5 - distance)
+        : -4 - distance;
   const defaultBias = source === "default" ? -6 : 0;
   const rank = historyScore + liveScore + timelinessBonus + defaultBias;
 
@@ -290,7 +304,7 @@ function defaultWindow(hour: number): BestReplyWindow {
 
 function getWindowSource(
   historyCount: number,
-  opportunityCount: number
+  opportunityCount: number,
 ): BestWindowSource {
   if (historyCount > 0 && opportunityCount > 0) return "blend";
   if (historyCount > 0) return "history";
@@ -328,7 +342,7 @@ function describeWindow({
 
 function buildHeadline(
   sentRepliesToday: number,
-  warningLevel: ReplyPacingWarningLevel
+  warningLevel: ReplyPacingWarningLevel,
 ): string {
   if (warningLevel === "limit") {
     return "Past today's safety envelope";
@@ -350,7 +364,7 @@ function buildHeadline(
 
 function buildDetail(
   sentRepliesToday: number,
-  warningLevel: ReplyPacingWarningLevel
+  warningLevel: ReplyPacingWarningLevel,
 ): string {
   if (warningLevel === "limit") {
     return "Anything beyond obvious winners risks account health. Save the rest for tomorrow.";
@@ -390,7 +404,7 @@ function localHour(timestampMs: number, timezoneOffsetMinutes: number): number {
 function isSameLocalDay(
   timestampMs: number,
   nowMs: number,
-  timezoneOffsetMinutes: number
+  timezoneOffsetMinutes: number,
 ): boolean {
   return (
     localDayKey(timestampMs, timezoneOffsetMinutes) ===
@@ -401,22 +415,40 @@ function isSameLocalDay(
 export function isPublishedOnLocalDay(
   publishedAt: number,
   nowMs: number,
-  timezoneOffsetMinutes: number
+  timezoneOffsetMinutes: number,
 ): boolean {
   return isSameLocalDay(publishedAt, nowMs, timezoneOffsetMinutes);
+}
+
+export function localDayStartMs(
+  nowMs: number,
+  timezoneOffsetMinutes: number,
+): number {
+  const shifted = shiftedDate(nowMs, timezoneOffsetMinutes);
+  return (
+    Date.UTC(
+      shifted.getUTCFullYear(),
+      shifted.getUTCMonth(),
+      shifted.getUTCDate(),
+    ) +
+    timezoneOffsetMinutes * 60_000
+  );
 }
 
 export function countPacingPublishesOnLocalDay(
   publishedAts: number[],
   nowMs: number,
-  timezoneOffsetMinutes: number
+  timezoneOffsetMinutes: number,
 ): number {
   return publishedAts.filter((publishedAt) =>
-    isPublishedOnLocalDay(publishedAt, nowMs, timezoneOffsetMinutes)
+    isPublishedOnLocalDay(publishedAt, nowMs, timezoneOffsetMinutes),
   ).length;
 }
 
-function localDayKey(timestampMs: number, timezoneOffsetMinutes: number): string {
+function localDayKey(
+  timestampMs: number,
+  timezoneOffsetMinutes: number,
+): string {
   return shiftedDate(timestampMs, timezoneOffsetMinutes)
     .toISOString()
     .slice(0, 10);

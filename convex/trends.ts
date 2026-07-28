@@ -12,6 +12,7 @@ import {
   TREND_DEFAULTS,
   clusterTrends,
   demoTrendTopics,
+  selectRecentTrendCorpus,
   type TrendOpportunityInput,
   type TrendTopic,
 } from "../shared/trends";
@@ -39,7 +40,7 @@ const radarReturnValidator = v.object({
 
 async function nicheKeywordsForUser(
   ctx: QueryCtx,
-  userId: Id<"users">
+  userId: Id<"users">,
 ): Promise<string[]> {
   const settings = await ctx.db
     .query("scannerSettings")
@@ -57,29 +58,30 @@ async function recentCorpus(
   ctx: QueryCtx,
   userId: Id<"users">,
   nowMs: number,
-  windowMs: number
+  windowMs: number,
 ): Promise<TrendOpportunityInput[]> {
-  const rows = await ctx.db
-    .query("opportunities")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .collect();
+  const rowsByStatus = await Promise.all(
+    (["new", "analyzed", "archived"] as const).map((status) =>
+      ctx.db
+        .query("opportunities")
+        .withIndex("by_user_and_status_and_scannedAt", (q) =>
+          q
+            .eq("userId", userId)
+            .eq("status", status)
+            .gte("scannedAt", nowMs - windowMs)
+            .lte("scannedAt", nowMs),
+        )
+        .order("desc")
+        .take(MAX_CORPUS),
+    ),
+  );
 
-  const cutoff = nowMs - windowMs;
-  return rows
-    .filter(
-      (o) =>
-        o.status !== "dismissed" &&
-        o.scannedAt >= cutoff &&
-        o.scannedAt <= nowMs
-    )
-    .sort((a, b) => b.scannedAt - a.scannedAt)
-    .slice(0, MAX_CORPUS)
-    .map((o) => ({
-      id: o._id,
-      text: o.text,
-      scannedAt: o.scannedAt,
-      suggestedAngle: o.suggestedAngle,
-    }));
+  return selectRecentTrendCorpus(rowsByStatus.flat(), MAX_CORPUS).map((o) => ({
+    id: o._id,
+    text: o.text,
+    scannedAt: o.scannedAt,
+    suggestedAngle: o.suggestedAngle,
+  }));
 }
 
 /**
@@ -98,7 +100,7 @@ export const radar = query({
     const user = await requireUser(ctx, sessionToken);
     const maxTopics = Math.min(
       TREND_DEFAULTS.maxTopics,
-      Math.max(1, limit ?? TREND_DEFAULTS.maxTopics)
+      Math.max(1, limit ?? TREND_DEFAULTS.maxTopics),
     );
 
     if (user.isDemo) {

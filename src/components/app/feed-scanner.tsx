@@ -25,14 +25,14 @@ import { ScannerSettingsDialog } from "@/components/app/feed/scanner-settings-di
 import { TrendRadarStrip } from "@/components/app/feed/trend-radar-strip";
 import { MasterDetail } from "@/components/app/split/master-detail";
 import { SplitPageShell } from "@/components/app/split/split-page-shell";
-import {
-  FilterChips,
-  PaneEyebrow,
-} from "@/components/app/split/pane-chrome";
+import { FilterChips, PaneEyebrow } from "@/components/app/split/pane-chrome";
 import { OatmealEmptyState } from "@/components/app/oatmeal-empty-state";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { opportunityMatchesTopic } from "../../../shared/trends";
+import {
+  opportunityMatchesTopic,
+  trendRadarSnapshotTime,
+} from "../../../shared/trends";
 
 const SCAN_TIMEOUT_MS = 45_000;
 
@@ -56,17 +56,18 @@ export function FeedScanner() {
   // Always-on clock for freshness + trend radar. Lazy initializer keeps
   // Date.now() out of the render body (interval is the only in-effect update).
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const radarNowMs = trendRadarSnapshotTime(nowMs);
   const settings = useQuery(
     api.scanner.settings,
-    sessionToken ? { sessionToken } : "skip"
+    sessionToken ? { sessionToken } : "skip",
   );
   const opportunities = useQuery(
     api.opportunities.list,
-    sessionToken ? { sessionToken } : "skip"
+    sessionToken ? { sessionToken } : "skip",
   );
   const radar = useQuery(
     api.trends.radar,
-    sessionToken ? { sessionToken, nowMs, limit: 3 } : "skip"
+    sessionToken ? { sessionToken, nowMs: radarNowMs, limit: 3 } : "skip",
   );
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -105,9 +106,7 @@ export function FeedScanner() {
     if (!opportunities) return undefined;
     return opportunities.filter((opp) => {
       if (activeTopic) {
-        if (
-          !opportunityMatchesTopic(opp.text, activeTopic, String(opp._id))
-        ) {
+        if (!opportunityMatchesTopic(opp.text, activeTopic, String(opp._id))) {
           return false;
         }
       }
@@ -154,11 +153,11 @@ export function FeedScanner() {
         toast.error(settings.lastScanError);
       } else if ((settings?.lastScanCount ?? 0) === 0) {
         toast.message(
-          "Scan complete — no matching tweets in your feed right now"
+          "Scan complete — no matching tweets in your feed right now",
         );
       } else {
         toast.success(
-          `Feed scan complete — ${settings?.lastScanCount} opportunit${settings?.lastScanCount === 1 ? "y" : "ies"} found`
+          `Feed scan complete — ${settings?.lastScanCount} opportunit${settings?.lastScanCount === 1 ? "y" : "ies"} found`,
         );
       }
     }
@@ -336,11 +335,7 @@ export function FeedScanner() {
               disabled={busy}
               className="w-full sm:w-auto"
             >
-              {scanning ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <RefreshCw />
-              )}
+              {scanning ? <Loader2 className="animate-spin" /> : <RefreshCw />}
               Scan now
             </Button>
             <Button

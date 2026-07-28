@@ -1,6 +1,8 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useEffect, useState } from "react";
+import { useConvex } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { useSessionToken } from "@/components/app/convex-provider";
@@ -15,10 +17,30 @@ function formatDuration(seconds: number): string {
 /** The dashboard stats as one quiet mono row for the chat empty state. */
 export function StatStrip() {
   const sessionToken = useSessionToken();
-  const stats = useQuery(
-    api.usage.stats,
-    sessionToken ? { sessionToken } : "skip"
-  );
+  const convex = useConvex();
+  const month = new Date().toISOString().slice(0, 7);
+  const [stats, setStats] = useState<
+    FunctionReturnType<typeof api.usage.stats> | undefined
+  >();
+  const [error, setError] = useState<unknown>();
+
+  useEffect(() => {
+    if (!sessionToken) return;
+    let cancelled = false;
+    void convex
+      .query(api.usage.stats, { sessionToken, month })
+      .then((result) => {
+        if (!cancelled) setStats(result);
+      })
+      .catch((queryError: unknown) => {
+        if (!cancelled) setError(queryError);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [convex, month, sessionToken]);
+
+  if (error) throw error;
 
   if (!stats) return null;
 
@@ -52,7 +74,7 @@ export function StatStrip() {
     <div
       className={cn(
         rpType.monoXs,
-        "flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-muted-foreground"
+        "flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-muted-foreground",
       )}
     >
       {items.map(([label, value]) => (
