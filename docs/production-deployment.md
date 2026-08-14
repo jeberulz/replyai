@@ -11,21 +11,61 @@ its demo-mode fallback — this doc is just "where does it go."
   (auto-provisioned per project; existed before any `convex deploy` ran).
 - **Vercel project**: `replyai` (team `john-iseghohis-projects`), linked
   locally via `.vercel/project.json` (gitignored).
-- **`vercel.ts`** sets the Vercel build command to:
+- **`vercel.ts`** picks the build command per environment. For a
+  **production** build (`VERCEL_ENV=production`):
   ```
   npx convex deploy --cmd 'npm run build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL
   ```
-  Every Vercel **production** build now also pushes `convex/` functions to
+  Every Vercel production build also pushes `convex/` functions to
   `calculating-mandrill-742` first, and Convex injects the fresh prod
   deployment URL as `NEXT_PUBLIC_CONVEX_URL` for that build — so you do
   **not** need to hand-maintain `NEXT_PUBLIC_CONVEX_URL` as a static Vercel
   env var; any value set there for Production is effectively unused (the
   build command overrides it).
 - This requires **`CONVEX_DEPLOY_KEY`** set in Vercel's Production
-  environment — already done (see below). Preview deployments don't get
-  this build command wired up yet; they still build with `npm run build`
-  directly (add a preview deploy key + `--preview-name` wiring later if
-  preview environments need their own Convex deployment).
+  environment — already done (see below).
+- **Preview** builds pick one of two commands:
+  - `CONVEX_DEPLOY_KEY` is a *preview* key (prefix `preview:`) → the same
+    `convex deploy` plus `--preview-create "$VERCEL_GIT_COMMIT_REF"`, giving
+    the branch its own Convex preview deployment.
+  - otherwise → plain `npm run build`, using the `NEXT_PUBLIC_CONVEX_URL`
+    configured for the Preview environment.
+
+  > **Previously broken.** `vercel.ts` used to set the production command
+  > unconditionally, for every environment. Because `CONVEX_DEPLOY_KEY` is
+  > scoped to *both* Production and Preview, every preview build ran
+  > `convex deploy` with a **production** key and Convex refused:
+  > `✖ Detected a non-production build environment and "CONVEX_DEPLOY_KEY"
+  > for a production Convex deployment.` Every preview deployment on every
+  > branch failed this way. Fixed in WP59.
+
+  > **Open security item.** `CONVEX_DEPLOY_KEY` is still scoped to
+  > Production **and** Preview, so a production Convex deploy credential is
+  > present in the build environment of every preview deployment, from every
+  > branch (including agent branches). The build command no longer *uses*
+  > it in preview, but it is still exposed. See "Preview deploy key" below.
+
+## Preview deploy key (owner action)
+
+Recommended end state — do both, in this order:
+
+1. Create a **preview** deploy key in the Convex dashboard
+   (project `replyai` → Settings → Deploy keys → *Generate preview deploy
+   key*).
+2. Replace the Preview-scoped variable so preview builds get their own
+   Convex deployment instead of a production credential:
+   ```
+   vercel env rm  CONVEX_DEPLOY_KEY preview
+   vercel env add CONVEX_DEPLOY_KEY preview   # paste the preview: key
+   ```
+   `vercel.ts` detects the `preview:` prefix and switches to
+   `--preview-create` automatically — no code change needed.
+
+Note that the current production key's value cannot be read back out of
+Vercel (it is stored as Sensitive), so removing it from Preview is only
+safe once the replacement preview key is in hand. Removing it without a
+replacement simply falls back to `npm run build`, which is the current
+behaviour and is also fine.
 
 ## Triggering the first production deploy
 
@@ -58,21 +98,33 @@ For each var in `.env.example`, where it needs to be set for production:
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | not needed in Vercel | ✅ required — push delivery runs inside Convex actions |
 | `APP_URL` | not needed in Vercel (this is the Convex-side var, since Convex doesn't inherit Next.js's `NEXT_PUBLIC_APP_URL`) | ✅ required — absolute origin for digest email links |
 | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | not needed in Vercel | ✅ required for the digest cron |
-| `CONVEX_DEPLOY_KEY` | ✅ **already set** (Production only) — lets Vercel's build push Convex functions | n/a, this *is* the credential that authorizes deploys |
+| `CONVEX_DEPLOY_KEY` | ✅ **already set — Production *and* Preview** (`vercel env ls`, 2026-08-14). Production is correct; the Preview copy is a production key that should be replaced with a `preview:` key — see "Preview deploy key" above | n/a, this *is* the credential that authorizes deploys |
 
 Set the Vercel side with `vercel env add VAR production` (add `preview` too
 if preview deployments need it) and the Convex side with
 `npx convex env set VAR 'value' --prod`.
 
-## Currently set in Vercel Production (values encrypted, not re-verified here)
+## Currently set in Vercel (names only; values encrypted, not re-verified)
 
-`NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_APP_URL`, `ANTHROPIC_API_KEY`,
-`ANTHROPIC_MODEL`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `CONVEX_DEPLOYMENT`,
-`NEXT_PUBLIC_CONVEX_SITE_URL`, `CONVEX_SERVER_TOKEN_ACCESS_SECRET`,
-`CONVEX_DEPLOY_KEY` (added by this setup), plus three vars not in
-`.env.example` — `bearer_token`, `consumer_key`, `consumer_secret` — whose
-purpose is unclear; confirm whether they're still needed before relying on
-them.
+Verified with `vercel env ls` on 2026-08-14. **All fifteen are scoped to
+Production *and* Preview** — there is currently no Production-only variable:
+
+`CONVEX_AUTH_PROVISION_SECRET`, `BETA_ALLOWED_X_HANDLES`, `X_CLIENT_ID`,
+`X_CLIENT_SECRET`, `CONVEX_DEPLOY_KEY`, `NEXT_PUBLIC_CONVEX_URL`,
+`NEXT_PUBLIC_APP_URL`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`,
+`CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_SITE_URL`,
+`CONVEX_SERVER_TOKEN_ACCESS_SECRET`, plus three vars not in `.env.example`
+— `bearer_token`, `consumer_key`, `consumer_secret` — whose purpose is
+unclear; confirm whether they're still needed before relying on them.
+
+Two consequences of the blanket Production+Preview scoping worth deciding on:
+
+- `CONVEX_DEPLOY_KEY` — production deploy credential in every preview build
+  (see "Preview deploy key" above). Highest-value one to fix.
+- `ANTHROPIC_API_KEY` / `X_CLIENT_SECRET` — every preview deployment can
+  spend real AI and X quota. WP40-S8's spend caps are enforced per user in
+  Convex, not per Vercel environment, so preview traffic draws on the same
+  budget.
 
 Nothing has been verified as *correct* for prod (e.g. `NEXT_PUBLIC_APP_URL`
 was an empty placeholder as of this writing) — confirm real values before
