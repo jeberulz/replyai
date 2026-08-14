@@ -38,11 +38,7 @@ export const voiceStyle = v.object({
 
 /** WP36 — persisted voice-drift suggestion payload (propose-only). */
 export const voiceDriftSuggestion = v.object({
-  severity: v.union(
-    v.literal("none"),
-    v.literal("minor"),
-    v.literal("major")
-  ),
+  severity: v.union(v.literal("none"), v.literal("minor"), v.literal("major")),
   changedFieldCount: v.number(),
   fields: v.array(
     v.object({
@@ -51,7 +47,7 @@ export const voiceDriftSuggestion = v.object({
       before: v.string(),
       after: v.string(),
       changed: v.boolean(),
-    })
+    }),
   ),
   phraseDelta: v.object({
     added: v.array(v.string()),
@@ -68,7 +64,7 @@ export const onboardingConciergeProposal = v.object({
   goalId: v.union(
     v.literal("audience"),
     v.literal("leads"),
-    v.literal("authority")
+    v.literal("authority"),
   ),
   goalReason: v.string(),
   keywords: v.array(v.string()),
@@ -77,26 +73,22 @@ export const onboardingConciergeProposal = v.object({
       handle: v.string(),
       displayName: v.string(),
       reason: v.string(),
-    })
+    }),
   ),
   voiceExamples: v.array(v.string()),
-  source: v.union(
-    v.literal("llm"),
-    v.literal("heuristic"),
-    v.literal("demo")
-  ),
+  source: v.union(v.literal("llm"), v.literal("heuristic"), v.literal("demo")),
 });
 
 export const evalKind = v.union(
   v.literal("generation"),
   v.literal("discovery"),
-  v.literal("pipeline")
+  v.literal("pipeline"),
 );
 
 export const evalDatasetSourcePolicy = v.union(
   v.literal("synthetic"),
   v.literal("product_team"),
-  v.literal("consented_user")
+  v.literal("consented_user"),
 );
 
 export const evalExperimentStatus = v.union(
@@ -105,7 +97,7 @@ export const evalExperimentStatus = v.union(
   v.literal("running"),
   v.literal("completed"),
   v.literal("cancelled"),
-  v.literal("failed")
+  v.literal("failed"),
 );
 
 export const evalRunStatus = v.union(
@@ -113,7 +105,7 @@ export const evalRunStatus = v.union(
   v.literal("running"),
   v.literal("completed"),
   v.literal("cancelled"),
-  v.literal("failed")
+  v.literal("failed"),
 );
 
 export const evalCandidateSnapshot = v.object({
@@ -132,9 +124,9 @@ export const evalCandidateSnapshot = v.object({
           inputPerMTok: v.number(),
           outputPerMTok: v.number(),
           cachedInputPerMTok: v.optional(v.number()),
-        })
+        }),
       ),
-    })
+    }),
   ),
 });
 
@@ -147,16 +139,13 @@ export const evalUsageSnapshot = v.object({
   successfulToolCallCount: v.optional(v.number()),
 });
 
-export const shadowGrokMode = v.union(
-  v.literal("off"),
-  v.literal("shadow")
-);
+export const shadowGrokMode = v.union(v.literal("off"), v.literal("shadow"));
 
 export const shadowGrokRunStatus = v.union(
   v.literal("skipped"),
   v.literal("blocked"),
   v.literal("succeeded"),
-  v.literal("failed")
+  v.literal("failed"),
 );
 
 export const shadowGrokAvailability = v.union(
@@ -168,7 +157,7 @@ export const shadowGrokAvailability = v.union(
   v.literal("provider_unavailable"),
   v.literal("hydration_failed"),
   v.literal("succeeded"),
-  v.literal("failed")
+  v.literal("failed"),
 );
 
 export const shadowGrokCandidateProvenance = v.object({
@@ -208,7 +197,11 @@ export default defineSchema({
     defaultModel: v.optional(v.string()),
     // Primary goal chosen during onboarding — tunes scanner keywords and copy.
     goal: v.optional(
-      v.union(v.literal("audience"), v.literal("leads"), v.literal("authority"))
+      v.union(
+        v.literal("audience"),
+        v.literal("leads"),
+        v.literal("authority"),
+      ),
     ),
     // When the onboarding wizard was finished or skipped; unset = new user.
     onboardingCompletedAt: v.optional(v.number()),
@@ -280,8 +273,8 @@ export default defineSchema({
       v.union(
         v.literal("starter"),
         v.literal("onboarding"),
-        v.literal("manual")
-      )
+        v.literal("manual"),
+      ),
     ),
     sourceFingerprint: v.optional(v.string()),
     isDefault: v.boolean(),
@@ -289,6 +282,7 @@ export default defineSchema({
     updatedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
+    .index("by_user_and_isDefault", ["userId", "isDefault"])
     .index("by_user_purpose", ["userId", "purpose"]),
 
   projects: defineTable({
@@ -310,7 +304,7 @@ export default defineSchema({
         authorHandle: v.string(),
         text: v.string(),
         likes: v.number(),
-      })
+      }),
     ),
     summary: v.string(),
     topic: v.string(),
@@ -335,8 +329,8 @@ export default defineSchema({
         v.literal("analyzing"),
         v.literal("generating"),
         v.literal("complete"),
-        v.literal("failed")
-      )
+        v.literal("failed"),
+      ),
     ),
     error: v.optional(v.string()),
     // Bumped on every stage transition — drives stale-pipeline detection.
@@ -344,8 +338,14 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_user", ["userId"])
+    .index("by_user_and_createdAt", ["userId", "createdAt"])
     .index("by_user_tweet", ["userId", "tweetId"])
     .index("by_user_project", ["userId", "projectId"])
+    .index("by_user_and_project_and_createdAt", [
+      "userId",
+      "projectId",
+      "createdAt",
+    ])
     .index("by_status_and_updatedAt", ["status", "updatedAt"]),
 
   generatedReplies: defineTable({
@@ -368,8 +368,8 @@ export default defineSchema({
       v.union(
         v.literal("no_edit"),
         v.literal("minor_edit"),
-        v.literal("major_edit")
-      )
+        v.literal("major_edit"),
+      ),
     ),
     createdAt: v.number(),
   })
@@ -386,7 +386,7 @@ export default defineSchema({
       v.literal("quote"),
       v.literal("standalone"),
       v.literal("thread"),
-      v.literal("longform")
+      v.literal("longform"),
     ),
     text: v.string(),
     /** WP23 thread drafts: ordered posts (text remains a joined preview). */
@@ -400,14 +400,14 @@ export default defineSchema({
       v.union(
         v.literal("threaded"),
         v.literal("standalone"),
-        v.literal("url_quote")
-      )
+        v.literal("url_quote"),
+      ),
     ),
     status: v.union(
       v.literal("draft"),
       v.literal("scheduled"),
       v.literal("published"),
-      v.literal("failed")
+      v.literal("failed"),
     ),
     scheduledFor: v.optional(v.number()),
     publishedTweetId: v.optional(v.string()),
@@ -417,13 +417,13 @@ export default defineSchema({
       v.union(
         v.literal("no_edit"),
         v.literal("minor_edit"),
-        v.literal("major_edit")
-      )
+        v.literal("major_edit"),
+      ),
     ),
     /** WP14: optional link into an A/B/C variant group. */
     variantGroupId: v.optional(v.id("variantGroups")),
     variantLabel: v.optional(
-      v.union(v.literal("A"), v.literal("B"), v.literal("C"))
+      v.union(v.literal("A"), v.literal("B"), v.literal("C")),
     ),
     error: v.optional(v.string()),
     createdAt: v.number(),
@@ -435,6 +435,16 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
+    .index("by_user_and_status_and_publishedAt", [
+      "userId",
+      "status",
+      "publishedAt",
+    ])
+    .index("by_user_and_status_and_scheduledFor", [
+      "userId",
+      "status",
+      "scheduledFor",
+    ])
     .index("by_compose_run", ["composeRunId"])
     .index("by_variant_group", ["variantGroupId"])
     .index("by_user_client", ["userId", "clientId"]),
@@ -463,8 +473,8 @@ export default defineSchema({
       v.union(
         v.literal("threaded"),
         v.literal("standalone"),
-        v.literal("url_quote")
-      )
+        v.literal("url_quote"),
+      ),
     ),
     targetTweetId: v.optional(v.string()),
     targetTweetUrl: v.optional(v.string()),
@@ -478,14 +488,14 @@ export default defineSchema({
       v.literal("active"),
       v.literal("responded"),
       v.literal("expired"),
-      v.literal("failed")
+      v.literal("failed"),
     ),
     responseLabel: v.optional(
       v.union(
         v.literal("author_replied"),
         v.literal("conversation_continued"),
-        v.literal("got_ratioed")
-      )
+        v.literal("got_ratioed"),
+      ),
     ),
     lastResponseTweetId: v.optional(v.string()),
     responseAuthorHandle: v.optional(v.string()),
@@ -516,7 +526,7 @@ export default defineSchema({
     kind: v.union(
       v.literal("analysis"),
       v.literal("generation"),
-      v.literal("discovery")
+      v.literal("discovery"),
     ),
     source: v.string(),
     hourKey: v.string(), // UTC "YYYY-MM-DDTHH"
@@ -539,7 +549,7 @@ export default defineSchema({
       v.literal("research"),
       v.literal("voice_refresh"),
       v.literal("reply_back"),
-      v.literal("owned_lists")
+      v.literal("owned_lists"),
     ),
     endpoint: v.string(),
     priority: v.union(v.literal("high"), v.literal("low")),
@@ -550,7 +560,7 @@ export default defineSchema({
     status: v.union(
       v.literal("attempted"),
       v.literal("succeeded"),
-      v.literal("failed")
+      v.literal("failed"),
     ),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -580,7 +590,7 @@ export default defineSchema({
       v.literal("new"),
       v.literal("dismissed"),
       v.literal("analyzed"),
-      v.literal("archived")
+      v.literal("archived"),
     ),
     // Set when the auto-archive cron expires a "new" opportunity past the
     // reply window (shared/feedFreshness.ts).
@@ -590,8 +600,8 @@ export default defineSchema({
         v.literal("following"),
         v.literal("list"),
         v.literal("watched"),
-        v.literal("search")
-      )
+        v.literal("search"),
+      ),
     ),
     // e.g. "AI Builders list" — only set for source "list".
     sourceLabel: v.optional(v.string()),
@@ -607,15 +617,21 @@ export default defineSchema({
         v.literal("ignored"),
         v.literal("analyzed"),
         v.literal("sent"),
-        v.literal("responded")
-      )
+        v.literal("responded"),
+      ),
     ),
     analyzedAt: v.optional(v.number()),
     sentAt: v.optional(v.number()),
     respondedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
+    .index("by_user_and_scannedAt", ["userId", "scannedAt"])
     .index("by_user_status", ["userId", "status"])
+    .index("by_user_and_status_and_scannedAt", [
+      "userId",
+      "status",
+      "scannedAt",
+    ])
     .index("by_user_tweet", ["userId", "tweetId"]),
 
   scannerSettings: defineTable({
@@ -642,7 +658,7 @@ export default defineSchema({
     lastCuratorRunMonth: v.optional(v.string()),
     // Authors dismissed from feed; hidden until `until` (7-day default).
     dismissedAuthors: v.optional(
-      v.array(v.object({ handle: v.string(), until: v.number() }))
+      v.array(v.object({ handle: v.string(), until: v.number() })),
     ),
     enabledSources: v.optional(
       v.array(
@@ -650,9 +666,9 @@ export default defineSchema({
           v.literal("following"),
           v.literal("lists"),
           v.literal("watched"),
-          v.literal("search")
-        )
-      )
+          v.literal("search"),
+        ),
+      ),
     ),
     // Learned scan ranking multipliers — never surfaced as ML % in UI.
     rankingWeights: v.optional(
@@ -664,7 +680,7 @@ export default defineSchema({
             list: v.optional(v.number()),
             watched: v.optional(v.number()),
             search: v.optional(v.number()),
-          })
+          }),
         ),
         followerBandMultipliers: v.optional(
           v.object({
@@ -672,10 +688,10 @@ export default defineSchema({
             small: v.optional(v.number()),
             medium: v.optional(v.number()),
             large: v.optional(v.number()),
-          })
+          }),
         ),
         scoreDecileMultipliers: v.optional(v.record(v.string(), v.number())),
-      })
+      }),
     ),
     // Deterministic plain-language ranking changelog sentence (WP32) — no
     // fake ML % in the UI. Set/cleared alongside rankingWeights.
@@ -752,7 +768,7 @@ export default defineSchema({
             category: v.string(),
             content: v.string(),
             reason: v.string(),
-          })
+          }),
         ),
         tokensIn: v.number(),
         tokensOut: v.number(),
@@ -760,7 +776,7 @@ export default defineSchema({
         // 0-100 judge score with a plain-language note.
         score: v.number(),
         notes: v.string(),
-      })
+      }),
     ),
     winnerModel: v.string(),
     summary: v.string(),
@@ -880,7 +896,7 @@ export default defineSchema({
       v.literal("running"),
       v.literal("completed"),
       v.literal("failed"),
-      v.literal("excluded")
+      v.literal("excluded"),
     ),
     attempt: v.optional(v.number()),
     retryCount: v.optional(v.number()),
@@ -920,7 +936,7 @@ export default defineSchema({
       v.literal("tie"),
       v.literal("neither"),
       v.literal("relevant"),
-      v.literal("not_relevant")
+      v.literal("not_relevant"),
     ),
     reasonCodes: v.array(v.string()),
     labels: v.optional(
@@ -930,7 +946,7 @@ export default defineSchema({
         unsafe: v.optional(v.boolean()),
         stale: v.optional(v.boolean()),
         duplicate: v.optional(v.boolean()),
-      })
+      }),
     ),
     editedDraft: v.optional(v.string()),
     revision: v.number(),
@@ -952,7 +968,7 @@ export default defineSchema({
       v.literal("promote_to_shadow"),
       v.literal("promote_to_assisted"),
       v.literal("retest"),
-      v.literal("reject")
+      v.literal("reject"),
     ),
     rationale: v.string(),
     sampleSize: v.number(),
@@ -978,13 +994,13 @@ export default defineSchema({
     status: v.union(
       v.literal("running"),
       v.literal("complete"),
-      v.literal("failed")
+      v.literal("failed"),
     ),
     error: v.optional(v.string()),
     // WP33 — distinguishes user-initiated runs from the monthly curator.
     // Existing rows have no value; treated as "manual".
     runKind: v.optional(
-      v.union(v.literal("manual"), v.literal("monthly_curator"))
+      v.union(v.literal("manual"), v.literal("monthly_curator")),
     ),
     // WP33 — number of quiet suggested profiles pruned by a curator run.
     curatorPrunedCount: v.optional(v.number()),
@@ -1012,12 +1028,12 @@ export default defineSchema({
         tweetId: v.string(),
         text: v.string(),
         likes: v.number(),
-      })
+      }),
     ),
     status: v.union(
       v.literal("suggested"),
       v.literal("watching"),
-      v.literal("passed")
+      v.literal("passed"),
     ),
     // WP33 — why a profile was auto-passed (e.g. "quiet_30d" from the curator).
     // Only set when the curator prunes a quiet suggestion.
@@ -1045,8 +1061,8 @@ export default defineSchema({
         v.literal("following"),
         v.literal("lists"),
         v.literal("watched"),
-        v.literal("search")
-      )
+        v.literal("search"),
+      ),
     ),
     optedInAt: v.optional(v.number()),
     permissionGrantedAt: v.optional(v.number()),
@@ -1076,7 +1092,7 @@ export default defineSchema({
       v.literal("suppressed"),
       v.literal("opened"),
       v.literal("sent"),
-      v.literal("expired")
+      v.literal("expired"),
     ),
     title: v.string(),
     body: v.string(),
@@ -1087,8 +1103,8 @@ export default defineSchema({
         v.literal("following"),
         v.literal("list"),
         v.literal("watched"),
-        v.literal("search")
-      )
+        v.literal("search"),
+      ),
     ),
     suppressedReason: v.optional(v.string()),
     createdAt: v.number(),
@@ -1129,7 +1145,7 @@ export default defineSchema({
     status: v.union(
       v.literal("running"),
       v.literal("complete"),
-      v.literal("failed")
+      v.literal("failed"),
     ),
     error: v.optional(v.string()),
     opportunityCount: v.number(),
@@ -1144,7 +1160,7 @@ export default defineSchema({
             textPreview: v.string(),
             angle: v.string(),
             reason: v.string(),
-          })
+          }),
         ),
         outcomes: v.object({
           analyzed: v.number(),
@@ -1155,14 +1171,10 @@ export default defineSchema({
         coachingInsight: v.string(),
         generatedAt: v.number(),
         demo: v.boolean(),
-      })
+      }),
     ),
     emailStatus: v.optional(
-      v.union(
-        v.literal("skipped"),
-        v.literal("sent"),
-        v.literal("failed")
-      )
+      v.union(v.literal("skipped"), v.literal("sent"), v.literal("failed")),
     ),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
@@ -1178,13 +1190,13 @@ export default defineSchema({
       v.literal("pending"),
       v.literal("generating"),
       v.literal("complete"),
-      v.literal("failed")
+      v.literal("failed"),
     ),
     error: v.optional(v.string()),
     format: v.union(
       v.literal("standalone"),
       v.literal("thread"),
-      v.literal("longform")
+      v.literal("longform"),
     ),
     clusterId: v.string(),
     topic: v.string(),
@@ -1202,14 +1214,14 @@ export default defineSchema({
             category: v.string(),
             content: v.string(),
             reason: v.string(),
-          })
+          }),
         ),
         thread: v.array(
           v.object({
             category: v.string(),
             posts: v.array(v.string()),
             reason: v.string(),
-          })
+          }),
         ),
         longform: v.array(
           v.object({
@@ -1217,9 +1229,9 @@ export default defineSchema({
             title: v.string(),
             content: v.string(),
             reason: v.string(),
-          })
+          }),
         ),
-      })
+      }),
     ),
     voiceProfileId: v.optional(v.id("voiceProfiles")),
     demo: v.boolean(),
@@ -1249,7 +1261,7 @@ export default defineSchema({
       v.object({
         settings: v.string(),
         seenAt: v.number(),
-      })
+      }),
     ),
     /** Length-24 UTC hour-of-day counts from observed target post times. */
     postHourCounts: v.array(v.number()),
@@ -1274,7 +1286,7 @@ export default defineSchema({
         conversationCount: v.number(),
         opportunityIds: v.array(v.string()),
         matchedKeywords: v.array(v.string()),
-      })
+      }),
     ),
     demo: v.boolean(),
     createdAt: v.number(),
@@ -1290,7 +1302,7 @@ export default defineSchema({
       v.literal("running"),
       v.literal("complete"),
       v.literal("failed"),
-      v.literal("dismissed")
+      v.literal("dismissed"),
     ),
     error: v.optional(v.string()),
     /** Sources used: published drafts and/or X timeline / demo fixtures. */
@@ -1298,8 +1310,8 @@ export default defineSchema({
       v.union(
         v.literal("published_drafts"),
         v.literal("x_timeline"),
-        v.literal("demo")
-      )
+        v.literal("demo"),
+      ),
     ),
     exampleCount: v.number(),
     suggestion: v.optional(voiceDriftSuggestion),
@@ -1321,7 +1333,7 @@ export default defineSchema({
       v.literal("complete"),
       v.literal("failed"),
       v.literal("skipped"),
-      v.literal("accepted")
+      v.literal("accepted"),
     ),
     error: v.optional(v.string()),
     proposal: v.optional(onboardingConciergeProposal),

@@ -10,12 +10,17 @@ export const nicheContext = internalQuery({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
 
-    const profiles = await ctx.db
-      .query("voiceProfiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
     const defaultProfile =
-      profiles.find((p) => p.isDefault) ?? profiles[0] ?? null;
+      (await ctx.db
+        .query("voiceProfiles")
+        .withIndex("by_user_and_isDefault", (q) =>
+          q.eq("userId", userId).eq("isDefault", true),
+        )
+        .first()) ??
+      (await ctx.db
+        .query("voiceProfiles")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .first());
 
     const voiceTopics: string[] = [];
     if (defaultProfile) {
@@ -28,12 +33,11 @@ export const nicheContext = internalQuery({
 
     const analyses = await ctx.db
       .query("tweetAnalyses")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+      .withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(10);
 
     const recentTopics = analyses
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, 10)
       .map((a) => a.topic.trim())
       .filter((t) => t.length > 0);
 
@@ -67,7 +71,7 @@ export const semanticCacheByTweetIds = internalQuery({
       const row = await ctx.db
         .query("opportunities")
         .withIndex("by_user_tweet", (q) =>
-          q.eq("userId", userId).eq("tweetId", tweetId)
+          q.eq("userId", userId).eq("tweetId", tweetId),
         )
         .unique();
       if (

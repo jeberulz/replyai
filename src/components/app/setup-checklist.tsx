@@ -20,23 +20,25 @@ export function SetupChecklist() {
   const me = useQuery(api.users.me, args);
   const profiles = useQuery(api.voiceProfiles.list, args);
   const scanner = useQuery(api.scanner.settings, args);
-  const analyses = useQuery(
-    api.analyses.listRecent,
-    sessionToken ? { sessionToken, limit: 1 } : "skip"
+  const hasAnalysis = useQuery(
+    api.analyses.hasAny,
+    sessionToken ? { sessionToken } : "skip",
   );
   const drafts = useQuery(api.drafts.list, args);
   const [pending, startTransition] = useTransition();
 
   // Wait for every source — a panel that flickers from 0% to 60% as
   // queries land reads as broken.
-  if (!me || !profiles || !scanner || !analyses || !drafts) return null;
+  if (!me || !profiles || !scanner || hasAnalysis === undefined || !drafts) {
+    return null;
+  }
   if (me.setupDismissedAt !== undefined) return null;
 
   const checklist = buildSetupChecklist({
     goal: me.goal,
     keywords: scanner?.keywords ?? [],
     hasTrainedVoice: profiles.some((p) => p.source === "trained"),
-    hasAnalysis: analyses.length > 0,
+    hasAnalysis,
     hasDraft: drafts.length > 0,
   });
   if (checklist.complete) return null;

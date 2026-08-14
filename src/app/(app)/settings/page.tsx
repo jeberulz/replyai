@@ -1,10 +1,7 @@
 import { redirect } from "next/navigation";
 import { CheckCircle2, Mail, XCircle } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
-import {
-  openBillingPortalAction,
-  startProCheckoutAction,
-} from "@/app/actions";
+import { openBillingPortalAction, startProCheckoutAction } from "@/app/actions";
 import { Badge } from "@/components/ds/badge";
 import { Button } from "@/components/ds/button";
 import { Card } from "@/components/ds/card";
@@ -91,12 +88,17 @@ export default async function SettingsPage() {
   if (!session) redirect("/");
   const { user, sessionToken } = session;
 
-  const [stats, billing, accountInventory, scheduledDrafts] = await Promise.all([
-    convexServer().query(api.usage.stats, { sessionToken }),
-    convexServer().query(api.billing.status, { sessionToken }),
-    convexServer().query(api.account.inventory, { sessionToken }),
-    convexServer().query(api.drafts.scheduledCount, { sessionToken }),
-  ]);
+  const [stats, billing, accountInventory, scheduledDrafts] = await Promise.all(
+    [
+      convexServer().query(api.usage.stats, {
+        sessionToken,
+        month: new Date().toISOString().slice(0, 7),
+      }),
+      convexServer().query(api.billing.status, { sessionToken }),
+      convexServer().query(api.account.inventory, { sessionToken }),
+      convexServer().query(api.drafts.scheduledCount, { sessionToken }),
+    ],
+  );
   const supportEmail = env.supportEmail;
 
   return (
@@ -160,11 +162,11 @@ export default async function SettingsPage() {
                 ? "Demo accounts keep Pro access without Stripe so the full product stays testable."
                 : billing.hasBetaAccess && billing.betaAccessExpiresAt
                   ? `Private beta access through ${new Date(billing.betaAccessExpiresAt).toLocaleDateString()} — no card required.`
-                : billing.currentPeriodEnd
-                  ? `Current access through ${new Date(billing.currentPeriodEnd).toLocaleDateString()}`
-                  : billing.trialEndsAt
-                    ? `Trial ends ${new Date(billing.trialEndsAt).toLocaleDateString()}`
-                    : "Billing runs in Stripe test mode while launch pricing is being finalized."}
+                  : billing.currentPeriodEnd
+                    ? `Current access through ${new Date(billing.currentPeriodEnd).toLocaleDateString()}`
+                    : billing.trialEndsAt
+                      ? `Trial ends ${new Date(billing.trialEndsAt).toLocaleDateString()}`
+                      : "Billing runs in Stripe test mode while launch pricing is being finalized."}
             </div>
           </div>
           <Badge
@@ -381,15 +383,15 @@ export default async function SettingsPage() {
             quote card on your timeline.
           </p>
           <p>
-            <strong className="font-medium text-foreground">Replies</strong>{" "}
-            try the API first. If X blocks threading (common on standard API
-            tiers), use{" "}
+            <strong className="font-medium text-foreground">Replies</strong> try
+            the API first. If X blocks threading (common on standard API tiers),
+            use{" "}
             <strong className="font-medium text-foreground">Reply on X</strong>{" "}
             to finish in the X compose window, or post standalone.
           </p>
           <p>
-            Nothing is auto-published. Every post requires your explicit click on
-            that specific text.
+            Nothing is auto-published. Every post requires your explicit click
+            on that specific text.
           </p>
         </div>
       </SettingsSection>

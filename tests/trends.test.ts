@@ -6,7 +6,9 @@ import {
   formatTopicLabel,
   opportunityMatchesTopic,
   primaryClusterKey,
+  selectRecentTrendCorpus,
   topicSlug,
+  trendRadarSnapshotTime,
   trendRadarSentence,
   type TrendOpportunityInput,
 } from "../shared/trends";
@@ -17,7 +19,7 @@ const HOUR = 60 * 60 * 1000;
 function opp(
   id: string,
   text: string,
-  scannedAt = NOW - HOUR
+  scannedAt = NOW - HOUR,
 ): TrendOpportunityInput {
   return { id, text, scannedAt };
 }
@@ -40,7 +42,7 @@ describe("primaryClusterKey", () => {
   it("prefers niche keyword matches", () => {
     const result = primaryClusterKey(
       "Most AI startups aren't real AI companies",
-      ["ai", "startup", "saas"]
+      ["ai", "startup", "saas"],
     );
     expect(result?.kind).toBe("keyword");
     expect(result?.matchedKeywords).toContain("ai");
@@ -49,7 +51,7 @@ describe("primaryClusterKey", () => {
   it("falls back to content tokens when no niche hit", () => {
     const result = primaryClusterKey(
       "Distribution is the product. Features are table stakes.",
-      ["quantum", "blockchain"]
+      ["quantum", "blockchain"],
     );
     expect(result?.kind).toBe("token");
     expect(result?.key).toBeTruthy();
@@ -58,9 +60,11 @@ describe("primaryClusterKey", () => {
   it("does not cluster on audited weak tokens", () => {
     const result = primaryClusterKey(
       "Deleted everything because everyone said get building",
-      ["quantum"]
+      ["quantum"],
     );
-    expect(result?.key).not.toMatch(/^(deleted|everyone|because|get|building)$/);
+    expect(result?.key).not.toMatch(
+      /^(deleted|everyone|because|get|building)$/,
+    );
   });
 });
 
@@ -99,7 +103,7 @@ describe("clusterTrends", () => {
     // Ranked by count descending.
     for (let i = 1; i < result.topics.length; i++) {
       expect(result.topics[i - 1]!.conversationCount).toBeGreaterThanOrEqual(
-        result.topics[i]!.conversationCount
+        result.topics[i]!.conversationCount,
       );
     }
   });
@@ -111,12 +115,12 @@ describe("clusterTrends", () => {
       opp(
         "stale-a",
         "AI product take stale",
-        NOW - TREND_DEFAULTS.windowMs - HOUR
+        NOW - TREND_DEFAULTS.windowMs - HOUR,
       ),
       opp(
         "stale-b",
         "AI product take stale two",
-        NOW - TREND_DEFAULTS.windowMs - 2 * HOUR
+        NOW - TREND_DEFAULTS.windowMs - 2 * HOUR,
       ),
     ];
 
@@ -144,6 +148,40 @@ describe("clusterTrends", () => {
   });
 });
 
+describe("indexed radar corpus equivalence", () => {
+  it("preserves the legacy visible-row ordering and limit", () => {
+    const rows = [
+      { id: "dismissed", status: "dismissed", scannedAt: NOW - HOUR },
+      { id: "newer", status: "new", scannedAt: NOW - 2 * HOUR },
+      { id: "oldest", status: "archived", scannedAt: NOW - 4 * HOUR },
+      { id: "middle", status: "analyzed", scannedAt: NOW - 3 * HOUR },
+    ];
+    const legacy = rows
+      .filter((row) => row.status !== "dismissed")
+      .sort((a, b) => b.scannedAt - a.scannedAt)
+      .slice(0, 2);
+    const indexedRows = rows.filter((row) => row.status !== "dismissed");
+
+    expect(selectRecentTrendCorpus(indexedRows, 2)).toEqual(legacy);
+  });
+
+  it("handles empty corpora and zero bounds", () => {
+    expect(selectRecentTrendCorpus([], 200)).toEqual([]);
+    expect(selectRecentTrendCorpus([opp("one", "AI")], 0)).toEqual([]);
+  });
+});
+
+describe("trendRadarSnapshotTime", () => {
+  it("holds query args stable within a five-minute cache bucket", () => {
+    expect(trendRadarSnapshotTime(NOW + 1_000)).toBe(
+      trendRadarSnapshotTime(NOW + 4 * 60_000),
+    );
+    expect(trendRadarSnapshotTime(NOW + 5 * 60_000 + 1)).toBeGreaterThan(
+      trendRadarSnapshotTime(NOW + 1_000),
+    );
+  });
+});
+
 describe("demoTrendTopics", () => {
   it("returns deterministic fixture topics capped at 3", () => {
     const a = demoTrendTopics(NOW);
@@ -153,7 +191,7 @@ describe("demoTrendTopics", () => {
     expect(a.topics.length).toBeLessThanOrEqual(TREND_DEFAULTS.maxTopics);
     expect(a.topics.map((t) => t.slug)).toEqual(b.topics.map((t) => t.slug));
     expect(a.topics.map((t) => t.conversationCount)).toEqual(
-      b.topics.map((t) => t.conversationCount)
+      b.topics.map((t) => t.conversationCount),
     );
   });
 });
@@ -167,14 +205,14 @@ describe("opportunityMatchesTopic", () => {
       opportunityIds: ["opp-1"],
       matchedKeywords: ["ai"],
     };
+    expect(opportunityMatchesTopic("unrelated text", topic, "opp-1")).toBe(
+      true,
+    );
     expect(
-      opportunityMatchesTopic("unrelated text", topic, "opp-1")
+      opportunityMatchesTopic("Hot take on AI wrappers", topic, "other"),
     ).toBe(true);
     expect(
-      opportunityMatchesTopic("Hot take on AI wrappers", topic, "other")
-    ).toBe(true);
-    expect(
-      opportunityMatchesTopic("Shipping SaaS weekly", topic, "other")
+      opportunityMatchesTopic("Shipping SaaS weekly", topic, "other"),
     ).toBe(false);
   });
 });
@@ -188,7 +226,7 @@ describe("trendRadarSentence", () => {
         conversationCount: 3,
         opportunityIds: ["1", "2", "3"],
         matchedKeywords: ["ai"],
-      })
+      }),
     ).toBe("3 conversations forming around AI");
     expect(
       trendRadarSentence({
@@ -197,7 +235,7 @@ describe("trendRadarSentence", () => {
         conversationCount: 1,
         opportunityIds: ["1"],
         matchedKeywords: ["saas"],
-      })
+      }),
     ).toBe("1 conversation forming around SaaS");
   });
 });

@@ -8,6 +8,8 @@ import { tweetAncestorSnapshot, tweetSnapshot } from "./schema";
 
 const STALE_PIPELINE_MS = 15 * 60 * 1000;
 const STALE_SWEEP_LIMIT = 50;
+const RECENT_ANALYSES_DEFAULT_LIMIT = 30;
+const RECENT_ANALYSES_MAX_LIMIT = 50;
 // Re-analysis dedup window: reuse a recent completed analysis for the same
 // tweet instead of re-running the pipeline (see startAnalysisAction).
 const REUSE_WINDOW_MS = 30 * 60 * 1000;
@@ -17,7 +19,7 @@ const STALE_PIPELINE_ERROR =
 async function requireOwnedProject(
   ctx: MutationCtx,
   userId: Id<"users">,
-  projectId: Id<"projects">
+  projectId: Id<"projects">,
 ) {
   const project = await ctx.db.get(projectId);
   if (!project || project.userId !== userId) {
@@ -42,7 +44,7 @@ export const start = mutation({
         authorHandle: v.string(),
         text: v.string(),
         likes: v.number(),
-      })
+      }),
     ),
     score: v.object({
       value: v.number(),
@@ -65,7 +67,7 @@ export const start = mutation({
     const opp = await ctx.db
       .query("opportunities")
       .withIndex("by_user_tweet", (q) =>
-        q.eq("userId", user._id).eq("tweetId", args.tweetId)
+        q.eq("userId", user._id).eq("tweetId", args.tweetId),
       )
       .unique();
     if (opp && opp.status === "new") {
@@ -117,7 +119,7 @@ export const findReusableByTweet = query({
     const rows = await ctx.db
       .query("tweetAnalyses")
       .withIndex("by_user_tweet", (q) =>
-        q.eq("userId", user._id).eq("tweetId", tweetId)
+        q.eq("userId", user._id).eq("tweetId", tweetId),
       )
       .collect();
     const reusable = rows
@@ -126,9 +128,11 @@ export const findReusableByTweet = query({
           (r.status === "complete" || r.status === undefined) &&
           r.summary.trim().length > 0 &&
           now - (r.updatedAt ?? r.createdAt) <= REUSE_WINDOW_MS &&
-          (r.projectId ?? undefined) === requestedProject
+          (r.projectId ?? undefined) === requestedProject,
       )
-      .sort((a, b) => (b.updatedAt ?? b.createdAt) - (a.updatedAt ?? a.createdAt));
+      .sort(
+        (a, b) => (b.updatedAt ?? b.createdAt) - (a.updatedAt ?? a.createdAt),
+      );
     return reusable[0]?._id ?? null;
   },
 });
@@ -136,7 +140,7 @@ export const findReusableByTweet = query({
 async function requireOwnedAnalysis(
   ctx: MutationCtx,
   sessionToken: string,
-  analysisId: Id<"tweetAnalyses">
+  analysisId: Id<"tweetAnalyses">,
 ) {
   const user = await requireUser(ctx, sessionToken);
   const analysis = await ctx.db.get(analysisId);
@@ -214,30 +218,46 @@ export const listRecent = query({
   },
   handler: async (ctx, { sessionToken, limit, projectId, since }) => {
     const user = await requireUser(ctx, sessionToken);
-    const takeCount = limit ?? 30;
+    const takeCount = Math.min(
+      RECENT_ANALYSES_MAX_LIMIT,
+      Math.max(0, Math.floor(limit ?? RECENT_ANALYSES_DEFAULT_LIMIT)),
+    );
+    if (takeCount === 0) return [];
 
-    let rows;
     if (projectId) {
-      rows = await ctx.db
+      return await ctx.db
         .query("tweetAnalyses")
-        .withIndex("by_user_project", (q) =>
-          q.eq("userId", user._id).eq("projectId", projectId)
-        )
+        .withIndex("by_user_and_project_and_createdAt", (q) => {
+          const range = q.eq("userId", user._id).eq("projectId", projectId);
+          return since === undefined ? range : range.gte("createdAt", since);
+        })
         .order("desc")
-        .take(takeCount * 2);
-    } else {
-      rows = await ctx.db
-        .query("tweetAnalyses")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .order("desc")
-        .take(takeCount * 2);
+        .take(takeCount);
     }
 
-    const filtered = since
-      ? rows.filter((row) => row.createdAt >= since)
-      : rows;
+    return await ctx.db
+      .query("tweetAnalyses")
+      .withIndex("by_user_and_createdAt", (q) => {
+        const range = q.eq("userId", user._id);
+        return since === undefined ? range : range.gte("createdAt", since);
+      })
+      .order("desc")
+      .take(takeCount);
+  },
+});
 
-    return filtered.slice(0, takeCount);
+/** Cheap setup-checklist existence probe; avoids a second recent-list subscription. */
+export const hasAny = query({
+  args: { sessionToken: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { sessionToken }) => {
+    const user = await requireUser(ctx, sessionToken);
+    const row = await ctx.db
+      .query("tweetAnalyses")
+      .withIndex("by_user_and_createdAt", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .first();
+    return row !== null;
   },
 });
 
@@ -310,7 +330,7 @@ export const failStalePipelines = internalMutation({
       const rows = await ctx.db
         .query("tweetAnalyses")
         .withIndex("by_status_and_updatedAt", (q) =>
-          q.eq("status", status).lt("updatedAt", cutoff)
+          q.eq("status", status).lt("updatedAt", cutoff),
         )
         .take(Math.max(0, limit - failed));
 

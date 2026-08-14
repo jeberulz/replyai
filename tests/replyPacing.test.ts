@@ -6,6 +6,8 @@ import {
   DAILY_REPLY_WATCH_THRESHOLD,
   deriveBestReplyWindows,
   getReplyPacingWarningLevel,
+  localDayStartMs,
+  replyPacingSnapshotTime,
   summarizeReplyPacing,
 } from "../shared/replyPacing";
 
@@ -77,23 +79,49 @@ describe("collectPacingPublishPoints", () => {
           publishedAt: Date.parse("2026-07-08T09:00:00.000Z"),
         },
       ],
-      nowMs
+      nowMs,
     );
 
     expect(points).toHaveLength(3);
   });
 });
 
+describe("pacing query bounds", () => {
+  it("computes the exact UTC instant for the user's local midnight", () => {
+    const nowMs = Date.parse("2026-07-08T08:00:00.000Z");
+    expect(localDayStartMs(nowMs, 240)).toBe(
+      Date.parse("2026-07-08T04:00:00.000Z"),
+    );
+    expect(localDayStartMs(nowMs, -60)).toBe(
+      Date.parse("2026-07-07T23:00:00.000Z"),
+    );
+  });
+
+  it("holds reactive query args stable within a five-minute bucket", () => {
+    const start = Date.parse("2026-07-08T08:00:00.000Z");
+    expect(replyPacingSnapshotTime(start + 1_000)).toBe(
+      replyPacingSnapshotTime(start + 4 * 60_000),
+    );
+    expect(replyPacingSnapshotTime(start + 5 * 60_000 + 1)).toBeGreaterThan(
+      replyPacingSnapshotTime(start + 1_000),
+    );
+  });
+});
+
 describe("getReplyPacingWarningLevel", () => {
   it("steps through the warning thresholds near the ~50/day ceiling", () => {
     expect(getReplyPacingWarningLevel(DAILY_REPLY_WATCH_THRESHOLD - 1)).toBe(
-      "none"
+      "none",
     );
-    expect(getReplyPacingWarningLevel(DAILY_REPLY_WATCH_THRESHOLD)).toBe("watch");
+    expect(getReplyPacingWarningLevel(DAILY_REPLY_WATCH_THRESHOLD)).toBe(
+      "watch",
+    );
     expect(getReplyPacingWarningLevel(DAILY_REPLY_WARNING_THRESHOLD)).toBe(
-      "warning"
+      "warning",
     );
-    expect(getReplyPacingWarningLevel(DAILY_REPLY_LIMIT_THRESHOLD)).toBe("limit");
+    expect(getReplyPacingWarningLevel(DAILY_REPLY_LIMIT_THRESHOLD)).toBe(
+      "limit",
+    );
   });
 });
 
@@ -103,10 +131,22 @@ describe("deriveBestReplyWindows", () => {
       nowMs: Date.parse("2026-07-08T13:30:00.000Z"),
       timezoneOffsetMinutes: 0,
       publishedReplies: [
-        { publishedAt: Date.parse("2026-07-01T09:05:00.000Z"), editBucket: "no_edit" },
-        { publishedAt: Date.parse("2026-07-02T09:20:00.000Z"), editBucket: "minor_edit" },
-        { publishedAt: Date.parse("2026-07-03T09:45:00.000Z"), editBucket: "no_edit" },
-        { publishedAt: Date.parse("2026-07-03T14:00:00.000Z"), editBucket: "major_edit" },
+        {
+          publishedAt: Date.parse("2026-07-01T09:05:00.000Z"),
+          editBucket: "no_edit",
+        },
+        {
+          publishedAt: Date.parse("2026-07-02T09:20:00.000Z"),
+          editBucket: "minor_edit",
+        },
+        {
+          publishedAt: Date.parse("2026-07-03T09:45:00.000Z"),
+          editBucket: "no_edit",
+        },
+        {
+          publishedAt: Date.parse("2026-07-03T14:00:00.000Z"),
+          editBucket: "major_edit",
+        },
       ],
       liveOpportunities: [
         {

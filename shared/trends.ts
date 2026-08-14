@@ -23,6 +23,22 @@ export const TREND_DEFAULTS = {
   maxOpportunityIds: 8,
 } as const;
 
+/** Keep the reactive radar clock stable while still admitting new rows. */
+export const TREND_RADAR_SNAPSHOT_MS = 5 * 60 * 1000;
+
+export function trendRadarSnapshotTime(nowMs: number): number {
+  return Math.ceil(nowMs / TREND_RADAR_SNAPSHOT_MS) * TREND_RADAR_SNAPSHOT_MS;
+}
+
+export function selectRecentTrendCorpus<T extends { scannedAt: number }>(
+  rows: T[],
+  limit: number,
+): T[] {
+  return [...rows]
+    .sort((a, b) => b.scannedAt - a.scannedAt)
+    .slice(0, Math.max(0, limit));
+}
+
 export type TrendOpportunityInput = {
   id: string;
   text: string;
@@ -192,7 +208,7 @@ function keywordMatches(haystack: string, keyword: string): boolean {
   }
   const re = new RegExp(
     `(?:^|[^a-z0-9])${escapeRegExp(keyword)}s?(?:[^a-z0-9]|$)`,
-    "i"
+    "i",
   );
   return re.test(haystack);
 }
@@ -257,8 +273,12 @@ function extractContentTokens(text: string): string[] {
  */
 export function primaryClusterKey(
   text: string,
-  nicheKeywords: string[]
-): { key: string; kind: "keyword" | "token"; matchedKeywords: string[] } | null {
+  nicheKeywords: string[],
+): {
+  key: string;
+  kind: "keyword" | "token";
+  matchedKeywords: string[];
+} | null {
   const haystack = text.toLowerCase();
   const matched = nicheKeywords.filter((k) => keywordMatches(haystack, k));
   if (matched.length > 0) {
@@ -270,11 +290,7 @@ export function primaryClusterKey(
   return { key: tokens[0]!, kind: "token", matchedKeywords: [] };
 }
 
-function inWindow(
-  scannedAt: number,
-  nowMs: number,
-  windowMs: number
-): boolean {
+function inWindow(scannedAt: number, nowMs: number, windowMs: number): boolean {
   return scannedAt >= nowMs - windowMs && scannedAt <= nowMs;
 }
 
@@ -282,18 +298,15 @@ function inWindow(
  * Cluster opportunities into emerging niche topics.
  * Ranked by conversation count; capped at maxTopics.
  */
-export function clusterTrends(
-  input: ClusterTrendsInput
-): ClusterTrendsResult {
+export function clusterTrends(input: ClusterTrendsInput): ClusterTrendsResult {
   const nowMs = input.nowMs ?? Date.now();
   const windowMs = input.windowMs ?? TREND_DEFAULTS.windowMs;
   const maxTopics = input.maxTopics ?? TREND_DEFAULTS.maxTopics;
-  const minClusterSize =
-    input.minClusterSize ?? TREND_DEFAULTS.minClusterSize;
+  const minClusterSize = input.minClusterSize ?? TREND_DEFAULTS.minClusterSize;
   const nicheKeywords = normalizeKeywords(input.nicheKeywords);
 
   const inWindowOpps = input.opportunities.filter((o) =>
-    inWindow(o.scannedAt, nowMs, windowMs)
+    inWindow(o.scannedAt, nowMs, windowMs),
   );
 
   type Bucket = {
@@ -441,7 +454,7 @@ export function opportunityMatchesTopic(
     TrendTopic,
     "slug" | "label" | "matchedKeywords" | "opportunityIds"
   >,
-  opportunityId?: string
+  opportunityId?: string,
 ): boolean {
   if (opportunityId && topic.opportunityIds.includes(opportunityId)) {
     return true;
