@@ -40,7 +40,7 @@
     "cmdk": "^1.1.1",
     "convex": "^1.42.1",
     "lucide-react": "^1.23.0",
-    "next": "^16.2.10",
+    "next": "^16.3.1",
     "posthog-js": "^1.398.0",
     "posthog-node": "^5.21.2",
     "react": "19.2.4",
@@ -53,6 +53,15 @@
     "web-push": "^3.6.7",
     "zod": "^4.4.3"
   },
+  "overrides": {
+    "brace-expansion": "^5.0.9",
+    "minimatch@3": {
+      "brace-expansion": "^1.1.18"
+    },
+    "dompurify": "^3.4.13",
+    "fast-uri": "^3.1.5",
+    "js-yaml": "^4.3.1"
+  },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
@@ -61,7 +70,7 @@
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "^16.3.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.9"

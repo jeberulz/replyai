@@ -1,10 +1,11 @@
-// Every production build also deploys the current convex/ functions to the
-// project's production Convex deployment, and Convex injects the fresh prod
-// deployment URL as NEXT_PUBLIC_CONVEX_URL for the build — no manually-set
-// Convex URL env var needed on Vercel. Requires CONVEX_DEPLOY_KEY set in the
-// Vercel Production environment (see docs/production-deployment.md).
+// Vercel statically analyses this file and rejects computed values in static
+// properties — a `buildCommand` built at module scope fails the deployment
+// with "Dynamic values found in static properties: buildCommand". So the
+// command must be a literal, and the per-environment decision lives inside
+// scripts/vercel-build.mjs instead.
+//
+// See docs/production-deployment.md for what that script chooses and why.
 export const config = {
   framework: "nextjs",
-  buildCommand:
-    "npx convex deploy --cmd 'npm run build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL",
+  buildCommand: "node scripts/vercel-build.mjs",
 };
