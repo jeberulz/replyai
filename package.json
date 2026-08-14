@@ -11,6 +11,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "security:audit": "node scripts/security-audit.mjs",
+    "beta:readiness": "node scripts/beta-readiness.mjs",
     "evals": "vitest run tests/evals.test.ts tests/evals.fixtures.test.ts",
     "evals:llm": "vitest run tests/evals.llm.test.ts",
     "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs",
