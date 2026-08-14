@@ -11,8 +11,12 @@ its demo-mode fallback — this doc is just "where does it go."
   (auto-provisioned per project; existed before any `convex deploy` ran).
 - **Vercel project**: `replyai` (team `john-iseghohis-projects`), linked
   locally via `.vercel/project.json` (gitignored).
-- **`vercel.ts`** picks the build command per environment. For a
-  **production** build (`VERCEL_ENV=production`):
+- **`vercel.ts`** sets a single static build command,
+  `node scripts/vercel-build.mjs`. It has to be static — Vercel statically
+  analyses this file and fails the deployment with *"Dynamic values found in
+  static properties: buildCommand"* if the value is computed. So
+  **`scripts/vercel-build.mjs`** makes the per-environment decision at build
+  time. For a **production** build (`VERCEL_ENV=production`):
   ```
   npx convex deploy --cmd 'npm run build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL
   ```
@@ -58,7 +62,7 @@ Recommended end state — do both, in this order:
    vercel env rm  CONVEX_DEPLOY_KEY preview
    vercel env add CONVEX_DEPLOY_KEY preview   # paste the preview: key
    ```
-   `vercel.ts` detects the `preview:` prefix and switches to
+   `scripts/vercel-build.mjs` detects the `preview:` prefix and switches to
    `--preview-create` automatically — no code change needed.
 
 Note that the current production key's value cannot be read back out of

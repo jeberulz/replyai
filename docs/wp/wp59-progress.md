@@ -196,3 +196,36 @@ Options: run the suite against a Convex preview/ephemeral deployment, gate
 the demo login path behind a deterministic local stub for CI, or surface
 the paused-deployment condition explicitly instead of collapsing it to
 `error=convex`.
+
+## 2026-08-14 - S2 correction: the first fix was rejected by the platform
+
+The first S2 implementation computed `buildCommand` inside `vercel.ts` from
+`VERCEL_ENV`. The logic was right and locally verified, but the *mechanism*
+is not allowed. Vercel statically analyses `vercel.ts` and failed the
+deployment before any build step ran, with no build log and this error:
+
+```
+vercel.ts Dynamic values found in static properties: buildCommand
+```
+
+That is why the preview deployment on PR #74 was still red after the first
+push. My local verification could not have caught it — it exercised the
+resolved command, not Vercel's static analysis of the config file.
+
+Corrected shape:
+
+- `vercel.ts` declares one **static** command: `node scripts/vercel-build.mjs`.
+- `scripts/vercel-build.mjs` makes the environment decision at build time and
+  execs the real command, exporting `resolveBuild(env)` so the decision is
+  unit-testable.
+- `tests/vercelBuild.test.ts` covers all four states in CI, including an
+  explicit regression test for "preview build holding a production key must
+  not run a Convex deploy". The previous approach had no automated coverage
+  at all, only a manual simulation.
+
+Incidental improvement: the command is now spawned without a shell, so
+`--cmd "npm run build"` is passed as one argv element instead of relying on
+embedded shell quoting.
+
+Checks after the rework: typecheck pass; lint 0 errors; `npm test` 72 files
+passed / 1 skipped, 572 passed; build pass.
