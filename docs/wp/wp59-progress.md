@@ -142,3 +142,57 @@ Residual owner actions (both recorded in `docs/production-deployment.md`):
 Registry gap noticed, not fixed here (out of scope): **WP58** (scanner
 Sources & settings modal, shipped in PR #72) has stories/progress files but
 no `docs/PRODUCT_STRATEGY.md` §14 row.
+
+## 2026-08-14 - Post-push finding: CI is still red for a second, unrelated reason
+
+WP59 cleared the dependency advisories, so CI on PR #74 gets past
+`tests/securityAudit.test.ts` for the first time since 2026-07-15 — and
+immediately fails at the next job, `Responsive critical flows`, which the
+audit failure had been masking all along.
+
+**That failure is not caused by WP59 and is not a code defect.**
+
+Evidence, in order:
+
+1. CI history: `main` has failed on every merge since PR #71 (2026-07-15).
+   The recorded cause on `main` @ `8d46657` is the security audit, which
+   short-circuits before Playwright, so the Playwright state was unknown.
+2. All four `critical-*` projects fail identically in `loginDemo`:
+   `/api/auth/demo` never reaches `/dashboard`.
+3. Reproduced locally. `curl -i /api/auth/demo` returns
+   `307 → /?error=convex`, i.e. the `convexServer().mutation(...)` call in
+   `src/app/api/auth/demo/route.ts` throws.
+4. `.github/workflows/ci.yml` runs that job with a hardcoded
+   `NEXT_PUBLIC_CONVEX_URL` pointing at the **dev** deployment
+   `shiny-crow-162`. Re-running the dev server locally against that exact
+   URL reproduces CI, and the server log gives the real error:
+
+   ```
+   Demo login failed: Error: Server Error
+   Cannot run functions while this deployment is paused. Resume the
+   deployment in the dashboard settings to allow functions to run.
+   ```
+
+The dev Convex deployment is **paused**. It still answers `/version` with
+HTTP 200, which is why nothing else notices, but it refuses to run
+functions — so demo login cannot create a session and every responsive
+critical flow fails at the first step.
+
+Almost certainly the WP57 free-plan overage: the deployment was paused on
+quota, WP57 fixed the *cause* (scanner cron fan-out over 502 demo users),
+and the deployment was never resumed. The 2026-07-15 timing lines up with
+the WP57 work.
+
+**Owner action:** resume `shiny-crow-162` in the Convex dashboard. Not done
+here — resuming a deployment paused on quota is a billing decision, and
+there is no CLI verb for it. Expect CI to go green once it is resumed *and*
+#74 is merged; both are required, neither is sufficient alone.
+
+**Design weakness worth a ruling:** the required CI job depends on a live,
+shared, free-plan Convex dev deployment. Any pause, quota trip, or schema
+drift there turns the merge gate red for reasons unrelated to the change
+under test, and the failure surfaces as an opaque `?error=convex` redirect.
+Options: run the suite against a Convex preview/ephemeral deployment, gate
+the demo login path behind a deterministic local stub for CI, or surface
+the paused-deployment condition explicitly instead of collapsing it to
+`error=convex`.
