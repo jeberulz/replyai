@@ -101,15 +101,22 @@ message instead of bouncing through X first.
 
 - [ ] Verify/replace every "set to real value" item above — several Vercel
       Production vars were empty placeholders as of this writing
-- [ ] **`npx convex env list --prod` currently returns zero variables** —
-      every "Convex prod" item in the table above (`X_CLIENT_ID/SECRET`,
-      `X_TOKEN_ENCRYPTION_KEY`, `CONVEX_AUTH_PROVISION_SECRET`,
-      `CONVEX_SERVER_TOKEN_ACCESS_SECRET`, Stripe,
-      PostHog, Sentry, VAPID, `RESEND_*`, `APP_URL`) still needs
-      `npx convex env set VAR value --prod`. Without these, the first real
-      production deploy will run in whatever demo/no-op fallback each
-      integration has (per this repo's demo-mode principle) rather than
-      actually publishing, refreshing tokens, or sending notifications.
+- [ ] **Convex prod is partially configured** (was "zero variables"; no longer
+      true as of 2026-08-14). `npx convex env list --prod` now returns 17
+      names, including `X_CLIENT_ID/SECRET`, `X_TOKEN_ENCRYPTION_KEY`, both
+      shared secrets, and all four AI spend controls.
+
+      Run `npm run beta:readiness -- --http` for the current authoritative
+      gap list rather than trusting this bullet — it prints names and
+      presence only, never values, and exits non-zero until production is
+      ready. As of 2026-08-14 it reports **22 required names still absent**:
+      X-read caps/kill switch, PostHog, Sentry, VAPID, `APP_URL`, and
+      `RESEND_*` on the Convex side; PostHog, Sentry, the public VAPID key,
+      and the support/operator identity on the Vercel side. Until they are
+      set, each integration runs in its demo/no-op fallback (per this repo's
+      demo-mode principle) rather than actually notifying or reporting.
+      Stripe is deliberately excluded — the WP40 ruling puts live charging
+      behind the later paid-beta gate.
 - [ ] Re-add `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` locally to `.env.local`
       (lost during this setup, see chat history)
 - [ ] Confirm a custom domain / the right `replyai-*.vercel.app` alias is

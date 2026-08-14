@@ -114,15 +114,22 @@ dirty working tree.
     security review required.
 
 - [ ] **WP40-S8 — Activate and prove production observability + alerts**
-  - Produce a names-only Vercel/Convex env inventory and rollback plan; owner
+  - [x] Produce a names-only Vercel/Convex env inventory and rollback plan; owner
     approves it before any value is applied.
+    *(Done 2026-08-14. `scripts/beta-readiness.mjs` + `npm run beta:readiness`
+    now generate this on demand; measured inventory and rollback recorded in
+    `wp40-progress.md`. 22 required names outstanding — all need owner-supplied
+    credentials.)*
   - Configure PostHog and Sentry for browser, Next.js, and Convex; safe synthetic
     events/errors arrive in each plane.
   - Configure VAPID, `APP_URL`, and Resend; a real push and fallback email arrive
     at owner-approved destinations, respect quiet hours/cap, and open the
     correct route.
-  - `beta-readiness` reports required name presence and production HTTP checks
+  - [x] `beta-readiness` reports required name presence and production HTTP checks
     without printing secret values.
+    *(Done 2026-08-14. `npm run beta:readiness -- --http`. All production HTTP
+    checks pass; the env planes do not, so it exits non-zero and prints
+    NOT READY.)*
   - PostHog dashboard covers access → onboarding → opportunity open → generation
     → copy/save/send → responded, notification open→send, X/AI spend, and error
     rates.

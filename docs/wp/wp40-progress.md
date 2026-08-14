@@ -475,3 +475,83 @@ npx convex env set AI_GENERATION_HOURLY_LIMIT <approved-generation-cap>
 Verify: `npx convex env list` shows all four present; a non-demo generation
 request now succeeds and each attempt writes one `aiSpendLedger` row until the
 hourly cap, after which the user sees "Hourly generation capacity is full."
+
+## 2026-08-14 — S8 readiness gate built; names-only production inventory
+
+Owner asked for the launch gate to be advanced. The blocking piece was
+tooling, not configuration: `scripts/beta-readiness.mjs` is named in the
+WP40 file boundary and in S8's fourth bullet, but had never been written.
+Only `scripts/security-audit.mjs` existed.
+
+Built it plus `npm run beta:readiness` and `tests/betaReadiness.test.ts`
+(13 cases, zero external keys). It prints variable **names and presence
+only** — the Convex parser splits on the first `=` and discards the
+remainder, and there is a test asserting no value, key prefix, or address
+can survive parsing. Exits non-zero when a required name is absent or a
+production HTTP check fails, so it can gate the runbook.
+
+`--http` probes the production origin. Optional flags: `--origin=`,
+`--json`.
+
+### Measured state — `npm run beta:readiness -- --http`, 2026-08-14
+
+Result: **NOT READY.** All production HTTP checks pass; 22 required
+variable names are absent.
+
+Correction to this file's earlier note and to
+`docs/production-deployment.md`: `npx convex env list --prod` no longer
+returns zero variables. It returns 17, including all four AI spend controls
+(`AI_SPEND_LIMITS_REQUIRED`, `AI_SPEND_KILL_SWITCH`,
+`AI_ANALYSIS_HOURLY_LIMIT`, `AI_GENERATION_HOURLY_LIMIT`) — the operator
+apply step recorded earlier in this file was carried out.
+
+**Vercel — 9 required names absent:**
+
+| Name | Blocks |
+|---|---|
+| `REPLYPILOT_SUPPORT_EMAIL` | legal/support copy ships a placeholder (S6) |
+| `REPLYPILOT_OPERATOR_NAME` | legal/support copy ships a placeholder (S6) |
+| `NEXT_PUBLIC_POSTHOG_KEY` / `NEXT_PUBLIC_POSTHOG_HOST` | browser funnel events |
+| `POSTHOG_KEY` / `POSTHOG_HOST` | server-side Next.js events |
+| `NEXT_PUBLIC_SENTRY_DSN` / `SENTRY_DSN` | browser + server error tracking |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | browser cannot subscribe to push at all |
+
+**Convex production — 13 required names absent:**
+
+| Name | Blocks |
+|---|---|
+| `X_READ_LIMITS_REQUIRED`, `X_READ_KILL_SWITCH`, `X_READ_USER_DAILY_LIMIT`, `X_READ_GLOBAL_DAILY_LIMIT` | X read spend fails closed today; caps + kill switch unset (ruling 5) |
+| `POSTHOG_KEY`, `POSTHOG_HOST` | scanner/publish events fire from Convex |
+| `SENTRY_DSN` | Convex-side error tracking |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | push delivery runs in Convex actions |
+| `APP_URL` | absolute origin for digest email links |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | hot-window fallback email |
+
+Present but uncatalogued, for the owner to confirm or remove: Vercel
+`consumer_key`, `consumer_secret`, `bearer_token` (purpose still unclear,
+flagged since the original setup), `CONVEX_DEPLOY_KEY`, `ANTHROPIC_MODEL`,
+`CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_SITE_URL`; Convex per-surface
+`ANTHROPIC_*_MODEL` overrides.
+
+**Production HTTP — all pass** against `https://replyai-three.vercel.app`:
+`GET /` 200 with all six security headers present
+(CSP, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy,
+X-Content-Type-Options); `/privacy`, `/terms`, `/manifest.webmanifest`
+200; `/feed` unauthenticated correctly 307s rather than rendering.
+
+### Rollback
+
+Each item is a single `vercel env rm NAME production` or
+`npx convex env remove NAME --prod`, returning that integration to its
+demo/no-op fallback. No table or row is affected by any of them.
+
+### Why S8 and S9 stay unchecked
+
+S8's remaining bullets need real credentials (PostHog projects, Sentry DSNs,
+a VAPID keypair, a Resend sender) applied to live environments, plus
+synthetic events proven to arrive in each plane. S9 needs an owner-approved
+real X account and the ten partner handles. Both are the owner-supplied
+launch inputs that WP40 ruling 8 makes blocking acceptance criteria — an
+agent cannot satisfy them. The gate now reports exactly which names are
+outstanding, so the remaining work is bounded and checkable:
+`npm run beta:readiness -- --http` must print `READY`.
